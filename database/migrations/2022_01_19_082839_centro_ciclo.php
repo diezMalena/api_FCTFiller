@@ -18,7 +18,7 @@ class CentroCiclo extends Migration
             $table->string('cod_centro');
             $table->primary(['cod_centro', 'cod_ciclo']);
             $table->foreign('cod_centro')->references('cod_centro')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreign('cod_ciclo')->references('cod_ciclo')->on('Ciclo')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('cod_ciclo')->references('cod_ciclo')->on('ciclo')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }

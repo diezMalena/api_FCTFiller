@@ -20,7 +20,7 @@ class EmpresaCentroEstudios extends Migration
             $table->string('cif_empresa');
             $table->primary(['cod_centro', 'cif_empresa']);
             $table->foreign('cif_empresa')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreign('cod_centro')->references('cod_centro')->on('centro')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('cod_centro')->references('cod_centro')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }

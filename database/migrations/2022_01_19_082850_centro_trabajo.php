@@ -20,7 +20,7 @@ class CentroTrabajo extends Migration
             $table->string('email');
             $table->string('localidad');
             $table->string('cif_empresa');
-            $table->string('nombre');
+            $table->string('nombre')->index();
             $table->primary(['cif_empresa', 'nombre']);
             $table->foreign('cif_empresa')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
