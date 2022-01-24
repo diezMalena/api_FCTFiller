@@ -13,8 +13,9 @@ class Trabajador extends Model
         'email',
         'password',
         'nombre',
+        'apellidos',
         'cif_empresa',
-        'nombre_centro_trabajo'
+        // 'nombre_centro_trabajo'
     ];
     protected $table = 'trabajador';
     protected $primaryKey = 'dni';

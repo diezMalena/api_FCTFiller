@@ -19,6 +19,7 @@ class Trabajador extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->string('nombre');
+            $table->string('apellidos');
             $table->string('cif_empresa');
             $table->string('nombre_centro');
             $table->foreign('cif_empresa')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
