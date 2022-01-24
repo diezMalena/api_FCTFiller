@@ -8,36 +8,40 @@ use Illuminate\Database\Eloquent\Model;
 class Trabajador extends Model
 {
     use HasFactory;
-    protected $fillable=['dni','nombre','cif_empresa','nombre_centro'];
+    protected $fillable = [
+        'dni',
+        'email',
+        'password',
+        'nombre',
+        'cif_empresa',
+        'nombre_centro_trabajo'
+    ];
     protected $table = 'trabajador';
     protected $primaryKey = 'dni';
     public $incrementing = false;
     protected $keyType = 'string';
 
-
-
-
-
-     /**
+    /**
      * Union entre la tabla trabajador y la tabla empresa, intercambiando
      * múltiple información
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function trabajadorEmpresaMany(){
-        return $this->hasMany('App\Models\Empresa','cif_empresa','cif');
-      }
+    public function trabajadorEmpresaMany()
+    {
+        return $this->hasMany('App\Models\Empresa', 'cif_empresa', 'cif');
+    }
+
     /**
      * Union entre la tabla trabajador y la tabla empresa, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function trabajadorEmpresaHasOne(){
-         return $this->hasOne('App\Models\Empresa','cif_empresa','cif');
-      }
-
-
+    public function trabajadorEmpresaHasOne()
+    {
+        return $this->hasOne('App\Models\Empresa', 'cif_empresa', 'cif');
+    }
 
     /**
      * Union entre la tabla trabajador y la tabla rol_trabajador_asignado, intercambiando
@@ -45,17 +49,19 @@ class Trabajador extends Model
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-      public function trabajadorRolMany(){
-        return $this->hasMany('App\Models\RolTrabajadorAsignado','dni','dni');
-      }
-     /**
+    public function trabajadorRolMany()
+    {
+        return $this->hasMany('App\Models\RolTrabajadorAsignado', 'dni', 'dni');
+    }
+
+    /**
      * Union entre la tabla trabajador y la tabla rol_trabajador_asignado, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function trabajadorRolHasMany(){
-         return $this->hasOne('App\Models\RolTrabajadorAsignado','dni','dni');
-      }
-
+    public function trabajadorRolHasMany()
+    {
+        return $this->hasOne('App\Models\RolTrabajadorAsignado', 'dni', 'dni');
+    }
 }

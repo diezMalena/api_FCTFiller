@@ -8,35 +8,43 @@ use Illuminate\Database\Eloquent\Model;
 class Empresa extends Model
 {
     use HasFactory;
-    protected $fillable=['cif','nombre','telefono','email','direccion','provincia','localidad'];
+
+    protected $fillable = [
+        'cif',
+        'nombre',
+        'telefono',
+        'email',
+        'localidad',
+        'provincia',
+        'direccion',
+        'cp'
+    ];
     protected $table = 'empresa';
     protected $primaryKey = 'cif';
     public $incrementing = false;
     protected $keyType = 'string';
 
-
-
-
     /**
      * Union entre la tabla empresa y la tabla alumno, intercambiando
      * múltiple información
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function empresaAlumnoMany(){
-       return $this->hasMany('App\Models\Alumno','cif','cif');
-     }
-      /**
+    public function empresaAlumnoMany()
+    {
+        return $this->hasMany('App\Models\Alumno', 'cif', 'cif');
+    }
+
+    /**
      * Union entre la tabla empresa y la tabla alumno, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function empresaAlumnoHasOne(){
-        return $this->hasOne('App\Models\Alumno','cif','cif');
-     }
-
-
+    public function empresaAlumnoHasOne()
+    {
+        return $this->hasOne('App\Models\Alumno', 'cif', 'cif');
+    }
 
     /**
      * Union entre la tabla empresa y la tabla empresa_centro, intercambiando
@@ -44,43 +52,43 @@ class Empresa extends Model
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function empresaCentroMany(){
-        return $this->hasMany('App\Models\EmpresaCentroEstudios','cif','cif_empresa');
-     }
-      /**
+    public function empresaCentroMany()
+    {
+        return $this->hasMany('App\Models\EmpresaCentroEstudios', 'cif', 'cif_empresa');
+    }
+
+    /**
      * Union entre la tabla empresa y la tabla empresa_centro, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function empresaCentroHasOne(){
-        return $this->hasOne('App\Models\EmpresaCentroEstudios','cif','cif_empresa');
-     }
+    public function empresaCentroHasOne()
+    {
+        return $this->hasOne('App\Models\EmpresaCentroEstudios', 'cif', 'cif_empresa');
+    }
 
-
-
-
-     /**
+    /**
      * Union entre la tabla empresa y la tabla centro_trabajo, intercambiando
      * múltiple información
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function empresaCentroTrabajoMany(){
-        return $this->hasMany('App\Models\CentroTrabajo','cif','cif_empresa');
-     }
-     /**
+    public function empresaCentroTrabajoMany()
+    {
+        return $this->hasMany('App\Models\CentroTrabajo', 'cif', 'cif_empresa');
+    }
+
+    /**
      * Union entre la tabla empresa y la tabla centro_trabajo, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function empresaCentroTrabajoHasOne(){
-        return $this->hasOne('App\Models\CentroTrabajo','cif','cif_empresa');
-     }
-
-
-
+    public function empresaCentroTrabajoHasOne()
+    {
+        return $this->hasOne('App\Models\CentroTrabajo', 'cif', 'cif_empresa');
+    }
 
     /**
      * Union entre la tabla empresa y la tabla trabajador, intercambiando
@@ -88,17 +96,19 @@ class Empresa extends Model
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function empresaTrabajadorMany(){
-        return $this->hasMany('App\Models\Trabajador','cif','cif_empresa');
-     }
-     /**
+    public function empresaTrabajadorMany()
+    {
+        return $this->hasMany('App\Models\Trabajador', 'cif', 'cif_empresa');
+    }
+
+    /**
      * Union entre la tabla empresa y la tabla trabajador, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-     public function empresaTrabajadorHasOne(){
-        return $this->hasOne('App\Models\Trabajador','cif','cif_empresa');
-     }
-
+    public function empresaTrabajadorHasOne()
+    {
+        return $this->hasOne('App\Models\Trabajador', 'cif', 'cif_empresa');
+    }
 }
