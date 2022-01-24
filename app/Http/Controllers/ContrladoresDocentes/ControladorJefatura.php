@@ -62,22 +62,22 @@ class ControladorJefatura extends Controller
     {
         switch ($nombreCaja) {
             case 'alumnos':
-                return $this->procesarFicheroABBDDAlumnos();
+                return $this->procesarFicheroABBDDAlumnos($nombreCaja);
                 break;
             case 'materias':
-                return $this->procesarFicheroABBDDMaterias();
+                return $this->procesarFicheroABBDDMaterias($nombreCaja);
                 break;
             case 'matriculas':
-                return $this->procesarFicheroABBDDAlumnos();
+                return $this->procesarFicheroABBDDMatriculas($nombreCaja);
                 break;
             case 'notas':
-                return $this->procesarFicheroABBDDNotas();
+                return $this->procesarFicheroABBDDNotas($nombreCaja);
                 break;
             case 'profesores':
-                return $this->procesarFicheroABBDDProfesores();
+                return $this->procesarFicheroABBDDProfesores($nombreCaja);
                 break;
             case 'unidades':
-                return $this->procesarFicheroABBDDUnidades();
+                return $this->procesarFicheroABBDDUnidades($nombreCaja);
                 break;
             default:
                 return false;
@@ -85,7 +85,33 @@ class ControladorJefatura extends Controller
         }
     }
 
-    private function procesarFicheroABBDDAlumnos()
+    private function procesarFicheroABBDDAlumnos($nombreCaja)
+    {
+        $filePath = $this->getCSVPath($nombreCaja);
+
+    }
+
+    private function procesarFicheroABBDDMaterias($nombreCaja)
+    {
+
+    }
+
+    private function procesarFicheroABBDDMatriculas($nombreCaja)
+    {
+
+    }
+
+    private function procesarFicheroABBDDNotas($nombreCaja)
+    {
+
+    }
+
+    private function procesarFicheroABBDDProfesores($nombreCaja)
+    {
+
+    }
+
+    private function procesarFicheroABBDDUnidades($nombreCaja)
     {
 
     }
