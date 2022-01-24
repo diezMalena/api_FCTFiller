@@ -26,3 +26,7 @@ Route::group(['prefix' => 'jefatura'], function () {
     Route::get('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
 });
 
+Route::get('/', function() {
+
+});
+
