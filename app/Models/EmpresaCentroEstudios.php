@@ -12,13 +12,13 @@ class EmpresaCentroEstudios extends Model
     protected $fillable = [
         'cod_convenio',
         'cod_centro',
-        'cif_empresa',
+        'id_empresa',
         'fecha',
         'firmado_director',
         'firmado_empresa',
         'ruta_anexo'
     ];
-    protected $table = 'convenio';
+    protected $table = 'empresa_centro_estudios';
     protected $primaryKey = ['cod_convenio'];
     public $incrementing = false;
     protected $keyType = ['string'];
@@ -45,25 +45,25 @@ class EmpresaCentroEstudios extends Model
         return $this->hasOne('App\Models\CentroEstudios', 'cod_centro', 'cod_centro');
     }
 
-    /**
-     * Union entre la tabla empresa_centro y la tabla empresa, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function empresaMany()
-    {
-        return $this->hasMany('App\Models\Empresa', 'cif_empresa', 'cif');
-    }
+    // /**
+    //  * Union entre la tabla empresa_centro y la tabla empresa, intercambiando
+    //  * múltiple información
+    //  *@author laura <lauramorenoramos97@gmail.com>
+    //  * @return void
+    //  */
+    // public function empresaMany()
+    // {
+    //     return $this->hasMany('App\Models\Empresa', 'cif_empresa', 'cif');
+    // }
 
-    /**
-     * Union entre la tabla empresa_centro y la tabla empresa, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function empresaHasOne()
-    {
-        return $this->hasOne('App\Models\Empresa', 'cif_empresa', 'cif');
-    }
+    // /**
+    //  * Union entre la tabla empresa_centro y la tabla empresa, intercambiando
+    //  * información concreta
+    //  *@author laura <lauramorenoramos97@gmail.com>
+    //  * @return void
+    //  */
+    // public function empresaHasOne()
+    // {
+    //     return $this->hasOne('App\Models\Empresa', 'cif_empresa', 'cif');
+    // }
 }

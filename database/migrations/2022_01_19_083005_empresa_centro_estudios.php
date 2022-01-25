@@ -17,12 +17,12 @@ class EmpresaCentroEstudios extends Migration
         Schema::create('empresa_centro_estudios', function (Blueprint $table) {
             $table->string('cod_convenio')->primary();
             $table->string('cod_centro');
-            $table->string('cif_empresa');
+            $table->unsignedBigInteger('id_empresa');
             $table->date('fecha');
             $table->integer('firmado_director');
             $table->integer('firmado_empresa');
             $table->string('ruta_anexo');
-            $table->foreign('cif_empresa')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('cod_centro')->references('cod_centro')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

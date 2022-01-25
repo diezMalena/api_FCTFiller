@@ -11,13 +11,13 @@ class EmpresaFactory extends Factory
 
     /**
      * Define the model's default state.
-     *
+     * @author @DaniJCoello
      * @return array
      */
     public function definition()
     {
         return [
-            'cif' => $this->faker->unique()->rand(11111111,99999999),
+            'cif' => rand(11111111,99999999),
             'nombre' => $this->faker->company(),
             'telefono' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),

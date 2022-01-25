@@ -15,7 +15,8 @@ class Empresa extends Migration
     public function up()
     {
         Schema::create('empresa', function (Blueprint $table) {
-            $table->string('cif')->primary();
+            $table->id();
+            $table->string('cif')->unique();
             $table->string('nombre');
             $table->string('telefono');
             $table->string('email');

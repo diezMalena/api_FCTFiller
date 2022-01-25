@@ -20,9 +20,9 @@ class Trabajador extends Migration
             $table->string('password');
             $table->string('nombre');
             $table->string('apellidos');
-            $table->string('cif_empresa');
-            $table->string('nombre_centro');
-            $table->foreign('cif_empresa')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
+            $table->unsignedBigInteger('id_empresa');
+            // $table->string('nombre_centro');
+            $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
             //$table->foreign('nombre_centro_trabajo')->references('nombre')->on('centro_trabajo')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

@@ -11,14 +11,14 @@ class CentroEstudiosFactory extends Factory
 
     /**
      * Define the model's default state.
-     *
+     * @author @DaniJCoello
      * @return array
      */
     public function definition()
     {
         return [
-            'cod_centro' => $this->faker->unique()->rand(11111,99999),
-            'cif' => $this->faker->unique()->rand(11111111,99999999),
+            'cod_centro' => rand(11111,99999),
+            'cif' => rand(11111111,99999999),
             'cod_centro_convenio' => $this->faker->companySuffix(),
             'nombre' => $this->faker->company(),
             'localidad' => $this->faker->city(),

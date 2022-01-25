@@ -13,7 +13,7 @@ class RolTrabajadorAsignadoFactory extends Factory
 
     /**
      * Define the model's default state.
-     *
+     * @author @DaniJCoello
      * @return array
      */
     public function definition()

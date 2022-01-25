@@ -10,21 +10,22 @@ use Illuminate\Support\Facades\Hash;
 class TrabajadorFactory extends Factory
 {
     protected $model = Trabajador::class;
+    public static $IDEMPRESA;
 
     /**
      * Define the model's default state.
-     *
+     * @author @DaniJCoello
      * @return array
      */
     public function definition()
     {
         return [
-            'dni' => $this->faker->rand(111111111, 999999999),
+            'dni' => rand(111111111, 999999999),
             'email' => $this->faker->email(),
             'password' => Hash::make('superman'),
             'nombre' => $this->faker->name(),
             'apellidos' => $this->faker->lastName() . ' ' . $this->faker->lastName(),
-            'cif_empresa' => Empresa::all()->random(1)->get('cif')
+            'id_empresa' => self::$IDEMPRESA
         ];
     }
 }

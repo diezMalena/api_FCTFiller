@@ -25,7 +25,7 @@ class CentroEstudios extends Migration
             $table->string('cp');
             $table->string('telefono');
             $table->string('email');
-            $table->string('dni_director');
+            // $table->string('dni_director');
             // $table->foreign('dni_director')->references('dni')->on('profesor')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

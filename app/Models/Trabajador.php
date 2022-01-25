@@ -14,7 +14,7 @@ class Trabajador extends Model
         'password',
         'nombre',
         'apellidos',
-        'cif_empresa',
+        'id_empresa',
         // 'nombre_centro_trabajo'
     ];
     protected $table = 'trabajador';
@@ -22,27 +22,27 @@ class Trabajador extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    /**
-     * Union entre la tabla trabajador y la tabla empresa, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function trabajadorEmpresaMany()
-    {
-        return $this->hasMany('App\Models\Empresa', 'cif_empresa', 'cif');
-    }
+    // /**
+    //  * Union entre la tabla trabajador y la tabla empresa, intercambiando
+    //  * múltiple información
+    //  *@author laura <lauramorenoramos97@gmail.com>
+    //  * @return void
+    //  */
+    // public function trabajadorEmpresaMany()
+    // {
+    //     return $this->hasMany('App\Models\Empresa', 'cif_empresa', 'cif');
+    // }
 
-    /**
-     * Union entre la tabla trabajador y la tabla empresa, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function trabajadorEmpresaHasOne()
-    {
-        return $this->hasOne('App\Models\Empresa', 'cif_empresa', 'cif');
-    }
+    // /**
+    //  * Union entre la tabla trabajador y la tabla empresa, intercambiando
+    //  * información concreta
+    //  *@author laura <lauramorenoramos97@gmail.com>
+    //  * @return void
+    //  */
+    // public function trabajadorEmpresaHasOne()
+    // {
+    //     return $this->hasOne('App\Models\Empresa', 'cif_empresa', 'cif');
+    // }
 
     /**
      * Union entre la tabla trabajador y la tabla rol_trabajador_asignado, intercambiando
