@@ -4,6 +4,8 @@ namespace App\Http\Controllers\ContrladoresDocentes;
 
 use App\Http\Controllers\Controller;
 use App\Models\CentroCiclo;
+use App\Models\CentroEstudios;
+use App\Models\Profesor;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 
@@ -18,11 +20,20 @@ class ControladorTutorFCT extends Controller
      * @author @DaniJCoello
      */
     public function generarAnexo0(string $dniTutor, string $cifEmpresa) {
+        //Primero consigo los datos del centro de estudios asociado al tutor
+        $centroEstudios = $this->getCentroEstudios($dniTutor);
+
         $nombreArchivo = 'anexo0';
         $rutaArchivo = 'anexos/plantillas/' . $nombreArchivo . '.docx';
         $template = new TemplateProcessor($rutaArchivo);
 
 
+    }
+
+    public function getCentroEstudios(string $dniTutor) {
+        $codCentro = Profesor::find($dniTutor)->cod_centro_estudios;
+        dd(CentroEstudios::find($codCentro));
+        return CentroEstudios::find($codCentro);
     }
 
 }
