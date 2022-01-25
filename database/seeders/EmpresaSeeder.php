@@ -26,17 +26,17 @@ class EmpresaSeeder extends Seeder
             //Lo establezco en la factoría del trabajador para que los trabajadores se asocien a la empresa
             TrabajadorFactory::$IDEMPRESA = $id;
             //Creo unos cuantos trabajadores
-            for ($i = 0; $i < rand(15,25); $i++) {
+            for ($j = 0; $j < rand(15,25); $j++) {
                 //Creo el trabajador
                 $trabajador = Trabajador::factory()->create();
                 //Extraigo su clave primaria y la establezco en la factoría de los roles del trabajador
                 $dni = $trabajador->dni;
                 RolTrabajadorAsignadoFactory::$DNI = $dni;
                 //Y ahora creo un representante legal, dos responsables de centro y, el resto, tutores
-                if ($i == 0) {
+                if ($j == 0) {
                     //Establezco el rol a 1 (representante legal)
                     RolTrabajadorAsignadoFactory::$ROL = 1;
-                } else if ($i < 3) {
+                } else if ($j < 3) {
                     //Establezco el rol a 2 (responsable de centro)
                     RolTrabajadorAsignadoFactory::$ROL = 2;
                 } else {
