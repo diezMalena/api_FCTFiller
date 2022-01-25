@@ -1,0 +1,4 @@
+php artisan db:seed --class=RolesEstudioSeeder
+php artisan db:seed --class=RolesEmpresaSeeder
+php artisan db:seed --class=CentroEstudiosSeeder
+php artisan db:seed --class=EmpresaSeeder
