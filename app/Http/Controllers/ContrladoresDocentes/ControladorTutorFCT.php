@@ -26,7 +26,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function generarAnexo0(string $dniTutor, string $cifEmpresa) {
+    public function generarAnexo0(string $dniTutor, string $cifEmpresa)
+    {
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
         $centroEstudios = $this->getCentroEstudios($dniTutor)->makeHidden('created_at', 'updated_at');
         $director = $this->getDirectorCentroEstudios($centroEstudios->cod_centro)->makeHidden('created_at', 'updated_at', 'password');
@@ -46,27 +47,74 @@ class ControladorTutorFCT extends Controller
         $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
         $datos['anio'] = $fecha->year % 100;
 
-        //Esta parte no se hará así, sino que se tomarán los datos de la tabla de convenios directamente
-        //El registro del convenio se hará cuando la empresa registre sus datos
-        $codConvenio = $this->generarConvenio($centroEstudios->cod_centro_convenio);
+        //Esta parte no se hará así, sino que se tomarán los datos de la tabla de convenios directamente o se recibirán por parámetro
+        //El registro del convenio se hará cuando el tutor registre los datos de la empresa
+        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, 'C');
         $datos['cod_convenio'] = $codConvenio;
         //Esta variable se usa sólo para el nombre del archivo
         $codConvenioAux = str_replace('/', '-', $codConvenio);
 
+        //Ahora genero el Word y el PDF en sí
+        //Establezco las variables que necesito
         $nombrePlantilla = 'anexo0';
         $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
         $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
         $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $template = new TemplateProcessor($rutaOrigen);
+        $rutaDestino = 'anexos/rellenos/anexo0/' . $nombrePlantilla . '-' . $codConvenioAux . '.pdf';
 
+        //Creo la plantilla y la relleno
+        $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaTemporal);
+
+        //Convierto el documento a PDF
+        $this->convertirWordPDF($rutaTemporal, $rutaDestino);
     }
 
-    public function generarConvenio(string $codCentroConvenio) {
+    /**
+     * Esta función convierte un archivo word en pdf
+     */
+    private function convertirWordPDF(string $rutaArchivo, string $rutaDestino)
+    {
+        /* Set the PDF Engine Renderer Path */
+        $domPdfPath = base_path('vendor/dompdf/dompdf');
+        \PhpOffice\PhpWord\Settings::setPdfRendererPath($domPdfPath);
+        \PhpOffice\PhpWord\Settings::setPdfRendererName('DomPDF');
+
+        // Load temporarily create word file
+        $Content = \PhpOffice\PhpWord\IOFactory::load($rutaArchivo);
+
+        //Save it into PDF
+        $savePdfPath = public_path($rutaDestino);
+
+        /*@ If already PDF exists then delete it */
+        if (file_exists($savePdfPath)) {
+            unlink($savePdfPath);
+        }
+
+        //Save it into PDF
+        $PDFWriter = \PhpOffice\PhpWord\IOFactory::createWriter($Content, 'PDF');
+        $PDFWriter->save($savePdfPath);
+
+        /*@ Remove temporarily created word file */
+        if (file_exists($rutaArchivo)) {
+            unlink($rutaArchivo);
+        }
+    }
+
+    /**
+     * Genera el código de un convenio a partir del código del centro, un autoincremental y la fecha
+     * @param string $codCentroConvenio el código del centro para generar los convenios
+     * @param string $tipo 'C' -> Convenio; 'A' -> Acuerdo
+     * @return string el código del convenio
+     *
+     * @author @DaniJCoello
+     */
+    public function generarCodigoConvenio(string $codCentroConvenio, string $tipo)
+    {
         $numConvenio = AuxConvenio::create()->id;
-        $convenio = $codCentroConvenio . '/' . $numConvenio . '/' . Carbon::now()->year % 100;
-        return $convenio;
+        $codConvenio = $codCentroConvenio . '/' . $tipo . $numConvenio . '/' . Carbon::now()->year % 100;
+        return $codConvenio;
     }
 
     /**
@@ -76,7 +124,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getCentroEstudios(string $dniProfesor) {
+    public function getCentroEstudios(string $dniProfesor)
+    {
         return CentroEstudios::find(Profesor::find($dniProfesor)->cod_centro_estudios);
     }
 
@@ -87,7 +136,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getDirectorCentroEstudios(string $codCentroEstudios) {
+    public function getDirectorCentroEstudios(string $codCentroEstudios)
+    {
         // SELECT * FROM profesor
         // WHERE profesor.cod_centro_estudios = 24101
         // AND profesor.dni IN (
@@ -112,7 +162,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getEmpresaFromCIF(string $cif) {
+    public function getEmpresaFromCIF(string $cif)
+    {
         return Empresa::where('cif', $cif)->first();
     }
 
@@ -123,7 +174,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getEmpresaFromID($id) {
+    public function getEmpresaFromID($id)
+    {
         return Empresa::find($id);
     }
 
@@ -134,7 +186,8 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getResponsableLegal($id) {
+    public function getResponsableLegal($id)
+    {
         return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
     }
 }

@@ -19,4 +19,5 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // });
 
-Route::get('docentes/tutor/tutor={dniTutor}&empresa={cifEmpresa}', [ControladorTutorFCT::class, 'generarAnexo0']);
+Route::get('docentes/hacerConvenio/tutor={dniTutor}&empresa={cifEmpresa}', [ControladorTutorFCT::class, 'generarAnexo0']);
+//http://localhost:8000/api/docentes/hacerConvenio/tutor=996041337&empresa=29409713
