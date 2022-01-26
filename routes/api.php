@@ -19,4 +19,4 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // });
 
-Route::get('docentes/tutor/{dniTutor}/anexo0/{cifEmpresa}', [ControladorTutorFCT::class, 'generarAnexo0']);
+Route::get('docentes/tutor/tutor={dniTutor}&empresa={cifEmpresa}', [ControladorTutorFCT::class, 'generarAnexo0']);
