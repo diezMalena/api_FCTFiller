@@ -6,6 +6,7 @@ php artisan migrate:refresh --path=database/migrations/2022_01_19_083135_rol_tra
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082942_centro_estudios.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083033_profesor.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083105_rol_profesor_asignado.php
+php artisan migrate:refresh --path=database/migrations/2022_01_25_123542_create_aux_convenio.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083005_empresa_centro_estudios.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083015_materia.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082859_ciclo.php
