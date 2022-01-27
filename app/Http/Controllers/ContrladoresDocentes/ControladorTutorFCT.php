@@ -13,6 +13,7 @@ use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use Carbon\Carbon;
+use App\Models\EmpresaCentroEstudios;
 use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -27,15 +28,16 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function generarAnexo0(string $dniTutor, string $cifEmpresa)
+    public function generarAnexo0(string $dniTutor, Empresa $empresa, Trabajador $representante)
     {
+
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
         $centroEstudios = $this->getCentroEstudios($dniTutor)->makeHidden('created_at', 'updated_at');
         $director = $this->getDirectorCentroEstudios($centroEstudios->cod_centro)->makeHidden('created_at', 'updated_at', 'password');
 
         //Ahora hago lo propio con la empresa en cuestión
-        $empresa = $this->getEmpresaFromCIF($cifEmpresa)->makeHidden('created_at', 'updated_at');
-        $responsableLegal = $this->getResponsableLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
+        $empresa = $empresa->makeHidden('created_at', 'updated_at');
+        $responsableLegal = $representante->makeHidden('created_at', 'updated_at', 'password');
 
         //Construyo el array con todos los datos
         $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
@@ -198,7 +200,7 @@ class ControladorTutorFCT extends Controller
      * @author @Malena
      */
     public function addDatosEmpresa(Request $req){
-        try{
+        //try{
             $empresa = Empresa::create($req->empresa);
             $repre_aux = $req->representante;
             $repre_aux["id_empresa"] = $empresa->id;
@@ -207,10 +209,12 @@ class ControladorTutorFCT extends Controller
                 'dni' => $representante->dni,
                 'id_rol' => 1,
             ]);
+            $convenio = $this->addConvenio($req->dni, $empresa->id);
+            $this->generarAnexo0($req->dni, $empresa, $representante);
             return response()->json(['message'=>'Registro correcto'],200);
-        }catch(Exception $ex){
+        /*}catch(Exception $ex){
             return response()->json(['message'=>'Registro fallido'],400);
-        }
+        }*/
 
 
 
@@ -233,5 +237,29 @@ class ControladorTutorFCT extends Controller
             return response()->json(['message'=>'El representante no se ha insertado: '.$representante],400);
         }*/
 
+    }
+
+    /**
+     * Registrar el convenio en la BBDD con los diferentes datos que necesitamos.
+     * @author Malena
+     * @param string $dniTutor, el dni del tutor que se encuentra logueado.
+     * @param int $id_empresa, el id de la empresa que se registra.
+     * @return EmpresaCentroEstudios convenio entre la empresa y el centro de estudios.
+     */
+    public function addConvenio(string $dniTutor, int $id_empresa){
+        //Consigo el centro de estudios a partir del Dni del tutor:
+        $centroEstudios = $this->getCentroEstudios($dniTutor);
+        //Fabrico el codigo del convenio:
+        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio,'C');
+        $convenio = EmpresaCentroEstudios::create([
+            'cod_convenio' => $codConvenio,
+            'cod_centro' => $centroEstudios->cod_centro,
+            'id_empresa' => $id_empresa,
+            'fecha' => Carbon::now(),
+            'firmado_director' => 0,
+            'firmado_empresa' => 0,
+            'ruta_anexo' => ''
+        ]);
+        return $convenio;
     }
 }
