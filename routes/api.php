@@ -3,7 +3,6 @@
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -21,3 +20,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('docentes/hacerConvenio/tutor={dniTutor}&empresa={cifEmpresa}', [ControladorTutorFCT::class, 'generarAnexo0']);
 //http://localhost:8000/api/docentes/hacerConvenio/tutor=996041337&empresa=29409713
+Route::group(['middleware' => ['Cors']], function(){
+    Route::post('addDatosEmpresa',[ControladorTutorFCT::class,'addDatosEmpresa']);
+});
