@@ -19,6 +19,7 @@ use App\Models\Curso;
 use App\Models\EmpresaCentroEstudios;
 use App\Models\EmpresaCurso;
 use App\Models\EmpresaAlumno;
+use App\Auxiliar\Parametros;
 
 class ControladorTutorFCT extends Controller
 {
@@ -74,7 +75,7 @@ class ControladorTutorFCT extends Controller
                 ->join('rol_trabajador_asignado','rol_trabajador_asignado.dni','=','trabajador.dni')
                 ->select('trabajador.nombre')
                 ->where('trabajador.id_empresa','=',$id->id_empresa)
-                ->where('rol_trabajador_asignado.id_rol','=',1)
+                ->where('rol_trabajador_asignado.id_rol','=',Parametros::REPRESENTANTE_LEGAL)
                 ->get();
 
                 //Ciudad del centro de estudios
@@ -111,7 +112,7 @@ class ControladorTutorFCT extends Controller
               $datos = [
                   'num_convenio'=>$num_convenio[0]->cod_convenio,
                   'dia' => $fecha->day,
-                  'mes' => $fecha->month,
+                  'mes' => Parametros::MESES[$fecha->month],
                   'year' => $fecha->year,
                   'nombre_centro'=>$nombre_centro[0]->nombre,
                   'nombre_empresa'=>$nombre_empresa[0]->nombre,
