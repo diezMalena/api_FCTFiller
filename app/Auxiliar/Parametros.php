@@ -1,13 +1,12 @@
 <?php
 
 namespace App\Auxiliar;
-class Parametros{
 
+class Parametros {
 
-    public const REPRESENTANTE_LEGAL=1;
-    public const RESPONSABLE_CENTRO=2;
-    public const TUTOR_EMPRESA=3;
-
+    public const REPRESENTANTE_LEGAL = 1;
+    public const RESPONSABLE_CENTRO = 2;
+    public const TUTOR_EMPRESA = 3;
 
     public const MESES = [
         1 => 'enero',
@@ -24,5 +23,3 @@ class Parametros{
         12 => 'diciembre'
     ];
 }
-
-
