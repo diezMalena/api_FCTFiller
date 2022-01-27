@@ -67,6 +67,11 @@ class ControladorTutorFCT extends Controller
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
+        //Y guardo la ruta en la base de datos
+        // $convenio = EmpresaCentroEstudios::find($codConvenio);
+        // $convenio->ruta_anexo = $rutaDestino;
+        // $convenio->save();
+
         //Convierto el documento a PDF
         //Pendiente de revisar: no convierte las cabeceras. Se queda en Word de momento
         // $this->convertirWordPDF($rutaTemporal, $rutaDestino);
