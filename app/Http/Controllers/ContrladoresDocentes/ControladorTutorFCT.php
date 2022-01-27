@@ -13,6 +13,7 @@ use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 
@@ -189,5 +190,48 @@ class ControladorTutorFCT extends Controller
     public function getResponsableLegal($id)
     {
         return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
+    }
+
+    /**
+     * Recoge los datos que se envía desde el cliente, y añade estos a sus correspondientes tablas.
+     * También, se generará el Anexo0 al añadir las empresas.
+     * @author @Malena
+     */
+    public function addDatosEmpresa(Request $req){
+        try{
+            $empresa = Empresa::create($req->empresa);
+            $repre_aux = $req->representante;
+            $repre_aux["id_empresa"] = $empresa->id;
+            $representante = Trabajador::create($repre_aux);
+            RolTrabajadorAsignado::create([
+                'dni' => $representante->dni,
+                'id_rol' => 1,
+            ]);
+            return response()->json(['message'=>'Registro correcto'],200);
+        }catch(Exception $ex){
+            return response()->json(['message'=>'Registro fallido'],400);
+        }
+
+
+
+        //----------------------------------COMPROBACIONES FUTURAS---------------------------------------
+        //Si la empresa no está registrada:
+        /*if(!isset($empresa)){
+            $empresa = Empresa::create($req->empresa);
+            return response()->json(['message'=>'Empresa insertada: '.$empresa],201);
+        }else{
+            return response()->json(['message'=>'La empresa no se ha insertado: '.$empresa],400);
+        }
+
+        $representante = Trabajador::find($req->representante->dni);
+        //Si el representante no está registrado:
+        if(!isset($representante)){
+            $representante = Trabajador::create($req->representante);
+
+            return response()->json(['message'=>'Representante insertado: '.$representante],201);
+        }else{
+            return response()->json(['message'=>'El representante no se ha insertado: '.$representante],400);
+        }*/
+
     }
 }
