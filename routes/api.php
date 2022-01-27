@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // });
 
-Route::get('/', function() {
-
-});
+Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class,'solicitarAlumnosSinEmpresa']);
+Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class,'solicitarEmpresasConAlumnos']);
+Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class,'solicitarNombreCiclo']);
+Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class,'actualizarEmpresaAsignadaAlumno']);

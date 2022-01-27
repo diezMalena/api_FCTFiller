@@ -14,7 +14,7 @@ class EmpresaCurso extends Migration
     public function up()
     {
         Schema::create('empresa_curso', function (Blueprint $table) {
-            $table->string('id_empresa');
+            $table->unsignedBigInteger('id_empresa');
             $table->string('cod_curso');
             $table->primary(['id_empresa', 'cod_curso']);
             $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');

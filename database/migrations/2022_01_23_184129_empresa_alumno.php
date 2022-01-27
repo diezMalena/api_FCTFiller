@@ -14,7 +14,7 @@ class EmpresaAlumno extends Migration
     public function up()
     {
         Schema::create('empresa_alumno', function (Blueprint $table) {
-            $table->string('id_empresa');
+            $table->unsignedBigInteger('id_empresa');
             $table->string('dni_alumno');
             $table->string('curso_academico');
             $table->primary(['id_empresa', 'dni_alumno']);

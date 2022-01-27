@@ -17,6 +17,8 @@ php artisan migrate:refresh --path=database/migrations/2022_01_19_082623_alumno.
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082806_alumno_curso.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082818_alumno_materia.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_212801_centro_jefe_estudios.php
+php artisan migrate:refresh --path=database\migrations\2022_01_23_184129_empresa_alumno.php
+php artisan migrate:refresh --path=database\migrations\2022_01_23_192739_empresa_curso.php
 
 
 ¡Si la tabla materia, no se termina de migrar, vuelve a hacer la migracion!

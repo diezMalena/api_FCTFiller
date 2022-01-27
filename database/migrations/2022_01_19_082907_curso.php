@@ -18,7 +18,9 @@ class Curso extends Migration
             $table->string('anio');
             $table->string('estudio');
             $table->string('dni_tutor');
+            $table->string('cod_ciclo');
             $table->foreign('dni_tutor')->references('dni')->on('profesor')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('cod_ciclo')->references('cod_ciclo')->on('ciclo')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }
