@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Support\Facades\Route;
 
 /*

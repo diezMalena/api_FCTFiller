@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
+
+Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class,'solicitarAlumnosSinEmpresa']);
+Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class,'solicitarEmpresasConAlumnos']);
+Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class,'solicitarNombreCiclo']);
+Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class,'actualizarEmpresaAsignadaAlumno']);
