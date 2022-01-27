@@ -7,6 +7,12 @@ use Illuminate\Http\Request;
 
 class ControladorJefatura extends Controller
 {
+    const CABECERA_ALUMNOS = ["ALUMNO", "APELLIDOS", "NOMBRE", "SEXO", "DNI", "NIE", "FECHA_NACIMIENTO", "LOCALIDAD_NACIMIENTO", "PROVINCIA_NACIMIENTO", "NOMBRE_CORRESPONDENCIA", "DOMICILIO", "LOCALIDAD", "PROVINCIA", "TELEFONO", "MOVIL", "CODIGO_POSTAL", "TUTOR1", "DNI_TUTOR1", "TUTOR2", "DNI_TUTOR2", "PAIS", "NACIONALIDAD", "EMAIL_ALUMNO", "EMAIL_TUTOR2", "EMAIL_TUTOR1", "TELEFONOTUTOR1", "TELEFONOTUTOR2", "MOVILTUTOR1", "MOVILTUTOR2", "APELLIDO1", "APELLIDO2", "TIPODOM", "NTUTOR1", "NTUTOR2", "NSS"];
+    const CABECERA_MATERIAS = ["MATERIA", "DESCRIPCION", "ABREVIATURA", "DEPARTAMENTO", "CURSO"];
+    const CABECERA_MATRICULAS = ["ALUMNO", "APELLIDOS", "NOMBRE", "MATRICULA", "ETAPA", "ANNO", "TIPO", "ESTUDIOS", "GRUPO", "REPETIDOR", "FECHAMATRICULA", "CENTRO", "PROCEDENCIA", "ESTADOMATRICULA", "FECHARESMATRICULA", "NUM_EXP_CENTRO", "PROGRAMA_2"];
+    const CABECERA_NOTAS = [];
+    const CABECERA_PROFESORES = [];
+    const CABECERA_UNIDADES = [];
 
 
     /**
@@ -22,98 +28,187 @@ class ControladorJefatura extends Controller
      */
     public function recibirCSV(Request $r)
     {
-        // $nombreCaja = $r->nombreCaja;
-        // $nombreFichero = $r->nombreFichero;
-        // $fichero = $r->fichero;
+        $errores = [];
 
-        $nombreCaja = strtolower('alumnos');
-        $nombreFichero = 'perico_eldelospalotes.csv';
-        $fichero = '';
+        #region Bucle
+        foreach ($r->collect() as $item) {
+            $nombreCaja = strtolower($item['box_file']);
+            //$tipoFichero = $item['content_type'];
+            $nombreFichero = $item['file_name'];
+            $fichero = $item['file_content'];
 
-        $this->guardarFichero($nombreCaja, $nombreFichero, $fichero);
 
-        $comprobaciones = $this->comprobarFichero($nombreCaja, $nombreFichero);
+            //Si se guarda el fichero satisfactoriamente, se comprueba
+            //si el fichero es íntegro
+            if ($this->guardarFichero($nombreCaja, $fichero)) {
+                $resultado = $this->comprobarFichero($nombreCaja, $nombreFichero);
 
-        if ($comprobaciones == 0) {
-            $this->procesarFicheroABBDD($nombreCaja);
-            return response()->json(['mensaje' => 'OK'], 200);
+                //Si el resultado es distinto de cero, el fichero no está bien
+                //por lo tanto, se mete el resultado en errores
+                if ($resultado != 0) {
+                    $errores[$nombreCaja] = $resultado;
+                } else {
+                //Si es cero, el fichero está bien y pasamos a insertar los registros en
+                //base de datos
+                    $resultado = $this->procesarFicheroABBDD($nombreCaja);
+
+                //Si el resultado es distinto de cero, el fichero ha tenido errores al insertarse
+                //por lo tanto, se mete el resultado en errores
+
+                        $errores[$nombreCaja] = $resultado;
+
+                }
+
+                //Borramos el fichero al final
+                $this->borrarFichero($this->getCSVPathFile($nombreCaja));
+            }
+        }
+        #endregion
+
+        if(count($errores) > 0){
+            $mensaje = "Los siguientes ficheros han tenido errores:";
+
+            foreach ($errores as $key => $variable) {
+                $mensaje .= " " . $key . ".csv: " . ($variable) . "";
+            }
+
+            return response()->json(['mensaje' => $mensaje], 200);
         } else {
-            $this->borrarFichero($nombreCaja);
-            return response()->json(['mensaje' => $comprobaciones], 400);
+            return response()->json(['mensaje' => 'ok'], 200);
         }
     }
 
-    private function getCSVPath($nombreCaja)
-    {
-        return public_path() . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR . "csv" . DIRECTORY_SEPARATOR . $nombreCaja . ".csv";
-    }
 
-    private function guardarFichero($nombreCaja, $nombreFichero, $fichero)
+    /**
+     * Función intermedia que guarda los ficheros CSV en la base de datos
+     *
+     * @param string $nombreCaja Nombre de la caja
+     * @return Response Respuesta de la petición formateada en JSON con el
+     * parámetro mensaje, que indicará el resultado de la llamada a esta función
+     *
+     * @author David Sánchez Barragán
+     */
+    public function procesarFicheroABBDD($nombreCaja)
     {
-        return true;
-    }
 
-    private function borrarFichero($nombreCaja)
-    {
-        unlink($this->getCSVPath($nombreCaja));
-    }
+        $resultado = false;
 
-    private function procesarFicheroABBDD($nombreCaja)
-    {
         switch ($nombreCaja) {
             case 'alumnos':
-                return $this->procesarFicheroABBDDAlumnos($nombreCaja);
+                $resultado = $this->procesarFicheroABBDDAlumnos($nombreCaja);
                 break;
             case 'materias':
-                return $this->procesarFicheroABBDDMaterias($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDMaterias($nombreCaja);
                 break;
             case 'matriculas':
-                return $this->procesarFicheroABBDDMatriculas($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDMatriculas($nombreCaja);
                 break;
             case 'notas':
-                return $this->procesarFicheroABBDDNotas($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDNotas($nombreCaja);
                 break;
             case 'profesores':
-                return $this->procesarFicheroABBDDProfesores($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDProfesores($nombreCaja);
                 break;
             case 'unidades':
-                return $this->procesarFicheroABBDDUnidades($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDUnidades($nombreCaja);
                 break;
             default:
-                return false;
+                $resultado =  'Error';
                 break;
         }
+
+        return $resultado;
     }
+
+
+    /**
+     * Obtiene la ruta donde se alojan los ficheros temporales CSV
+     *
+     * @return string Ruta de la carpeta donde se alojan los ficheros CSV
+     */
+    private function getCSVPath()
+    {
+        return public_path() . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR . "csv" . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * Obtiene la ruta completa de los ficheros temporales CSV
+     *
+     * @return string Ruta de la carpeta donde se alojan los ficheros CSV
+     */
+    private function getCSVPathFile($nombreCaja)
+    {
+        return $this->getCSVPath() . $nombreCaja . ".csv";
+    }
+
+    /**
+     * Guarda los ficheros recibidos por la petición en formato base64
+     *
+     * @param string $nombreCaja
+     * @param string $fichero
+     * @author David Sánchez Barragán
+     */
+    private function guardarFichero($nombreCaja, $fichero)
+    {
+        try {
+            //Abrimos el flujo de escritura para guardar el fichero
+            $flujo = fopen($this->getCSVPathFile($nombreCaja), 'wb');
+
+            //Dividimos el string en comas
+            // $datos[ 0 ] == "data:type/extension;base64"
+            // $datos[ 1 ] == <actual base64 string>
+            $datos = explode(',', $fichero);
+
+
+            if (count($datos) > 1) {
+                fwrite($flujo, base64_decode($datos[1]));
+            } else {
+                return false;
+            }
+
+            fclose($flujo);
+
+            return true;
+        } catch (\Throwable $th) {
+            return false;
+        }
+    }
+
+    private function borrarFichero($path)
+    {
+        unlink($path);
+    }
+
+
 
     private function procesarFicheroABBDDAlumnos($nombreCaja)
     {
-        $filePath = $this->getCSVPath($nombreCaja);
-
+        return 'Guardado correctamente';
     }
 
     private function procesarFicheroABBDDMaterias($nombreCaja)
     {
-
+        return 'Guardado correctamente';
     }
 
     private function procesarFicheroABBDDMatriculas($nombreCaja)
     {
-
+        return 'Guardado correctamente';
     }
 
     private function procesarFicheroABBDDNotas($nombreCaja)
     {
-
+        return 'Guardado correctamente';
     }
 
     private function procesarFicheroABBDDProfesores($nombreCaja)
     {
-
+        return 'Guardado correctamente';
     }
 
     private function procesarFicheroABBDDUnidades($nombreCaja)
     {
-
+        return 'Guardado correctamente';
     }
 
 
@@ -165,7 +260,7 @@ class ControladorJefatura extends Controller
     {
         $numLinea = 0;
         $columnasEncabezado = 0;
-        $filePath = $this->getCSVPath($nombreCaja);
+        $filePath = $this->getCSVPathFile($nombreCaja);
 
 
         if ($file = fopen($filePath, "r")) {

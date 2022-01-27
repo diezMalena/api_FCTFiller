@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 Route::group(['prefix' => 'jefatura'], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
     //por favor, cambiar a post
-    Route::get('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
+    Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
 });
 
 Route::get('/', function() {
