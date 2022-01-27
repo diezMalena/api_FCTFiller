@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Alumno extends Model
 {
     use HasFactory;
-    protected $fillable=['dni','nombre','apellido','localidad','provincia','horario','num_horas','fecha_ini','fecha_fin','cif','cod_curso'];
+    protected $fillable=['dni','nombre','apellido','localidad','provincia','cod_curso'];
     protected $table = 'alumno';
     protected $primaryKey = 'dni';
     public $incrementing = false;
@@ -35,44 +35,23 @@ class Alumno extends Model
         return $this->hasOne('App\Models\AlumnoMateria','dni','dni');
      }
 
-/**
- * Union entre la tabla alumno y la tabla empresa, intercambiando
- * múltiple información
- *@author laura <lauramorenoramos97@gmail.com>
- * @return void
- */
-    public function empresaMany(){
-        return $this->hasMany('App\Models\Empresa','cif','cif');
-     }
 
      /**
-      * Union entre la tabla alumno y la tabla empresa, intercambiando
-      *información concreta
-      *@author laura <lauramorenoramos97@gmail.com>
-      * @return void
-      */
-     public function empresaHasOne(){
-        return $this->hasOne('App\Models\Empresa','cif','cif');
-     }
-
-
-
-     /**
-     * Union entre la tabla alumno y la tabla curso, intercambiando
+     * Union entre la tabla alumno y la tabla alumno_curso, intercambiando
      * múltiple información
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
     public function alumnoCursoMany(){
-        return $this->hasMany('App\Models\Curso','cod_curso','cod_curso');
+        return $this->hasMany('App\Models\AlumnoCurso','dni','dni');
      }
       /**
-      * Union entre la tabla alumno y la tabla curso, intercambiando
+      * Union entre la tabla alumno y la tabla alumno_curso, intercambiando
       *información concreta
       *@author laura <lauramorenoramos97@gmail.com>
       * @return void
       */
      public function alumnoCursoHasOne(){
-        return $this->hasOne('App\Models\Curso','cod_curso','cod_curso');
+        return $this->hasOne('App\Models\AlumnoCurso','dni','dni');
      }
 }
