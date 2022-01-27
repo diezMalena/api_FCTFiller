@@ -90,22 +90,22 @@ class ControladorTutorFCT extends Controller
                 /********************************************************************************* */
                 $table = new Table(array('unit' => TblWidth::TWIP));
                 $table->addRow();
-                $table->addCell(700)->addText('APELLIDOS Y NOMBRE');
-                $table->addCell(700)->addText('D.N.I');
-                $table->addCell(700)->addText('LOCALIDAD DE RESIDENCIA DEL ALUMNO/A (**)');
-                $table->addCell(700)->addText('HORARIO DIARIO');
-                $table->addCell(700)->addText('NUMERO HORAS');
-                $table->addCell(700)->addText('FECHA DE COMIENZO');
-                $table->addCell(700)->addText('FECHA DE FINALIZACION');
+                $table->addCell(1500)->addText('APELLIDOS Y NOMBRE');
+                $table->addCell(1500)->addText('D.N.I');
+                $table->addCell(1500)->addText('LOCALIDAD DE RESIDENCIA DEL ALUMNO/A (**)');
+                $table->addCell(1500)->addText('HORARIO DIARIO');
+                $table->addCell(1500)->addText('NUMERO HORAS');
+                $table->addCell(1500)->addText('FECHA DE COMIENZO');
+                $table->addCell(1500)->addText('FECHA DE FINALIZACION');
                 foreach ($alumnos as $a) {
                     $table->addRow();
-                    $table->addCell(700)->addText($a->apellido.' '.$a->nombre);
-                    $table->addCell(700)->addText($a->dni);
-                    $table->addCell(700)->addText($a->localidad);
-                    $table->addCell(700)->addText($a->horario);
-                    $table->addCell(700)->addText($a->num_horas);
-                    $table->addCell(700)->addText($a->fecha_ini);
-                    $table->addCell(700)->addText($a->fecha_fin);
+                    $table->addCell(1500)->addText($a->apellido.' '.$a->nombre);
+                    $table->addCell(1500)->addText($a->dni);
+                    $table->addCell(1500)->addText($a->localidad);
+                    $table->addCell(1500)->addText($a->horario);
+                    $table->addCell(1500)->addText($a->num_horas);
+                    $table->addCell(1500)->addText($a->fecha_ini);
+                    $table->addCell(1500)->addText($a->fecha_fin);
                 }
 
 
@@ -128,7 +128,14 @@ class ControladorTutorFCT extends Controller
               $template->setValues($datos);
               $template->setComplexBlock('{table}', $table);
               $template->saveAs($rutaDestino . '.docx');
-              $this->convertirWordPDF($rutaDestino);
+             // $this->convertirWordPDF($rutaDestino);
+
+
+             //$file = public_path(). $rutaDestino.".docx";
+             //$headers = ['Content-Type: application/vnd.ms-word.document.macroEnabled.12'];
+             //return \Response::download($file, 'plugin.jpg', $headers);
+
+             //return response()->download(public_path($rutaDestino . '.docx'));
             }catch (Exception $e) {
                 dd($e);
             }
