@@ -8,12 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class RolesEmpresa extends Model
 {
     use HasFactory;
-    protected $fillable=['descripcion'];
-    protected $table = 'id';
 
-
-
-
+    protected $table = 'roles_empresa';
+    protected $fillable = ['descripcion'];
 
     /**
      * Union entre la tabla roles_empresa y la tabla rol_profesor_asignado intercambiando
@@ -21,16 +18,20 @@ class RolesEmpresa extends Model
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function rolTrabajadorAsignadoMany(){
-        return $this->hasMany('App\Models\RolTrabajadorAsignado','id','id_rol');
+    public function rolTrabajadorAsignadoMany()
+    {
+        return $this->hasMany('App\Models\RolTrabajadorAsignado', 'id', 'id_rol');
     }
+
     /**
      * Union entre la tabla roles_empresa y la tabla rol_profesor_asignado, intercambiando
      * información concreta
      *@author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
-    public function rolTrabajadorAsignadoHasOne(){
-        return $this->hasOne('App\Models\RolTrabajadorAsignado','id','id_rol');
+
+    public function rolTrabajadorAsignadoHasOne()
+    {
+        return $this->hasOne('App\Models\RolTrabajadorAsignado', 'id', 'id_rol');
     }
 }
