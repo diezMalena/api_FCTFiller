@@ -22,6 +22,4 @@ use Illuminate\Support\Facades\Route;
 Route::group(['middleware' => ['Cors']], function(){
     Route::post('addDatosEmpresa',[ControladorTutorFCT::class,'addDatosEmpresa']);
     Route::post('addConvenio',[ControladorTutorFCT::class,'addConvenio']);
-    Route::post('generarConvenio', [ControladorTutorFCT::class, 'generarAnexo0']);
-    //http://localhost:8000/api/docentes/hacerConvenio/tutor=996041337&empresa=29409713
 });

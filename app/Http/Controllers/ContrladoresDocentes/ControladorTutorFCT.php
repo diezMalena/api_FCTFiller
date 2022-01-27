@@ -28,20 +28,20 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function generarAnexo0(string $dniTutor, Empresa $empresa, Trabajador $representante)
+    public function generarAnexo0(string $codConvenio)
     {
 
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
-        $centroEstudios = $this->getCentroEstudios($dniTutor)->makeHidden('created_at', 'updated_at');
+        $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
         $director = $this->getDirectorCentroEstudios($centroEstudios->cod_centro)->makeHidden('created_at', 'updated_at', 'password');
 
         //Ahora hago lo propio con la empresa en cuestión
-        $empresa = $empresa->makeHidden('created_at', 'updated_at');
-        $responsableLegal = $representante->makeHidden('created_at', 'updated_at', 'password');
+        $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
+        $representante = $this->getRepresentanteLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
 
         //Construyo el array con todos los datos
         $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
-        $auxDatos = [$director, $centroEstudios, $responsableLegal, $empresa];
+        $auxDatos = [$director, $centroEstudios, $representante, $empresa];
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
 
         //Ahora extraigo los datos de fecha
@@ -49,33 +49,36 @@ class ControladorTutorFCT extends Controller
         $datos['dia'] = $fecha->day;
         $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
         $datos['anio'] = $fecha->year % 100;
-
-        //Esta parte no se hará así, sino que se tomarán los datos de la tabla de convenios directamente o se recibirán por parámetro
-        //El registro del convenio se hará cuando el tutor registre los datos de la empresa
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, 'C');
         $datos['cod_convenio'] = $codConvenio;
+
         //Esta variable se usa sólo para el nombre del archivo
         $codConvenioAux = str_replace('/', '-', $codConvenio);
 
         //Ahora genero el Word y el PDF en sí
         //Establezco las variables que necesito
         $nombrePlantilla = 'anexo0';
-        $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
+        // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
         $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
-        $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $rutaDestino = 'anexos/rellenos/anexo0/' . $nombrePlantilla . '-' . $codConvenioAux . '.pdf';
+        // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
+        $rutaDestino = 'anexos/rellenos/anexo0/' . $nombrePlantilla . '-' . $codConvenioAux . '.docx'/*.pdf*/;
 
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
-        $template->saveAs($rutaTemporal);
+        $template->saveAs($rutaDestino);
 
         //Convierto el documento a PDF
-        $this->convertirWordPDF($rutaTemporal, $rutaDestino);
+        //Pendiente de revisar: no convierte las cabeceras. Se queda en Word de momento
+        // $this->convertirWordPDF($rutaTemporal, $rutaDestino);
     }
 
     /**
      * Esta función convierte un archivo word en pdf
+     * @param string $rutaArchivo la ruta del archivo .docx
+     * @param string $rutaDestino la ruta de destino del .pdf
+     * @return void
+     *
+     * @author @DaniJCoello
      */
     private function convertirWordPDF(string $rutaArchivo, string $rutaDestino)
     {
@@ -127,9 +130,20 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getCentroEstudios(string $dniProfesor)
+    public function getCentroEstudiosFromProfesor(string $dniProfesor)
     {
         return CentroEstudios::find(Profesor::find($dniProfesor)->cod_centro_estudios);
+    }
+
+    /**
+     * Devuelve el centro de estudios asociado a un determinado código de convenio
+     * @param string $codConvenio el código de convenio
+     * @return CentroEstudios una colección con la información del centro de estudios
+     *
+     * @author @DaniJCoello
+     */
+    public function getCentroEstudiosFromConvenio(string $codConvenio) {
+        return CentroEstudios::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->cod_centro);
     }
 
     /**
@@ -177,9 +191,20 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getEmpresaFromID($id)
+    public function getEmpresaFromID(int $id)
     {
         return Empresa::find($id);
+    }
+
+    /**
+     * Devuelve la empresa asociada a un código de convenio
+     * @param string $codConvenio el código del convenio
+     * @return Empresa una colección con la información de la empresa
+     *
+     * @author @DaniJCoello
+     */
+    public function getEmpresaFromConvenio(string $codConvenio) {
+        return Empresa::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->id_empresa);
     }
 
     /**
@@ -189,7 +214,7 @@ class ControladorTutorFCT extends Controller
      *
      * @author @DaniJCoello
      */
-    public function getResponsableLegal($id)
+    public function getRepresentanteLegal(int $id)
     {
         return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
     }
@@ -210,7 +235,7 @@ class ControladorTutorFCT extends Controller
                 'id_rol' => 1,
             ]);
             $convenio = $this->addConvenio($req->dni, $empresa->id);
-            $this->generarAnexo0($req->dni, $empresa, $representante);
+            $this->generarAnexo0($convenio->cod_convenio);
             return response()->json(['message'=>'Registro correcto'],200);
         /*}catch(Exception $ex){
             return response()->json(['message'=>'Registro fallido'],400);
@@ -248,7 +273,7 @@ class ControladorTutorFCT extends Controller
      */
     public function addConvenio(string $dniTutor, int $id_empresa){
         //Consigo el centro de estudios a partir del Dni del tutor:
-        $centroEstudios = $this->getCentroEstudios($dniTutor);
+        $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
         $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio,'C');
         $convenio = EmpresaCentroEstudios::create([
