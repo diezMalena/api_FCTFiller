@@ -1,8 +1,6 @@
 <?php
 
-use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
