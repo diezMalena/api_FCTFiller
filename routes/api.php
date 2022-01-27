@@ -23,3 +23,5 @@ Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class,'sol
 Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class,'solicitarEmpresasConAlumnos']);
 Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class,'solicitarNombreCiclo']);
 Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class,'actualizarEmpresaAsignadaAlumno']);
+
+Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
