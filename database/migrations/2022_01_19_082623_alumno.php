@@ -19,12 +19,7 @@ class Alumno extends Migration
             $table->string('apellido');
             $table->string('localidad');
             $table->string('provincia');
-            $table->string('horario');
-            $table->integer('num_horas');
-            $table->date('fecha_ini');
-            $table->date('fecha_fin');
-            $table->string('cif');
-            $table->foreign('cif')->references('cif')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
+            $table->boolean('va_a_fct');
             $table->timestamps();
         });
     }
