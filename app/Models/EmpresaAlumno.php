@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class EmpresaAlumno extends Model
 {
     use HasFactory;
-    protected $fillable = ['id_empresa', 'dni_alumno', 'curso_academico','horario','num_horas','fecha_ini','fecha_fin',];
+    protected $fillable = ['id_empresa', 'dni_alumno', 'curso_academico','horario','num_horas','fecha_ini','fecha_fin'];
     protected $table = 'empresa_alumno';
     protected $primaryKey = ['id_empresa,dni_alumno,curso_academico'];
     public $incrementing = false;

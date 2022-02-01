@@ -19,7 +19,7 @@ class Alumno extends Migration
             $table->string('apellido');
             $table->string('localidad');
             $table->string('provincia');
-            $table->string('horario');
+            $table->boolean('va_a_fct');
             $table->timestamps();
         });
     }
