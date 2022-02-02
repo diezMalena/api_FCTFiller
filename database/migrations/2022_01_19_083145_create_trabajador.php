@@ -4,7 +4,13 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class Trabajador extends Migration
+/**
+ * Migración para crear la tabla trabajador
+ *
+ * @author laura <lauramorenoramos97@gmail.com>
+ * @author David Sánchez Barragán (1-2-22)
+ */
+class CreateTrabajador extends Migration
 {
     /**
      * Run the migrations.
@@ -21,9 +27,7 @@ class Trabajador extends Migration
             $table->string('nombre');
             $table->string('apellidos');
             $table->unsignedBigInteger('id_empresa');
-            // $table->string('nombre_centro');
             $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
-            //$table->foreign('nombre_centro_trabajo')->references('nombre')->on('centro_trabajo')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }

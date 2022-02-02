@@ -4,7 +4,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class Profesor extends Migration
+/**
+ * Clase de migraciones para la tabla profesor.
+ *
+ * @author David Sánchez Barragán (01/02/2022)
+ */
+class CreateProfesor extends Migration
 {
     /**
      * Run the migrations.
@@ -21,7 +26,7 @@ class Profesor extends Migration
             $table->string('nombre');
             $table->string('apellidos');
             $table->string('cod_centro_estudios');
-            $table->foreign('cod_centro_estudios')->references('cod_centro')->on('centro_estudios')->cascadeOnDelete()->cascadeOnUpdate();
+            $table->foreign('cod_centro_estudios')->references('cod')->on('centro_estudios')->cascadeOnDelete()->cascadeOnUpdate();
             $table->timestamps();
         });
     }

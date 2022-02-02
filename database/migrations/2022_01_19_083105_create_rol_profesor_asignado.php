@@ -4,21 +4,26 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CentroJefeEstudios extends Migration
+/**
+ * Migración para crear la tabla rol_profesor_asignado
+ *
+ * @author David Sánchez Barragán (1-2-22)
+ */
+class CreateRolProfesorAsignado extends Migration
 {
     /**
      * Run the migrations.
-     *
+     * @author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
     public function up()
     {
-        Schema::create('centro_jefe_estudios', function (Blueprint $table) {
+        Schema::create('rol_profesor_asignado', function (Blueprint $table) {
             $table->string('dni');
-            $table->string('cod_centro');
-            $table->primary(['dni', 'cod_centro']);
+            $table->unsignedBigInteger('id_rol');
+            $table->primary(['dni', 'id_rol']);
             $table->foreign('dni')->references('dni')->on('profesor')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreign('cod_centro')->references('cod_centro')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('id_rol')->references('id')->on('rol_profesor')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }
