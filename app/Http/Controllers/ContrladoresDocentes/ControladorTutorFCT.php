@@ -31,6 +31,7 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class ControladorTutorFCT extends Controller
 {
@@ -147,28 +148,34 @@ class ControladorTutorFCT extends Controller
         return response()->json($request, 200);
     }
 
+
+
+
     /**
      * Esta funcion nos permite rellenar el Anexo 1
      *@author LauraM <lauramorenoramos97@gmail.com>
-     * @param Request $val
+     * @param Request $val->get(dni_tutor) es el dni del tutor
      * @return void
      */
     public function rellenarAnexo1(Request $val){
-        $zip= new ZipArchive;
-        $nombreZip='myzip.zip';
+
         $dni_tutor=$val->get('dni_tutor');
         $curso=Curso::select('cod_curso')->where('dni_tutor',$dni_tutor)->get();
         $empresas_id=EmpresaCurso::select('id_empresa')->where('cod_curso',$curso[0]->cod_curso)->get();
-             //Recorrido id empresas
+        $fecha = Carbon::now();
+        $AuxNombre = '_'.$fecha->day.' de '.Parametros::MESES[$fecha->month].' de '.$fecha->format('Y h_i_s A');
+        $zip= new ZipArchive;
+        $nombreZip='tmp/anexos/myzip_'.$AuxNombre.'.zip';
 
                 try{
                     foreach($empresas_id as $id){
+
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id_empresa;
+                    $AuxNombre ='_'.Str::random(5).'_'.$fecha->day.' de '.Parametros::MESES[$fecha->month].' de '.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
+                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
-                //Fecha
-                $fecha= Carbon::now();
+
                 //Codigo del centro
                 $cod_centro=Profesor::select('cod_centro_estudios')->where('dni',$dni_tutor)->get();
                 //Numero de Convenio
@@ -177,8 +184,6 @@ class ControladorTutorFCT extends Controller
                 $nombre_centro=CentroEstudios::select('nombre')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
                 //Nombre de la empresa
                 $nombre_empresa=Empresa::select('nombre')->where('id',$id->id_empresa)->get();
-                //Cif empresa
-                $cif_empresa=Empresa::select('cif')->where('id',$id->id_empresa)->get();
                 //Direccion del centro //REVISAR
                 //$dir_centro=CentroTrabajo::select('direccion')->where('cif_empresa',$cif_empresa[0]->cif)->get();
                 $dir_centro=CentroEstudios::select('direccion')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
@@ -211,7 +216,7 @@ class ControladorTutorFCT extends Controller
                 ->get();
 
 
-                /********************************************************************************* */
+                /**************************************Tabla************************************** */
                 $table = new Table(array('unit' => TblWidth::TWIP));
                 $table->addRow();
                 $table->addCell(1500)->addText('APELLIDOS Y NOMBRE');
@@ -232,7 +237,7 @@ class ControladorTutorFCT extends Controller
                     $table->addCell(1500)->addText($a->fecha_fin);
                 }
 
-
+           /**************************************Datos************************************** */
               $datos = [
                   'num_convenio'=>$num_convenio[0]->cod_convenio,
                   'dia' => $fecha->day,
@@ -257,8 +262,8 @@ class ControladorTutorFCT extends Controller
 
 
             $nombreZip=$this->montarZip('anexos/rellenos/anexo1',$zip,$nombreZip);
-
             return response()->download(public_path($nombreZip));
+
             }catch (Exception $e) {
                 dd($e);
             }
@@ -268,10 +273,10 @@ class ControladorTutorFCT extends Controller
      * Este metodo sirve para comprimir varios archivos en un zip
      * @author Laura <lauramorenoramos97@gmail.com>
      *
-     * @param String $rutaArchivo
-     * @param ZipArchive $zip
-     * @param String $nombreZip
-     * @return void
+     * @param String $rutaArchivo es la ruta en la que se van a buscar los archivos a comprimir
+     * @param ZipArchive $zip es el zip
+     * @param String $nombreZip es el nombre del zip
+     * @return $nombreZip
      */
     public function montarZip(String $rutaArchivo, ZipArchive $zip,String $nombreZip){
         if($zip->open(public_path($nombreZip),ZipArchive::CREATE)){
