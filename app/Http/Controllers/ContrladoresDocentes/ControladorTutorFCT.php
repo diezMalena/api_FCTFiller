@@ -29,6 +29,8 @@ use App\Models\EmpresaCentroEstudios;
 use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
+use ZipArchive;
+use Illuminate\Support\Facades\File;
 
 class ControladorTutorFCT extends Controller
 {
@@ -152,13 +154,15 @@ class ControladorTutorFCT extends Controller
      * @return void
      */
     public function rellenarAnexo1(Request $val){
-
+        $zip= new ZipArchive;
+        $nombreZip='myzip.zip';
         $dni_tutor=$val->get('dni_tutor');
         $curso=Curso::select('cod_curso')->where('dni_tutor',$dni_tutor)->get();
         $empresas_id=EmpresaCurso::select('id_empresa')->where('cod_curso',$curso[0]->cod_curso)->get();
              //Recorrido id empresas
-            foreach($empresas_id as $id){
+
                 try{
+                    foreach($empresas_id as $id){
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
                     $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id_empresa;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
@@ -249,17 +253,37 @@ class ControladorTutorFCT extends Controller
               $template->setComplexBlock('{table}', $table);
               $template->saveAs($rutaDestino . '.docx');
              // $this->convertirWordPDF($rutaDestino);
+            }
 
 
-             //$file = public_path(). $rutaDestino.".docx";
-             //$headers = ['Content-Type: application/vnd.ms-word.document.macroEnabled.12'];
-             //return \Response::download($file, 'plugin.jpg', $headers);
+            $nombreZip=$this->montarZip('anexos/rellenos/anexo1',$zip,$nombreZip);
 
-             //return response()->download(public_path($rutaDestino . '.docx'));
+            return response()->download(public_path($nombreZip));
             }catch (Exception $e) {
                 dd($e);
             }
+    }
+
+    /**
+     * Este metodo sirve para comprimir varios archivos en un zip
+     * @author Laura <lauramorenoramos97@gmail.com>
+     *
+     * @param String $rutaArchivo
+     * @param ZipArchive $zip
+     * @param String $nombreZip
+     * @return void
+     */
+    public function montarZip(String $rutaArchivo, ZipArchive $zip,String $nombreZip){
+        if($zip->open(public_path($nombreZip),ZipArchive::CREATE)){
+
+            $files = File::files(public_path($rutaArchivo));
+            foreach($files as $value){
+                $relativeNameZipFile = basename($value);
+                $zip->addFile($value,$relativeNameZipFile);
             }
+            $zip->close();
+        }
+        return $nombreZip;
     }
 
     /**
