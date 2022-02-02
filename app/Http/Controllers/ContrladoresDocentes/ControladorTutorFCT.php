@@ -163,7 +163,7 @@ class ControladorTutorFCT extends Controller
         $curso=Curso::select('cod_curso')->where('dni_tutor',$dni_tutor)->get();
         $empresas_id=EmpresaCurso::select('id_empresa')->where('cod_curso',$curso[0]->cod_curso)->get();
         $fecha = Carbon::now();
-        $AuxNombre = '_'.$fecha->day.' de '.Parametros::MESES[$fecha->month].' de '.$fecha->format('Y h_i_s A');
+        $AuxNombre = '_'.$fecha->day.'-'.Parametros::MESES[$fecha->month].'-'.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
         $zip= new ZipArchive;
         $nombreZip='tmp/anexos/myzip_'.$AuxNombre.'.zip';
 
@@ -171,7 +171,7 @@ class ControladorTutorFCT extends Controller
                     foreach($empresas_id as $id){
 
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $AuxNombre ='_'.Str::random(5).'_'.$fecha->day.' de '.Parametros::MESES[$fecha->month].' de '.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
+                    $AuxNombre ='_'.Str::random(5).'_'.$fecha->day.'-'.Parametros::MESES[$fecha->month].'-'.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
                     $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
