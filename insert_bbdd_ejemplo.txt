@@ -279,18 +279,21 @@ Alumno::create([
 
 
 Matricula::create([
+    'cod' => '123456789A'
     'cod_centro' => '1350090894',
     'dni_alumno' => '10x',
     'cod_grupo' => '2DAM',
     'curso_academico' => '21/22'
 ]);
 Matricula::create([
+    'cod' => '456789123B'
     'cod_centro' => '1350090894',
     'dni_alumno' => '11x',
     'cod_grupo' => '2DAM',
     'curso_academico' => '20/21'
 ]);
 Matricula::create([
+    'cod' => '789123456C'
     'cod_centro' => '1350090894',
     'dni_alumno' => '12x',
     'cod_grupo' => '2DAW',

@@ -23,6 +23,7 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\EmpresaGrupo;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
@@ -136,42 +137,36 @@ class ControladorTutorFCT extends Controller
     public function rellenarAnexo1(Request $val){
 
         $dni_tutor=$val->get('dni_tutor');
-        $curso=Tutoria::select('cod_grupo')->where('dni_profesor',$dni_tutor)->get();
-        $empresas_id=EmpresaCurso::select('id_empresa')->where('cod_curso',$curso[0]->cod_curso)->get();
+        $grupo=Tutoria::select('cod_grupo')->where('dni_profesor',$dni_tutor)->get();
+        $empresas_id=EmpresaGrupo::select('id_empresa')->where('cod_grupo',$grupo[0]->cod_grupo)->get();
              //Recorrido id empresas
             foreach($empresas_id as $id){
                 try{
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id_empresa;
+                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
-                //Fecha
+                //Fecha //CHECK
                 $fecha= Carbon::now();
-                //Codigo del centro
+                //Codigo del centro //CHECK
                 $cod_centro=Profesor::select('cod_centro_estudios')->where('dni',$dni_tutor)->get();
-                //Numero de Convenio
-                $num_convenio = EmpresaCentroEstudios::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre del centro
-                $nombre_centro=CentroEstudios::select('nombre')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre de la empresa //TRUE
-                $nombre_empresa=Empresa::select('nombre')->where('id',$id->id)->get();
-                //Cif empresa //TRUE
-                $cif_empresa=Empresa::select('cif')->where('id',$id->id)->get();
-                //Direccion del centro //TRUE
-                $dir_centro=Empresa::select('direccion')->where('id',$id->id)->get();
-                //Nombre del ciclo //REVISAR
-                $nombre_ciclo = Profesor::join('centro_estudios', 'centro_estudios.cod_centro', '=', 'profesor.cod_centro_estudios')
-                ->join('centro_ciclo', 'centro_ciclo.cod_centro', '=', 'centro_estudios.cod_centro')
-                ->join('ciclo', 'ciclo.cod_ciclo', '=', 'centro_ciclo.cod_ciclo')
-                ->select('ciclo.nombre')
-                ->where('dni','=',$dni_tutor)
-                ->get();
-
-                //Año del curso
-                $curso_anio=Grupo::select('anio')->where('dni_tutor',$dni_tutor)->get();
-                //Nombre del tutor TRUE
+                //Numero de Convenio //CHECK
+                $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
+                //Nombre del centro //CHECK
+                $nombre_centro=CentroEstudios::select('nombre')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
+                //Nombre de la empresa //CHECK
+                $nombre_empresa=Empresa::select('nombre')->where('id',$id->id_empresa)->get();
+                //Cif empresa //CHECK
+                $cif_empresa=Empresa::select('cif')->where('id',$id->id_empresa)->get();
+                //Direccion del centro //CHECK
+                $dir_centro=Empresa::select('direccion')->where('id',$id->id_empresa)->get();
+                //Nombre del ciclo //CHECK
+                $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod',$grupo[0]->cod_grupo)->get();
+                //Año del curso //CHECK
+                $curso_anio=Convenio::select('curso_academico_inicio')->where('cod_convenio',$num_convenio[0]->cod_convenio)->get();
+                //Nombre del tutor  //CHECK
                 $nombre_tutor=Profesor::select('nombre')->where('dni',$dni_tutor)->get();
-                //Responsable de la empresa
+                //Responsable de la empresa //CHECK
                 $responsable_empresa=Empresa::join('trabajador', 'trabajador.id_empresa','=','empresa.id')
                 ->join('rol_trabajador_asignado','rol_trabajador_asignado.dni','=','trabajador.dni')
                 ->select('trabajador.nombre')
@@ -179,9 +174,10 @@ class ControladorTutorFCT extends Controller
                 ->where('rol_trabajador_asignado.id_rol','=',Parametros::REPRESENTANTE_LEGAL)
                 ->get();
 
-                //Ciudad del centro de estudios TRUE
-                $ciudad_centro_estudios=CentroEstudios::select('localidad')->where('cod',$cod_centro[0]->cod)->get();
-                //Alumnos TRUE
+                //Ciudad del centro de estudios //CHECK
+                $ciudad_centro_estudios=CentroEstudios::select('localidad')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
+
+                //Alumnos //CHECK
                 $alumnos=Fct::join('alumno','alumno.dni','=','fct.dni_alumno')
                 ->select('alumno.nombre','alumno.apellidos','alumno.dni','alumno.localidad','fct.horario','fct.num_horas','fct.fecha_ini','fct.fecha_fin')
                 ->where('id_empresa','=',$id->id_empresa)
@@ -220,7 +216,7 @@ class ControladorTutorFCT extends Controller
                   'dir_centro'=>$dir_centro[0]->direccion,
                   'nombre_tutor'=>$nombre_tutor[0]->nombre,
                   'ciudad_centro'=>$ciudad_centro_estudios[0]->localidad,
-                  'anio_curso'=>$curso_anio[0]->anio,
+                  'anio_curso'=>$curso_anio[0]->curso_academico_inicio,
                   'ciclo_nombre'=>$nombre_ciclo[0]->nombre,
                   'responsable_empresa'=>$responsable_empresa[0]->nombre,
               ];
@@ -281,7 +277,6 @@ class ControladorTutorFCT extends Controller
 
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
         $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        error_log($centroEstudios);
         $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
 
         //Ahora hago lo propio con la empresa en cuestión

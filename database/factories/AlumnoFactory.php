@@ -2,19 +2,17 @@
 
 namespace Database\Factories;
 
-use App\Models\Empresa;
-use App\Models\Trabajador;
+use App\Models\Alumno;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 
-class TrabajadorFactory extends Factory
+class AlumnoFactory extends Factory
 {
-    protected $model = Trabajador::class;
-    public static $IDEMPRESA;
+    protected $model = Alumno::class;
 
     /**
      * Define the model's default state.
-     * @author @DaniJCoello
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
      * @return array
      */
     public function definition()
@@ -25,7 +23,9 @@ class TrabajadorFactory extends Factory
             'password' => Hash::make('superman'),
             'nombre' => $this->faker->firstName(),
             'apellidos' => $this->faker->lastName() . ' ' . $this->faker->lastName(),
-            'id_empresa' => self::$IDEMPRESA
+            'localidad' => $this->faker->city(),
+            'provincia' => $this->faker->state(),
+            'va_a_fct' => rand(0,1),
         ];
     }
 }
