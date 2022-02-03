@@ -16,11 +16,20 @@ use Illuminate\Database\Eloquent\Model;
 class Fct extends Model
 {
     use HasFactory;
-    protected $fillable = ['id_empresa', 'dni_alumno', 'dni_tutor_empresa', 'curso_academico','horario','num_horas','fecha_ini','fecha_fin', 'firmado_director', 'firmado_empresa', 'ruta_anexo'];
+    protected $fillable = [
+        'id_empresa',
+        'dni_alumno',
+        'dni_tutor_empresa',
+        'curso_academico',
+        'horario','num_horas',
+        'fecha_ini',
+        'fecha_fin',
+        'firmado_director',
+        'firmado_empresa',
+        'ruta_anexo',
+        'departamento'
+    ];
     protected $table = 'fct';
-    //????????
-    // protected $primaryKey = ['id_empresa,dni_alumno,curso_academico'];
-    // public $incrementing = false;
-    // protected $keyType = ['string,string,string'];
+
 
 }

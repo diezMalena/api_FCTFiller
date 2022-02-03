@@ -25,7 +25,8 @@ class Empresa extends Model
         'localidad',
         'provincia',
         'direccion',
-        'cp'
+        'cp',
+        'es_privada'
     ];
     protected $table = 'empresa';
 
