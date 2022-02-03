@@ -20,7 +20,7 @@ class CreateMatricula extends Migration
     public function up()
     {
         Schema::create('matricula', function (Blueprint $table) {
-            $table->id();
+            $table->string('cod')->primary();
             $table->string('cod_centro');
             $table->string('dni_alumno');
             $table->string('cod_grupo');

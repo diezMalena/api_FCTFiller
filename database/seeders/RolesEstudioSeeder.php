@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\RolesEstudio;
+use App\Models\RolProfesor;
 use Illuminate\Database\Seeder;
 
 class RolesEstudioSeeder extends Seeder
@@ -14,8 +14,8 @@ class RolesEstudioSeeder extends Seeder
      */
     public function run()
     {
-        RolesEstudio::create(['descripcion' => 'Director']);
-        RolesEstudio::create(['descripcion' => 'Jefatura']);
-        RolesEstudio::create(['descripcion' => 'Tutor']);
+        RolProfesor::create(['descripcion' => 'Director']);
+        RolProfesor::create(['descripcion' => 'Jefatura']);
+        RolProfesor::create(['descripcion' => 'Tutor']);
     }
 }
