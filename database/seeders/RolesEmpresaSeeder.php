@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\RolesEmpresa;
+use App\Models\RolEmpresa;
 use Illuminate\Database\Seeder;
 
 class RolesEmpresaSeeder extends Seeder
@@ -14,8 +14,8 @@ class RolesEmpresaSeeder extends Seeder
      */
     public function run()
     {
-        RolesEmpresa::create(['descripcion' => 'Representante legal']);
-        RolesEmpresa::create(['descripcion' => 'Responsable de centro']);
-        RolesEmpresa::create(['descripcion' => 'Tutor de empresa']);
+        RolEmpresa::create(['descripcion' => 'Representante legal']);
+        RolEmpresa::create(['descripcion' => 'Responsable de centro']);
+        RolEmpresa::create(['descripcion' => 'Tutor de empresa']);
     }
 }

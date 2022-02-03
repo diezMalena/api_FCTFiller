@@ -22,7 +22,7 @@ class CentroEstudiosSeeder extends Seeder
             //Creo los centros
             $centro = CentroEstudios::factory()->create();
             //Saco el código del centro
-            $cod = $centro->cod_centro;
+            $cod = $centro->cod;
             //Lo establezco en la factoría del profesor para que los profesores se asocien al centro
             ProfesorFactory::$CODCENTRO = $cod;
             //Creo unos cuantos profesores

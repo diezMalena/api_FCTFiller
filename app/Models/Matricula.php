@@ -22,9 +22,9 @@ class Matricula extends Model
      * $table->string('cod_grupo');
      *$table->string('curso_academico');
      */
-    protected $fillable = ['cod_centro', 'dni_alumno', 'cod_grupo','curso_academico'];
+    protected $fillable = ['cod', 'cod_centro', 'dni_alumno', 'cod_grupo','curso_academico'];
     protected $table = 'matricula';
-    protected $primaryKey = 'matricula';
+    protected $primaryKey = 'cod';
     public $incrementing = false;
     protected $keyType = 'string';
 }
