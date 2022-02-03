@@ -328,3 +328,20 @@ Fct::create([
     'firmado_empresa' => '0',
     'ruta_anexo' => ''
 ]);
+
+
+EmpresaGrupo::create([
+    'id_empresa' => 1, 'cod_grupo' => '2DAM'
+]);
+EmpresaGrupo::create([
+    'id_empresa' => 1, 'cod_grupo' => '2DAW'
+]);
+EmpresaGrupo::create([
+    'id_empresa' => 2, 'cod_grupo' => '2GAC'
+]);
+
+AuxCursoAcademico::create([
+    'cod_curso' => '21/22',
+    'fecha_inicio' => date("Y-m-d H:i:s", strtotime("01 September 2021")),
+    'fecha_fin' => date("Y-m-d H:i:s", strtotime("01 September 2022"))
+]);

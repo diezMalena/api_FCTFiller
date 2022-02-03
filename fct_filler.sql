@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 02-02-2022 a las 23:56:22
+-- Tiempo de generación: 03-02-2022 a las 10:30:09
 -- Versión del servidor: 10.4.22-MariaDB
 -- Versión de PHP: 8.1.1
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `fct_filler`
+-- Base de datos: `fct_filler_new`
 --
 
 -- --------------------------------------------------------
@@ -58,6 +58,28 @@ INSERT INTO `alumno` (`dni`, `email`, `password`, `nombre`, `apellidos`, `provin
 CREATE TABLE `aux_convenio` (
   `id` bigint(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `aux_curso_academico`
+--
+
+CREATE TABLE `aux_curso_academico` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `cod_curso` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fecha_inicio` date NOT NULL,
+  `fecha_fin` date NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `aux_curso_academico`
+--
+
+INSERT INTO `aux_curso_academico` (`id`, `cod_curso`, `fecha_inicio`, `fecha_fin`, `created_at`, `updated_at`) VALUES
+(1, '21/22', '2021-09-01', '2022-09-01', '2022-02-03 08:23:59', '2022-02-03 08:23:59');
 
 -- --------------------------------------------------------
 
@@ -141,6 +163,28 @@ CREATE TABLE `empresa` (
 INSERT INTO `empresa` (`id`, `cif`, `nombre`, `telefono`, `email`, `localidad`, `provincia`, `direccion`, `cp`, `created_at`, `updated_at`) VALUES
 (1, '12345', 'Empresa 1', '500900600', 'empresa1@mail.com', 'Puertollano', 'Ciudad Real', 'Calle de la llorería, 1', '13500', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
 (2, '12346', 'Empresa 2', '500900630', 'empresa2@mail.com', 'Almodovar del Campo', 'Ciudad Real', 'Calle de la abundancia, 1', '13280', '2022-02-02 21:31:27', '2022-02-02 21:31:27');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `empresa_grupo`
+--
+
+CREATE TABLE `empresa_grupo` (
+  `id_empresa` bigint(20) UNSIGNED NOT NULL,
+  `cod_grupo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `empresa_grupo`
+--
+
+INSERT INTO `empresa_grupo` (`id_empresa`, `cod_grupo`, `created_at`, `updated_at`) VALUES
+(1, '2DAM', '2022-02-03 08:23:59', '2022-02-03 08:23:59'),
+(1, '2DAW', '2022-02-03 08:23:59', '2022-02-03 08:23:59'),
+(2, '2GAC', '2022-02-03 08:23:59', '2022-02-03 08:23:59');
 
 -- --------------------------------------------------------
 
@@ -279,7 +323,8 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (15, '2022_01_19_082623_create_alumno', 15),
 (16, '2022_01_19_082806_create_matricula', 16),
 (17, '2022_02_02_002148_create_tutoria_table', 17),
-(18, '2022_01_25_214346_create_fct', 18);
+(19, '2022_01_25_214558_create_empresa_grupo', 18),
+(20, '2022_02_03_084828_create_aux_curso_academico', 19);
 
 -- --------------------------------------------------------
 
@@ -507,6 +552,12 @@ ALTER TABLE `aux_convenio`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `aux_curso_academico`
+--
+ALTER TABLE `aux_curso_academico`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `centro_estudios`
 --
 ALTER TABLE `centro_estudios`
@@ -527,6 +578,13 @@ ALTER TABLE `convenio`
 ALTER TABLE `empresa`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `empresa_cif_unique` (`cif`);
+
+--
+-- Indices de la tabla `empresa_grupo`
+--
+ALTER TABLE `empresa_grupo`
+  ADD PRIMARY KEY (`id_empresa`,`cod_grupo`),
+  ADD KEY `empresa_grupo_cod_grupo_foreign` (`cod_grupo`);
 
 --
 -- Indices de la tabla `familia_profesional`
@@ -638,6 +696,12 @@ ALTER TABLE `aux_convenio`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `aux_curso_academico`
+--
+ALTER TABLE `aux_curso_academico`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT de la tabla `empresa`
 --
 ALTER TABLE `empresa`
@@ -665,7 +729,7 @@ ALTER TABLE `matricula`
 -- AUTO_INCREMENT de la tabla `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `rol_empresa`
@@ -689,6 +753,13 @@ ALTER TABLE `rol_profesor`
 ALTER TABLE `convenio`
   ADD CONSTRAINT `convenio_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `convenio_id_empresa_foreign` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `empresa_grupo`
+--
+ALTER TABLE `empresa_grupo`
+  ADD CONSTRAINT `empresa_grupo_cod_grupo_foreign` FOREIGN KEY (`cod_grupo`) REFERENCES `grupo` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `empresa_grupo_id_empresa_foreign` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `fct`
