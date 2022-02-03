@@ -6,15 +6,12 @@ use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
-use App\Models\Matricula;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
-use App\Models\Curso;
-use App\Models\EmpresaCurso;
 use App\Models\Fct;
 use App\Auxiliar\Parametros;
 use App\Models\AuxConvenio;
@@ -143,14 +140,18 @@ class ControladorTutorFCT extends Controller
     public function rellenarAnexo1(Request $val){
 
         $dni_tutor=$val->get('dni_tutor');
-        $fecha = Carbon::now();
-        $AuxNombre = '_'.$fecha->day.'-'.Parametros::MESES[$fecha->month].'-'.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
-        $zip= new ZipArchive;
-        $nombreZip='tmp/anexos/myzip_'.$AuxNombre.'.zip';
-
         $grupo=Tutoria::select('cod_grupo')->where('dni_profesor',$dni_tutor)->get();
         $empresas_id=EmpresaGrupo::select('id_empresa')->where('cod_grupo',$grupo[0]->cod_grupo)->get();
-             //Recorrido id empresas
+        $fecha = Carbon::now();
+        $AuxNombre = '_'.$fecha->day.'-'.Parametros::MESES[$fecha->month].'-'.$fecha->format('Y h_i_s A').'_'.$dni_tutor;
+
+
+//***************************************ZIP********************************************** */
+        $zip= new ZipArchive;
+        $nombreZip='tmp/anexos/myzip_'.$AuxNombre.'.zip';
+//******************************************************************************************** */
+
+
             foreach($empresas_id as $id){
                 try{
                     foreach($empresas_id as $id){
@@ -161,25 +162,23 @@ class ControladorTutorFCT extends Controller
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
 
-                //Codigo del centro //CHECK
+                //Codigo del centro
                 $cod_centro=Profesor::select('cod_centro_estudios')->where('dni',$dni_tutor)->get();
-                //Numero de Convenio //CHECK
+                //Numero de Convenio
                 $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre del centro //CHECK
+                //Nombre del centro
                 $nombre_centro=CentroEstudios::select('nombre')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre de la empresa //CHECK
+                //Nombre de la empresa
                 $nombre_empresa=Empresa::select('nombre')->where('id',$id->id_empresa)->get();
-                //Cif empresa //CHECK
-                $cif_empresa=Empresa::select('cif')->where('id',$id->id_empresa)->get();
-                //Direccion del centro //CHECK
+                //Direccion del centro
                 $dir_centro=Empresa::select('direccion')->where('id',$id->id_empresa)->get();
-                //Nombre del ciclo //CHECK
+                //Nombre del ciclo
                 $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod',$grupo[0]->cod_grupo)->get();
-                //Año del curso //CHECK
+                //Año del curso
                 $curso_anio=Convenio::select('curso_academico_inicio')->where('cod_convenio',$num_convenio[0]->cod_convenio)->get();
-                //Nombre del tutor  //CHECK
+                //Nombre del tutor
                 $nombre_tutor=Profesor::select('nombre')->where('dni',$dni_tutor)->get();
-                //Responsable de la empresa //CHECK
+                //Responsable de la empresa
                 $responsable_empresa=Empresa::join('trabajador', 'trabajador.id_empresa','=','empresa.id')
                 ->join('rol_trabajador_asignado','rol_trabajador_asignado.dni','=','trabajador.dni')
                 ->select('trabajador.nombre')
@@ -187,10 +186,10 @@ class ControladorTutorFCT extends Controller
                 ->where('rol_trabajador_asignado.id_rol','=',Parametros::REPRESENTANTE_LEGAL)
                 ->get();
 
-                //Ciudad del centro de estudios //CHECK
+                //Ciudad del centro de estudios
                 $ciudad_centro_estudios=CentroEstudios::select('localidad')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
 
-                //Alumnos //CHECK
+                //Alumnos
                 $alumnos=Fct::join('alumno','alumno.dni','=','fct.dni_alumno')
                 ->select('alumno.nombre','alumno.apellidos','alumno.dni','alumno.localidad','fct.horario','fct.num_horas','fct.fecha_ini','fct.fecha_fin')
                 ->where('id_empresa','=',$id->id_empresa)
@@ -241,7 +240,7 @@ class ControladorTutorFCT extends Controller
              // $this->convertirWordPDF($rutaDestino);
             }
 
-
+            //Convertir en Zip
             $nombreZip=$this->montarZip('anexos/rellenos/anexo1',$zip,$nombreZip);
             return response()->download(public_path($nombreZip));
 
