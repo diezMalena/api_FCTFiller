@@ -18,6 +18,7 @@ use App\Models\EmpresaCurso;
 use App\Models\Fct;
 use App\Auxiliar\Parametros;
 use App\Models\AuxConvenio;
+use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
@@ -42,94 +43,73 @@ class ControladorTutorFCT extends Controller
      *  alumnos que no están asociados a ninguna empresa
      *  asignados al dni del tutor que recibimos como parámetro.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarAlumnosSinEmpresa(string $dni)
     {
-        $quer = 'select alumno.nombre, alumno.dni from alumno, curso, alumno_curso where alumno.dni not in'
-            . ' (select alumno.dni from alumno, curso, alumno_curso, empresa_alumno'
-            . ' WHERE curso.cod_curso = alumno_curso.cod_curso'
-            . ' AND alumno.dni = alumno_curso.dni'
-            . ' AND curso.dni_tutor = ?'
-            . ' AND alumno_curso.dni = empresa_alumno.dni_alumno)'
-            . ' AND alumno.dni = alumno_curso.dni'
-            . ' AND alumno_curso.cod_curso = curso.cod_curso'
-            . ' AND alumno.va_a_fct != 0'
-            . ' AND curso.dni_tutor = ?';
-        $alumnos = DB::select($quer, [$dni, $dni]);
-        return response()->json($alumnos, 200);
+        $hoy = date("Y-m-d H:i:s");
+        $cursoAcademico = AuxCursoAcademico::where([['fecha_inicio', '<', $hoy],['fecha_fin', '>', $hoy]])
+        ->get()->first();
+        if ($cursoAcademico) {
+            $cursoAcademico = $cursoAcademico->cod_curso;
+        }else{
+            $cursoAcademico = AuxCursoAcademico::where('id', AuxCursoAcademico::max('id'))->get()->first()->cod_curso;
+        }
+        $alumnosEnEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+        ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
+        ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+        ->where([['tutoria.dni_profesor', '=', $dni], ['tutoria.curso_academico', '=', $cursoAcademico]])
+        ->pluck('alumno.dni')
+        ->toArray();
+
+        $alumnosSinEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+        ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+        ->where([['tutoria.dni_profesor', '=', $dni], ['tutoria.curso_academico', '=', $cursoAcademico]])
+        ->whereNotIn('alumno.dni', $alumnosEnEmpresa)
+        ->select(['alumno.dni', 'alumno.nombre', 'alumno.va_a_fct'])
+        ->get();
+        return response()->json($alumnosSinEmpresa, 200);
     }
     /**
      *  Esta función se encarga de coger el nombre del ciclo a partir del dni del tutor.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarNombreCiclo(string $dni)
     {
-        $quer = 'select ciclo.nombre from curso, ciclo where'
-            . ' curso.dni_tutor = ?'
-            . ' AND curso.cod_ciclo = ciclo.cod_ciclo';
-        $nombre = DB::select($quer, [$dni]);
+        $nombre = Tutoria::where('dni_profesor','=', $dni)->get()[0]->cod_grupo;
         return response()->json($nombre, 200);
     }
-    /*
-    public function solicitarAlumnosSinEmpresa(string $dni)
-    {
-        $codCurso = Curso::select('cod_curso')->where([
-            ['dni_tutor', $dni],
-        ])->get();
-        $dniAlumno = AlumnoCurso::select('dni')->whereIn(
-            'cod_curso',
-            $codCurso
-        )->get();
-        $dniAlumnoEmpresa = EmpresaAlumno::select('dni_alumno')->whereIn(
-            'dni_alumno',
-            $dniAlumno
-        )->get();
-        $dniAlumnoNoEmpresa = array();
-        foreach ($dniAlumno as $key => $value) {
-            $encontrado = false;
-            foreach ($dniAlumnoEmpresa as $key2 => $value2) {
-                if ($value['dni'] == $value2['dni_alumno']) {
-                    $encontrado = true;
-                }
-            }
-            if (!$encontrado) {
-                array_push($dniAlumnoNoEmpresa, $value['dni']);
-            }
-        }
-        $alumnos = Alumno::select('dni', 'nombre')->whereIn(
-            'dni',
-            $dniAlumnoNoEmpresa
-        )->get();
-        return response()->json($alumnos, 200);
-    }
-    */
     /**
      *  Esta función se encarga de coger las empresas que solicitan el curso que está tutorizando
      *  el profesor del que recibimos el dni, y dentro de esas empresas hay un array de alumnos que están
      *  ya asociados a una empresa.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarEmpresasConAlumnos(string $dni)
     {
-        $quer = 'select empresa.id, empresa.nombre from empresa, curso, empresa_curso'
-            . ' where curso.cod_curso = empresa_curso.cod_curso'
-            . ' AND empresa_curso.id_empresa = empresa.id'
-            . ' AND curso.dni_tutor = ?';
-        $empresas = DB::select($quer, [$dni]);
-        foreach ($empresas as $empresa) {
-            $quer = 'select DISTINCT alumno.nombre, alumno.dni from alumno, alumno_curso, empresa_alumno, empresa, curso'
-                . ' where curso.cod_curso = alumno_curso.cod_curso'
-                . ' AND alumno_curso.dni = alumno.dni'
-                . ' AND alumno.dni = empresa_alumno.dni_alumno'
-                . ' AND curso.dni_tutor = ?'
-                . ' AND empresa_alumno.id_empresa = ?';
-                $empresa->alumnos = DB::select($quer, [$dni, $empresa->id]);
+        $empresas = Grupo::join('empresa_grupo', 'empresa_grupo.cod_grupo', '=', 'grupo.cod')
+        ->join('empresa', 'empresa.id', '=', 'empresa_grupo.id_empresa')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+        ->where('tutoria.dni_profesor', $dni)
+        ->select(['empresa.id', 'empresa.nombre'])
+        ->get();
+
+        foreach ($empresas as  $empresa) {
+            $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('fct', 'fct.dni_alumno', '=','alumno.dni')
+            ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+            ->where([['tutoria.dni_profesor', $dni], ['fct.id_empresa', $empresa->id]])
+            ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct'])
+            ->get();
+            $empresa->alumnos = $alumnos;
         }
 
         return response()->json($empresas, 200);
