@@ -5,27 +5,22 @@ namespace App\Http\Controllers\ContrladoresDocentes;
 use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
-use App\Models\Alumno;
-use App\Models\AlumnoCurso;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
-use App\Models\Curso;
-use App\Models\EmpresaCurso;
-use App\Models\EmpresaAlumno;
 use App\Auxiliar\Parametros;
 use App\Models\AuxConvenio;
 use App\Models\CentroEstudios;
+use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use Carbon\Carbon;
-use App\Models\EmpresaCentroEstudios;
 use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -300,7 +295,8 @@ class ControladorTutorFCT extends Controller
 
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
         $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $director = $this->getDirectorCentroEstudios($centroEstudios->cod_centro)->makeHidden('created_at', 'updated_at', 'password');
+        error_log($centroEstudios);
+        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
 
         //Ahora hago lo propio con la empresa en cuestión
         $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
@@ -415,7 +411,7 @@ class ControladorTutorFCT extends Controller
      * @author @DaniJCoello
      */
     public function getCentroEstudiosFromConvenio(string $codConvenio) {
-        return CentroEstudios::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
     }
 
     /**
@@ -476,7 +472,7 @@ class ControladorTutorFCT extends Controller
      * @author @DaniJCoello
      */
     public function getEmpresaFromConvenio(string $codConvenio) {
-        return Empresa::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
     }
 
     /**
@@ -541,18 +537,19 @@ class ControladorTutorFCT extends Controller
      * @author Malena
      * @param string $dniTutor, el dni del tutor que se encuentra logueado.
      * @param int $id_empresa, el id de la empresa que se registra.
-     * @return EmpresaCentroEstudios convenio entre la empresa y el centro de estudios.
+     * @return Convenio convenio entre la empresa y el centro de estudios.
      */
     public function addConvenio(string $dniTutor, int $id_empresa){
         //Consigo el centro de estudios a partir del Dni del tutor:
         $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
         $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio,'C');
-        $convenio = EmpresaCentroEstudios::create([
+        $convenio = Convenio::create([
             'cod_convenio' => $codConvenio,
-            'cod_centro' => $centroEstudios->cod_centro,
+            'cod_centro' => $centroEstudios->cod,
             'id_empresa' => $id_empresa,
-            'fecha' => Carbon::now(),
+            'curso_academico_inicio' => '',
+            'curso_academico_fin' => '',
             'firmado_director' => 0,
             'firmado_empresa' => 0,
             'ruta_anexo' => ''
