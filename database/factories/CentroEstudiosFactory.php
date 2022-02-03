@@ -17,14 +17,14 @@ class CentroEstudiosFactory extends Factory
     public function definition()
     {
         return [
-            'cod_centro' => rand(11111,99999),
-            'cif' => rand(11111111,99999999),
-            'cod_centro_convenio' => $this->faker->companySuffix(),
+            'cod' => rand(11111,99999),
+            'cif' => $this->faker->cif(),
+            'cod_centro_convenio' => $this->faker->countryCode(),
             'nombre' => $this->faker->company(),
             'localidad' => $this->faker->city(),
-            'provincia' => $this->faker->country(),
-            'direccion' => $this->faker->address(),
-            'cp' => rand(10000,99999),
+            'provincia' => $this->faker->state(),
+            'direccion' => $this->faker->streetAddress(),
+            'cp' => $this->faker->postcode(),
             'telefono' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail()
         ];
