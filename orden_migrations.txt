@@ -16,4 +16,6 @@ php artisan migrate:refresh --path=database/migrations/2022_01_19_082623_create_
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082806_create_matricula.php
 php artisan migrate:refresh --path=database/migrations/2022_02_02_002148_create_tutoria_table.php
 php artisan migrate:refresh --path=database/migrations/2022_01_25_214346_create_fct.php
+php artisan migrate:refresh --path=database/migrations/2022_01_25_214558_create_empresa_grupo.php
+php artisan migrate:refresh --path=database/migrations/2022_02_03_084828_create_aux_curso_academico.php
 
