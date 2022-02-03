@@ -124,7 +124,6 @@ class ControladorTutorFCT extends Controller
      */
     public function actualizarEmpresaAsignadaAlumno(Request $request)
     {
-        dd($request);
         return response()->json($request, 200);
     }
 

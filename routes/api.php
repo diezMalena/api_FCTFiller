@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorGenericoDocente;
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
     Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
+    Route::get('solicitar_empresas/tutor={dniProfesor}', [ControladorGenericoDocente::class, 'getEmpresasFromProfesor']);
 });
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
