@@ -17,7 +17,7 @@ class EmpresaFactory extends Factory
     public function definition()
     {
         return [
-            'cif' => $this->faker->unique()->cif(),
+            'cif' => $this->faker->unique()->dni(),
             'nombre' => $this->faker->company(),
             'telefono' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),
@@ -25,6 +25,7 @@ class EmpresaFactory extends Factory
             'provincia' => $this->faker->state(),
             'direccion' => $this->faker->streetAddress(),
             'cp' => $this->faker->postcode(),
+            'es_privada' => rand(0,1)
         ];
     }
 }
