@@ -1,14 +1,13 @@
 -- phpMyAdmin SQL Dump
--- version 4.9.5deb2
+-- version 5.1.1
 -- https://www.phpmyadmin.net/
 --
--- Servidor: localhost:3306
--- Tiempo de generación: 20-01-2022 a las 11:19:34
--- Versión del servidor: 8.0.27-0ubuntu0.20.04.1
--- Versión de PHP: 7.4.3
+-- Servidor: 127.0.0.1
+-- Tiempo de generación: 02-02-2022 a las 23:56:22
+-- Versión del servidor: 10.4.22-MariaDB
+-- Versión de PHP: 8.1.1
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-SET AUTOCOMMIT = 0;
 START TRANSACTION;
 SET time_zone = "+00:00";
 
@@ -30,60 +29,34 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `alumno` (
   `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `apellido` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `localidad` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `apellidos` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `horario` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `num_horas` int NOT NULL,
-  `fecha_ini` date NOT NULL,
-  `fecha_fin` date NOT NULL,
-  `cif` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_curso` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `localidad` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `va_a_fct` tinyint(1) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
 --
--- Estructura de tabla para la tabla `alumno_curso`
+-- Volcado de datos para la tabla `alumno`
 --
 
-CREATE TABLE `alumno_curso` (
-  `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_curso` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `matricula` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `alumno` (`dni`, `email`, `password`, `nombre`, `apellidos`, `provincia`, `localidad`, `va_a_fct`, `created_at`, `updated_at`) VALUES
+('10x', 'david@mail.com', '12345', 'David', 'Alumno 1', 'Ciudad Real', 'Puertollano', 0, '2022-02-02 21:42:20', '2022-02-02 21:42:20'),
+('11x', 'malena@mail.com', '12345', 'Malena', 'Alumno 2', 'Ciudad Real', 'Puertollano', 0, '2022-02-02 21:42:20', '2022-02-02 21:42:20'),
+('12x', 'alvaro@mail.com', '12345', 'Álvaro', 'Alumno 3', 'Ciudad Real', 'Puertollano', 1, '2022-02-02 21:42:20', '2022-02-02 21:42:20');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `alumno_materia`
+-- Estructura de tabla para la tabla `aux_convenio`
 --
 
-CREATE TABLE `alumno_materia` (
-  `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_materia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `aprobado` tinyint(1) NOT NULL,
-  `curso_academico` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `centro_ciclo`
---
-
-CREATE TABLE `centro_ciclo` (
-  `cod_ciclo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+CREATE TABLE `aux_convenio` (
+  `id` bigint(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -93,78 +66,53 @@ CREATE TABLE `centro_ciclo` (
 --
 
 CREATE TABLE `centro_estudios` (
-  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ciudad` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `direccion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_postal` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `cif` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `telefono` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `dni_director` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `centro_jefe_estudios`
---
-
-CREATE TABLE `centro_jefe_estudios` (
-  `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `centro_trabajo`
---
-
-CREATE TABLE `centro_trabajo` (
-  `direccion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `telefono` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_centro_convenio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `localidad` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cif_empresa` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `direccion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cp` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `telefono` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `centro_estudios`
+--
+
+INSERT INTO `centro_estudios` (`cod`, `cif`, `cod_centro_convenio`, `nombre`, `localidad`, `provincia`, `direccion`, `cp`, `telefono`, `email`, `created_at`, `updated_at`) VALUES
+('1350090894', 'H785B786', 'x', 'CIFP Virgen de Gracia', 'Puertollano', 'Ciudad Real', 'Calle Copa 1', '13500', '625812584', 'cifpvg@mail.com', '2022-02-02 21:34:26', '2022-02-02 21:34:26');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `ciclo`
+-- Estructura de tabla para la tabla `convenio`
 --
 
-CREATE TABLE `ciclo` (
-  `cod_ciclo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+CREATE TABLE `convenio` (
+  `cod_convenio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id_empresa` bigint(20) UNSIGNED NOT NULL,
+  `curso_academico_inicio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `curso_academico_fin` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `firmado_director` int(11) NOT NULL,
+  `firmado_empresa` int(11) NOT NULL,
+  `ruta_anexo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
 --
--- Estructura de tabla para la tabla `curso`
+-- Volcado de datos para la tabla `convenio`
 --
 
-CREATE TABLE `curso` (
-  `cod_curso` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `anio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `estudio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `dni_tutor` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `convenio` (`cod_convenio`, `cod_centro`, `id_empresa`, `curso_academico_inicio`, `curso_academico_fin`, `firmado_director`, `firmado_empresa`, `ruta_anexo`, `created_at`, `updated_at`) VALUES
+('AA', '1350090894', 1, '21/22', '24/25', 0, 0, '', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('AB', '1350090894', 2, '21/22', '24/25', 0, 0, '', '2022-02-02 21:34:26', '2022-02-02 21:34:26');
 
 -- --------------------------------------------------------
 
@@ -173,58 +121,129 @@ CREATE TABLE `curso` (
 --
 
 CREATE TABLE `empresa` (
+  `id` bigint(20) UNSIGNED NOT NULL,
   `cif` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `telefono` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `direccion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `localidad` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `provincia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `direccion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cp` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
 --
--- Estructura de tabla para la tabla `empresa_centro_estudios`
+-- Volcado de datos para la tabla `empresa`
 --
 
-CREATE TABLE `empresa_centro_estudios` (
-  `convenio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `fecha` date NOT NULL,
-  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cif_empresa` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `empresa` (`id`, `cif`, `nombre`, `telefono`, `email`, `localidad`, `provincia`, `direccion`, `cp`, `created_at`, `updated_at`) VALUES
+(1, '12345', 'Empresa 1', '500900600', 'empresa1@mail.com', 'Puertollano', 'Ciudad Real', 'Calle de la llorería, 1', '13500', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+(2, '12346', 'Empresa 2', '500900630', 'empresa2@mail.com', 'Almodovar del Campo', 'Ciudad Real', 'Calle de la abundancia, 1', '13280', '2022-02-02 21:31:27', '2022-02-02 21:31:27');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `materia`
+-- Estructura de tabla para la tabla `familia_profesional`
 --
 
-CREATE TABLE `materia` (
-  `cod_materia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+CREATE TABLE `familia_profesional` (
+  `id` bigint(20) UNSIGNED NOT NULL,
   `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `abreviatura` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `familia_profesional`
+--
+
+INSERT INTO `familia_profesional` (`id`, `descripcion`, `created_at`, `updated_at`) VALUES
+(1, 'Actividades físicas y deportivas', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+(2, 'Administración y gestión', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+(3, 'Comercio y marketing', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+(4, 'Informática y comunicaciones', '2022-02-02 21:34:26', '2022-02-02 21:34:26');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `materia_curso`
+-- Estructura de tabla para la tabla `fct`
 --
 
-CREATE TABLE `materia_curso` (
-  `cod_curso` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cod_materia` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+CREATE TABLE `fct` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `id_empresa` bigint(20) UNSIGNED NOT NULL,
+  `dni_alumno` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dni_tutor_empresa` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `curso_academico` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `horario` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `num_horas` int(11) NOT NULL,
+  `fecha_ini` date NOT NULL,
+  `fecha_fin` date NOT NULL,
+  `firmado_director` int(11) NOT NULL,
+  `firmado_empresa` int(11) NOT NULL,
+  `ruta_anexo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `fct`
+--
+
+INSERT INTO `fct` (`id`, `id_empresa`, `dni_alumno`, `dni_tutor_empresa`, `curso_academico`, `horario`, `num_horas`, `fecha_ini`, `fecha_fin`, `firmado_director`, `firmado_empresa`, `ruta_anexo`, `created_at`, `updated_at`) VALUES
+(1, 1, '10x', '1a', '21/22', '08:00 a 14:00 y 15:00 a 18:00', 400, '2022-02-02', '2022-02-02', 0, 0, '', '2022-02-02 21:48:04', '2022-02-02 21:48:04');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `grupo`
+--
+
+CREATE TABLE `grupo` (
+  `cod` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre_largo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nombre_ciclo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_familia_profesional` bigint(20) UNSIGNED NOT NULL,
+  `cod_nivel` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `grupo`
+--
+
+INSERT INTO `grupo` (`cod`, `nombre_largo`, `nombre_ciclo`, `cod_familia_profesional`, `cod_nivel`, `created_at`, `updated_at`) VALUES
+('2DAM', '2º Desarrollo de Aplicaciones Multiplataforma (LOE)', 'Desarrollo de Aplicaciones Multiplataforma', 4, 'CFGS', '2022-02-02 21:41:32', '2022-02-02 21:41:32'),
+('2DAW', '2º Desarrollo de Aplicaciones Web (LOE)', 'Desarrollo de Aplicaciones Web', 4, 'CFGS', '2022-02-02 21:41:32', '2022-02-02 21:41:32'),
+('2GAC', '2º Gestión de Actividades Comerciales (LOE)', 'Gestión de Actividades Comerciales', 3, 'CFGM', '2022-02-02 21:41:32', '2022-02-02 21:41:32');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `matricula`
+--
+
+CREATE TABLE `matricula` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dni_alumno` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_grupo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `curso_academico` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `matricula`
+--
+
+INSERT INTO `matricula` (`id`, `cod_centro`, `dni_alumno`, `cod_grupo`, `curso_academico`, `created_at`, `updated_at`) VALUES
+(1, '1350090894', '10x', '2DAM', '21/22', '2022-02-02 21:42:53', '2022-02-02 21:42:53'),
+(2, '1350090894', '11x', '2DAM', '20/21', '2022-02-02 21:42:53', '2022-02-02 21:42:53'),
+(3, '1350090894', '12x', '2DAW', '21/22', '2022-02-02 21:42:53', '2022-02-02 21:42:53');
 
 -- --------------------------------------------------------
 
@@ -233,9 +252,9 @@ CREATE TABLE `materia_curso` (
 --
 
 CREATE TABLE `migrations` (
-  `id` int UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `batch` int NOT NULL
+  `batch` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -243,25 +262,68 @@ CREATE TABLE `migrations` (
 --
 
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
-(1, '2022_01_19_083043_roles_empresa', 1),
-(2, '2022_01_19_083053_roles_estudio', 2),
-(3, '2022_01_19_082914_empresa', 3),
-(4, '2022_01_19_083033_profesor', 4),
-(6, '2022_01_19_082859_ciclo', 6),
-(7, '2022_01_19_083105_rol_profesor_asignado', 7),
-(8, '2022_01_19_082907_curso', 8),
-(9, '2022_01_19_083015_materia', 9),
-(10, '2022_01_19_083025_materia_curso', 10),
-(11, '2022_01_19_082850_centro_trabajo', 11),
-(12, '2022_01_19_083145_trabajador', 12),
-(13, '2022_01_19_083135_rol_trabajador_asignado', 13),
-(14, '2022_01_19_082942_centro_estudios', 14),
-(15, '2022_01_19_082839_centro_ciclo', 15),
-(16, '2022_01_19_083005_empresa_centro_estudios', 16),
-(17, '2022_01_19_082623_alumno', 17),
-(18, '2022_01_19_082806_alumno_curso', 18),
-(19, '2022_01_19_082818_alumno_materia', 19),
-(20, '2022_01_19_212801_centro_jefe_estudios', 20);
+(1, '2022_01_19_083043_create_rol_empresa', 1),
+(2, '2022_01_19_083053_create_rol_profesor', 2),
+(3, '2022_01_19_082914_create_empresa', 3),
+(4, '2022_01_19_083145_create_trabajador', 4),
+(5, '2022_01_19_083135_create_rol_trabajador_asignado', 5),
+(6, '2022_01_19_082942_create_centro_estudios', 6),
+(7, '2022_01_19_083033_create_profesor', 7),
+(8, '2022_01_19_083105_create_rol_profesor_asignado', 8),
+(9, '2022_01_25_123542_create_aux_convenio', 9),
+(10, '2022_01_19_083005_create_convenio', 10),
+(11, '2022_02_01_185127_create_familia_profesional', 11),
+(12, '2022_02_01_190818_create_nivel_estudios', 12),
+(13, '2022_01_19_082907_create_grupo', 13),
+(14, '2022_01_19_082839_create_oferta_grupo', 14),
+(15, '2022_01_19_082623_create_alumno', 15),
+(16, '2022_01_19_082806_create_matricula', 16),
+(17, '2022_02_02_002148_create_tutoria_table', 17),
+(18, '2022_01_25_214346_create_fct', 18);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `nivel_estudios`
+--
+
+CREATE TABLE `nivel_estudios` (
+  `cod` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `nivel_estudios`
+--
+
+INSERT INTO `nivel_estudios` (`cod`, `descripcion`, `created_at`, `updated_at`) VALUES
+('CFGB', 'Ciclo formativo de Grado Básico', '2022-02-02 21:41:32', '2022-02-02 21:41:32'),
+('CFGM', 'Ciclo formativo de Grado Medio', '2022-02-02 21:41:32', '2022-02-02 21:41:32'),
+('CFGS', 'Ciclo formativo de Grado Superior', '2022-02-02 21:41:32', '2022-02-02 21:41:32');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `oferta_grupo`
+--
+
+CREATE TABLE `oferta_grupo` (
+  `cod_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_grupo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `oferta_grupo`
+--
+
+INSERT INTO `oferta_grupo` (`cod_centro`, `cod_grupo`, `created_at`, `updated_at`) VALUES
+('1350090894', '2DAM', '2022-02-02 21:42:20', '2022-02-02 21:42:20'),
+('1350090894', '2DAW', '2022-02-02 21:42:20', '2022-02-02 21:42:20'),
+('1350090894', '2GAC', '2022-02-02 21:42:20', '2022-02-02 21:42:20');
 
 -- --------------------------------------------------------
 
@@ -271,36 +333,67 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 
 CREATE TABLE `profesor` (
   `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `apellidos` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_centro_estudios` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `profesor`
+--
+
+INSERT INTO `profesor` (`dni`, `email`, `password`, `nombre`, `apellidos`, `cod_centro_estudios`, `created_at`, `updated_at`) VALUES
+('3c', 'diego@mail.com', '12345', 'Diego', 'Tutor', '1350090894', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('4d', 'irene@mail.com', '12345', 'Irene', 'JefaEstudios', '1350090894', '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('5e', 'ana@mail.com', '12345', 'Ana Belén', 'Directora', '1350090894', '2022-02-02 21:34:26', '2022-02-02 21:34:26');
+
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `roles_empresa`
+-- Estructura de tabla para la tabla `rol_empresa`
 --
 
-CREATE TABLE `roles_empresa` (
-  `id` bigint UNSIGNED NOT NULL,
+CREATE TABLE `rol_empresa` (
+  `id` bigint(20) UNSIGNED NOT NULL,
   `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `rol_empresa`
+--
+
+INSERT INTO `rol_empresa` (`id`, `descripcion`, `created_at`, `updated_at`) VALUES
+(1, 'JefazoMaximo', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+(2, 'ResponsableCentro', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+(3, 'Tutor', '2022-02-02 21:31:27', '2022-02-02 21:31:27');
+
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `roles_estudio`
+-- Estructura de tabla para la tabla `rol_profesor`
 --
 
-CREATE TABLE `roles_estudio` (
-  `id` bigint UNSIGNED NOT NULL,
+CREATE TABLE `rol_profesor` (
+  `id` bigint(20) UNSIGNED NOT NULL,
   `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `rol_profesor`
+--
+
+INSERT INTO `rol_profesor` (`id`, `descripcion`, `created_at`, `updated_at`) VALUES
+(1, 'Director', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+(2, 'JefeEstudios', '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+(3, 'Tutor', '2022-02-02 21:31:27', '2022-02-02 21:31:27');
 
 -- --------------------------------------------------------
 
@@ -310,10 +403,19 @@ CREATE TABLE `roles_estudio` (
 
 CREATE TABLE `rol_profesor_asignado` (
   `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `id_rol` bigint UNSIGNED NOT NULL,
+  `id_rol` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `rol_profesor_asignado`
+--
+
+INSERT INTO `rol_profesor_asignado` (`dni`, `id_rol`, `created_at`, `updated_at`) VALUES
+('3c', 3, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('4d', 3, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('5e', 3, '2022-02-02 21:34:26', '2022-02-02 21:34:26');
 
 -- --------------------------------------------------------
 
@@ -323,10 +425,21 @@ CREATE TABLE `rol_profesor_asignado` (
 
 CREATE TABLE `rol_trabajador_asignado` (
   `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `id_rol` bigint UNSIGNED NOT NULL,
+  `id_rol` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `rol_trabajador_asignado`
+--
+
+INSERT INTO `rol_trabajador_asignado` (`dni`, `id_rol`, `created_at`, `updated_at`) VALUES
+('1a', 1, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('1a', 2, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('1a', 3, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('2b', 2, '2022-02-02 21:34:26', '2022-02-02 21:34:26'),
+('2b', 3, '2022-02-02 21:34:26', '2022-02-02 21:34:26');
 
 -- --------------------------------------------------------
 
@@ -336,12 +449,45 @@ CREATE TABLE `rol_trabajador_asignado` (
 
 CREATE TABLE `trabajador` (
   `dni` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cif_empresa` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre_centro` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `apellidos` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id_empresa` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `trabajador`
+--
+
+INSERT INTO `trabajador` (`dni`, `email`, `password`, `nombre`, `apellidos`, `id_empresa`, `created_at`, `updated_at`) VALUES
+('1a', 'trabajador1@mail.com', '12345', 'Juanito', 'Valderrama', 1, '2022-02-02 21:31:27', '2022-02-02 21:31:27'),
+('2b', 'trabajador2@mail.com', '12345', 'Pepi', 'Valladares', 2, '2022-02-02 21:34:26', '2022-02-02 21:34:26');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tutoria`
+--
+
+CREATE TABLE `tutoria` (
+  `dni_profesor` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_grupo` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `curso_academico` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `tutoria`
+--
+
+INSERT INTO `tutoria` (`dni_profesor`, `cod_grupo`, `curso_academico`, `created_at`, `updated_at`) VALUES
+('3c', '2DAW', '21/22', '2022-02-02 21:47:41', '2022-02-02 21:47:41'),
+('4d', '2DAM', '21/22', '2022-02-02 21:48:04', '2022-02-02 21:48:04'),
+('5e', '2GAC', '21/22', '2022-02-02 21:48:04', '2022-02-02 21:48:04');
 
 --
 -- Índices para tablas volcadas
@@ -352,89 +498,66 @@ CREATE TABLE `trabajador` (
 --
 ALTER TABLE `alumno`
   ADD PRIMARY KEY (`dni`),
-  ADD KEY `alumno_cif_foreign` (`cif`),
-  ADD KEY `alumno_cod_curso_foreign` (`cod_curso`);
+  ADD UNIQUE KEY `alumno_email_unique` (`email`);
 
 --
--- Indices de la tabla `alumno_curso`
+-- Indices de la tabla `aux_convenio`
 --
-ALTER TABLE `alumno_curso`
-  ADD PRIMARY KEY (`dni`),
-  ADD KEY `alumno_curso_cod_curso_foreign` (`cod_curso`);
-
---
--- Indices de la tabla `alumno_materia`
---
-ALTER TABLE `alumno_materia`
-  ADD PRIMARY KEY (`dni`),
-  ADD KEY `alumno_materia_cod_materia_foreign` (`cod_materia`);
-
---
--- Indices de la tabla `centro_ciclo`
---
-ALTER TABLE `centro_ciclo`
-  ADD PRIMARY KEY (`cod_centro`,`cod_ciclo`),
-  ADD KEY `centro_ciclo_cod_ciclo_foreign` (`cod_ciclo`);
+ALTER TABLE `aux_convenio`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indices de la tabla `centro_estudios`
 --
 ALTER TABLE `centro_estudios`
-  ADD PRIMARY KEY (`cod_centro`),
-  ADD KEY `centro_estudios_dni_director_foreign` (`dni_director`);
+  ADD PRIMARY KEY (`cod`),
+  ADD UNIQUE KEY `centro_estudios_cif_unique` (`cif`);
 
 --
--- Indices de la tabla `centro_jefe_estudios`
+-- Indices de la tabla `convenio`
 --
-ALTER TABLE `centro_jefe_estudios`
-  ADD PRIMARY KEY (`dni`,`cod_centro`),
-  ADD KEY `centro_jefe_estudios_cod_centro_foreign` (`cod_centro`);
-
---
--- Indices de la tabla `centro_trabajo`
---
-ALTER TABLE `centro_trabajo`
-  ADD PRIMARY KEY (`cif_empresa`,`nombre`),
-  ADD KEY `centro_trabajo_nombre_index` (`nombre`);
-
---
--- Indices de la tabla `ciclo`
---
-ALTER TABLE `ciclo`
-  ADD PRIMARY KEY (`cod_ciclo`);
-
---
--- Indices de la tabla `curso`
---
-ALTER TABLE `curso`
-  ADD PRIMARY KEY (`cod_curso`),
-  ADD KEY `curso_dni_tutor_foreign` (`dni_tutor`);
+ALTER TABLE `convenio`
+  ADD PRIMARY KEY (`cod_convenio`),
+  ADD KEY `convenio_id_empresa_foreign` (`id_empresa`),
+  ADD KEY `convenio_cod_centro_foreign` (`cod_centro`);
 
 --
 -- Indices de la tabla `empresa`
 --
 ALTER TABLE `empresa`
-  ADD PRIMARY KEY (`cif`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `empresa_cif_unique` (`cif`);
 
 --
--- Indices de la tabla `empresa_centro_estudios`
+-- Indices de la tabla `familia_profesional`
 --
-ALTER TABLE `empresa_centro_estudios`
-  ADD PRIMARY KEY (`cod_centro`,`cif_empresa`),
-  ADD KEY `empresa_centro_estudios_cif_empresa_foreign` (`cif_empresa`);
+ALTER TABLE `familia_profesional`
+  ADD PRIMARY KEY (`id`);
 
 --
--- Indices de la tabla `materia`
+-- Indices de la tabla `fct`
 --
-ALTER TABLE `materia`
-  ADD PRIMARY KEY (`cod_materia`);
+ALTER TABLE `fct`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fct_id_empresa_foreign` (`id_empresa`),
+  ADD KEY `fct_dni_alumno_foreign` (`dni_alumno`);
 
 --
--- Indices de la tabla `materia_curso`
+-- Indices de la tabla `grupo`
 --
-ALTER TABLE `materia_curso`
-  ADD PRIMARY KEY (`cod_curso`,`cod_materia`),
-  ADD KEY `materia_curso_cod_materia_foreign` (`cod_materia`);
+ALTER TABLE `grupo`
+  ADD PRIMARY KEY (`cod`),
+  ADD KEY `grupo_cod_familia_profesional_foreign` (`cod_familia_profesional`),
+  ADD KEY `grupo_cod_nivel_foreign` (`cod_nivel`);
+
+--
+-- Indices de la tabla `matricula`
+--
+ALTER TABLE `matricula`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `matricula_cod_centro_foreign` (`cod_centro`),
+  ADD KEY `matricula_dni_alumno_foreign` (`dni_alumno`),
+  ADD KEY `matricula_cod_grupo_foreign` (`cod_grupo`);
 
 --
 -- Indices de la tabla `migrations`
@@ -443,21 +566,36 @@ ALTER TABLE `migrations`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `nivel_estudios`
+--
+ALTER TABLE `nivel_estudios`
+  ADD PRIMARY KEY (`cod`);
+
+--
+-- Indices de la tabla `oferta_grupo`
+--
+ALTER TABLE `oferta_grupo`
+  ADD PRIMARY KEY (`cod_centro`,`cod_grupo`),
+  ADD KEY `oferta_grupo_cod_grupo_foreign` (`cod_grupo`);
+
+--
 -- Indices de la tabla `profesor`
 --
 ALTER TABLE `profesor`
-  ADD PRIMARY KEY (`dni`);
+  ADD PRIMARY KEY (`dni`),
+  ADD UNIQUE KEY `profesor_email_unique` (`email`),
+  ADD KEY `profesor_cod_centro_estudios_foreign` (`cod_centro_estudios`);
 
 --
--- Indices de la tabla `roles_empresa`
+-- Indices de la tabla `rol_empresa`
 --
-ALTER TABLE `roles_empresa`
+ALTER TABLE `rol_empresa`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indices de la tabla `roles_estudio`
+-- Indices de la tabla `rol_profesor`
 --
-ALTER TABLE `roles_estudio`
+ALTER TABLE `rol_profesor`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -479,122 +617,140 @@ ALTER TABLE `rol_trabajador_asignado`
 --
 ALTER TABLE `trabajador`
   ADD PRIMARY KEY (`dni`),
-  ADD KEY `trabajador_cif_empresa_foreign` (`cif_empresa`),
-  ADD KEY `trabajador_nombre_centro_foreign` (`nombre_centro`);
+  ADD UNIQUE KEY `trabajador_email_unique` (`email`),
+  ADD KEY `trabajador_id_empresa_foreign` (`id_empresa`);
+
+--
+-- Indices de la tabla `tutoria`
+--
+ALTER TABLE `tutoria`
+  ADD PRIMARY KEY (`dni_profesor`,`cod_grupo`,`curso_academico`),
+  ADD KEY `tutoria_cod_grupo_foreign` (`cod_grupo`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
 --
 
 --
+-- AUTO_INCREMENT de la tabla `aux_convenio`
+--
+ALTER TABLE `aux_convenio`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `empresa`
+--
+ALTER TABLE `empresa`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `familia_profesional`
+--
+ALTER TABLE `familia_profesional`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `fct`
+--
+ALTER TABLE `fct`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `matricula`
+--
+ALTER TABLE `matricula`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT de la tabla `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
--- AUTO_INCREMENT de la tabla `roles_empresa`
+-- AUTO_INCREMENT de la tabla `rol_empresa`
 --
-ALTER TABLE `roles_empresa`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+ALTER TABLE `rol_empresa`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
--- AUTO_INCREMENT de la tabla `roles_estudio`
+-- AUTO_INCREMENT de la tabla `rol_profesor`
 --
-ALTER TABLE `roles_estudio`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+ALTER TABLE `rol_profesor`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Restricciones para tablas volcadas
 --
 
 --
--- Filtros para la tabla `alumno`
+-- Filtros para la tabla `convenio`
 --
-ALTER TABLE `alumno`
-  ADD CONSTRAINT `alumno_cif_foreign` FOREIGN KEY (`cif`) REFERENCES `empresa` (`cif`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `alumno_cod_curso_foreign` FOREIGN KEY (`cod_curso`) REFERENCES `curso` (`cod_curso`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `convenio`
+  ADD CONSTRAINT `convenio_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `convenio_id_empresa_foreign` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `alumno_curso`
+-- Filtros para la tabla `fct`
 --
-ALTER TABLE `alumno_curso`
-  ADD CONSTRAINT `alumno_curso_cod_curso_foreign` FOREIGN KEY (`cod_curso`) REFERENCES `curso` (`cod_curso`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `alumno_curso_dni_foreign` FOREIGN KEY (`dni`) REFERENCES `alumno` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `fct`
+  ADD CONSTRAINT `fct_dni_alumno_foreign` FOREIGN KEY (`dni_alumno`) REFERENCES `alumno` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fct_id_empresa_foreign` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `alumno_materia`
+-- Filtros para la tabla `grupo`
 --
-ALTER TABLE `alumno_materia`
-  ADD CONSTRAINT `alumno_materia_cod_materia_foreign` FOREIGN KEY (`cod_materia`) REFERENCES `materia` (`cod_materia`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `alumno_materia_dni_foreign` FOREIGN KEY (`dni`) REFERENCES `alumno` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `grupo`
+  ADD CONSTRAINT `grupo_cod_familia_profesional_foreign` FOREIGN KEY (`cod_familia_profesional`) REFERENCES `familia_profesional` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `grupo_cod_nivel_foreign` FOREIGN KEY (`cod_nivel`) REFERENCES `nivel_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `centro_ciclo`
+-- Filtros para la tabla `matricula`
 --
-ALTER TABLE `centro_ciclo`
-  ADD CONSTRAINT `centro_ciclo_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod_centro`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `centro_ciclo_cod_ciclo_foreign` FOREIGN KEY (`cod_ciclo`) REFERENCES `ciclo` (`cod_ciclo`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `matricula`
+  ADD CONSTRAINT `matricula_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `matricula_cod_grupo_foreign` FOREIGN KEY (`cod_grupo`) REFERENCES `grupo` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `matricula_dni_alumno_foreign` FOREIGN KEY (`dni_alumno`) REFERENCES `alumno` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `centro_estudios`
+-- Filtros para la tabla `oferta_grupo`
 --
-ALTER TABLE `centro_estudios`
-  ADD CONSTRAINT `centro_estudios_dni_director_foreign` FOREIGN KEY (`dni_director`) REFERENCES `profesor` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `oferta_grupo`
+  ADD CONSTRAINT `oferta_grupo_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `oferta_grupo_cod_grupo_foreign` FOREIGN KEY (`cod_grupo`) REFERENCES `grupo` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `centro_jefe_estudios`
+-- Filtros para la tabla `profesor`
 --
-ALTER TABLE `centro_jefe_estudios`
-  ADD CONSTRAINT `centro_jefe_estudios_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod_centro`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `centro_jefe_estudios_dni_foreign` FOREIGN KEY (`dni`) REFERENCES `profesor` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `centro_trabajo`
---
-ALTER TABLE `centro_trabajo`
-  ADD CONSTRAINT `centro_trabajo_cif_empresa_foreign` FOREIGN KEY (`cif_empresa`) REFERENCES `empresa` (`cif`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `curso`
---
-ALTER TABLE `curso`
-  ADD CONSTRAINT `curso_dni_tutor_foreign` FOREIGN KEY (`dni_tutor`) REFERENCES `profesor` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `empresa_centro_estudios`
---
-ALTER TABLE `empresa_centro_estudios`
-  ADD CONSTRAINT `empresa_centro_estudios_cif_empresa_foreign` FOREIGN KEY (`cif_empresa`) REFERENCES `empresa` (`cif`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `empresa_centro_estudios_cod_centro_foreign` FOREIGN KEY (`cod_centro`) REFERENCES `centro_estudios` (`cod_centro`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `materia_curso`
---
-ALTER TABLE `materia_curso`
-  ADD CONSTRAINT `materia_curso_cod_curso_foreign` FOREIGN KEY (`cod_curso`) REFERENCES `curso` (`cod_curso`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `materia_curso_cod_materia_foreign` FOREIGN KEY (`cod_materia`) REFERENCES `materia` (`cod_materia`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `profesor`
+  ADD CONSTRAINT `profesor_cod_centro_estudios_foreign` FOREIGN KEY (`cod_centro_estudios`) REFERENCES `centro_estudios` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `rol_profesor_asignado`
 --
 ALTER TABLE `rol_profesor_asignado`
   ADD CONSTRAINT `rol_profesor_asignado_dni_foreign` FOREIGN KEY (`dni`) REFERENCES `profesor` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `rol_profesor_asignado_id_rol_foreign` FOREIGN KEY (`id_rol`) REFERENCES `roles_estudio` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `rol_profesor_asignado_id_rol_foreign` FOREIGN KEY (`id_rol`) REFERENCES `rol_profesor` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `rol_trabajador_asignado`
 --
 ALTER TABLE `rol_trabajador_asignado`
   ADD CONSTRAINT `rol_trabajador_asignado_dni_foreign` FOREIGN KEY (`dni`) REFERENCES `trabajador` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `rol_trabajador_asignado_id_rol_foreign` FOREIGN KEY (`id_rol`) REFERENCES `roles_empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `rol_trabajador_asignado_id_rol_foreign` FOREIGN KEY (`id_rol`) REFERENCES `rol_empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `trabajador`
 --
 ALTER TABLE `trabajador`
-  ADD CONSTRAINT `trabajador_cif_empresa_foreign` FOREIGN KEY (`cif_empresa`) REFERENCES `empresa` (`cif`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `trabajador_nombre_centro_foreign` FOREIGN KEY (`nombre_centro`) REFERENCES `centro_trabajo` (`nombre`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `trabajador_id_empresa_foreign` FOREIGN KEY (`id_empresa`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `tutoria`
+--
+ALTER TABLE `tutoria`
+  ADD CONSTRAINT `tutoria_cod_grupo_foreign` FOREIGN KEY (`cod_grupo`) REFERENCES `grupo` (`cod`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `tutoria_dni_profesor_foreign` FOREIGN KEY (`dni_profesor`) REFERENCES `profesor` (`dni`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
