@@ -6,7 +6,7 @@ use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
-use App\Models\AlumnoCurso;
+use App\Models\Matricula;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -15,20 +15,24 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
 use App\Models\Curso;
 use App\Models\EmpresaCurso;
-use App\Models\EmpresaAlumno;
+use App\Models\Fct;
 use App\Auxiliar\Parametros;
 use App\Models\AuxConvenio;
+use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
+use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\EmpresaGrupo;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use Carbon\Carbon;
-use App\Models\EmpresaCentroEstudios;
+use App\Models\Grupo;
 use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
+use App\Models\Tutoria;
 
 class ControladorTutorFCT extends Controller
 {
@@ -40,94 +44,73 @@ class ControladorTutorFCT extends Controller
      *  alumnos que no están asociados a ninguna empresa
      *  asignados al dni del tutor que recibimos como parámetro.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarAlumnosSinEmpresa(string $dni)
     {
-        $quer = 'select alumno.nombre, alumno.dni from alumno, curso, alumno_curso where alumno.dni not in'
-            . ' (select alumno.dni from alumno, curso, alumno_curso, empresa_alumno'
-            . ' WHERE curso.cod_curso = alumno_curso.cod_curso'
-            . ' AND alumno.dni = alumno_curso.dni'
-            . ' AND curso.dni_tutor = ?'
-            . ' AND alumno_curso.dni = empresa_alumno.dni_alumno)'
-            . ' AND alumno.dni = alumno_curso.dni'
-            . ' AND alumno_curso.cod_curso = curso.cod_curso'
-            . ' AND alumno.va_a_fct != 0'
-            . ' AND curso.dni_tutor = ?';
-        $alumnos = DB::select($quer, [$dni, $dni]);
-        return response()->json($alumnos, 200);
+        $hoy = date("Y-m-d H:i:s");
+        $cursoAcademico = AuxCursoAcademico::where([['fecha_inicio', '<', $hoy],['fecha_fin', '>', $hoy]])
+        ->get()->first();
+        if ($cursoAcademico) {
+            $cursoAcademico = $cursoAcademico->cod_curso;
+        }else{
+            $cursoAcademico = AuxCursoAcademico::where('id', AuxCursoAcademico::max('id'))->get()->first()->cod_curso;
+        }
+        $alumnosEnEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+        ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
+        ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+        ->where([['tutoria.dni_profesor', '=', $dni], ['tutoria.curso_academico', '=', $cursoAcademico]])
+        ->pluck('alumno.dni')
+        ->toArray();
+
+        $alumnosSinEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+        ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+        ->where([['tutoria.dni_profesor', '=', $dni], ['tutoria.curso_academico', '=', $cursoAcademico]])
+        ->whereNotIn('alumno.dni', $alumnosEnEmpresa)
+        ->select(['alumno.dni', 'alumno.nombre', 'alumno.va_a_fct'])
+        ->get();
+        return response()->json($alumnosSinEmpresa, 200);
     }
     /**
      *  Esta función se encarga de coger el nombre del ciclo a partir del dni del tutor.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarNombreCiclo(string $dni)
     {
-        $quer = 'select ciclo.nombre from curso, ciclo where'
-            . ' curso.dni_tutor = ?'
-            . ' AND curso.cod_ciclo = ciclo.cod_ciclo';
-        $nombre = DB::select($quer, [$dni]);
+        $nombre = Tutoria::where('dni_profesor','=', $dni)->get()[0]->cod_grupo;
         return response()->json($nombre, 200);
     }
-    /*
-    public function solicitarAlumnosSinEmpresa(string $dni)
-    {
-        $codCurso = Curso::select('cod_curso')->where([
-            ['dni_tutor', $dni],
-        ])->get();
-        $dniAlumno = AlumnoCurso::select('dni')->whereIn(
-            'cod_curso',
-            $codCurso
-        )->get();
-        $dniAlumnoEmpresa = EmpresaAlumno::select('dni_alumno')->whereIn(
-            'dni_alumno',
-            $dniAlumno
-        )->get();
-        $dniAlumnoNoEmpresa = array();
-        foreach ($dniAlumno as $key => $value) {
-            $encontrado = false;
-            foreach ($dniAlumnoEmpresa as $key2 => $value2) {
-                if ($value['dni'] == $value2['dni_alumno']) {
-                    $encontrado = true;
-                }
-            }
-            if (!$encontrado) {
-                array_push($dniAlumnoNoEmpresa, $value['dni']);
-            }
-        }
-        $alumnos = Alumno::select('dni', 'nombre')->whereIn(
-            'dni',
-            $dniAlumnoNoEmpresa
-        )->get();
-        return response()->json($alumnos, 200);
-    }
-    */
     /**
      *  Esta función se encarga de coger las empresas que solicitan el curso que está tutorizando
      *  el profesor del que recibimos el dni, y dentro de esas empresas hay un array de alumnos que están
      *  ya asociados a una empresa.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
      *  @param $dni es el dni del tutor
      */
     public function solicitarEmpresasConAlumnos(string $dni)
     {
-        $quer = 'select empresa.id, empresa.nombre from empresa, curso, empresa_curso'
-            . ' where curso.cod_curso = empresa_curso.cod_curso'
-            . ' AND empresa_curso.id_empresa = empresa.id'
-            . ' AND curso.dni_tutor = ?';
-        $empresas = DB::select($quer, [$dni]);
-        foreach ($empresas as $empresa) {
-            $quer = 'select DISTINCT alumno.nombre, alumno.dni from alumno, alumno_curso, empresa_alumno, empresa, curso'
-                . ' where curso.cod_curso = alumno_curso.cod_curso'
-                . ' AND alumno_curso.dni = alumno.dni'
-                . ' AND alumno.dni = empresa_alumno.dni_alumno'
-                . ' AND curso.dni_tutor = ?'
-                . ' AND empresa_alumno.id_empresa = ?';
-                $empresa->alumnos = DB::select($quer, [$dni, $empresa->id]);
+        $empresas = Grupo::join('empresa_grupo', 'empresa_grupo.cod_grupo', '=', 'grupo.cod')
+        ->join('empresa', 'empresa.id', '=', 'empresa_grupo.id_empresa')
+        ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+        ->where('tutoria.dni_profesor', $dni)
+        ->select(['empresa.id', 'empresa.nombre'])
+        ->get();
+
+        foreach ($empresas as  $empresa) {
+            $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('fct', 'fct.dni_alumno', '=','alumno.dni')
+            ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+            ->where([['tutoria.dni_profesor', $dni], ['fct.id_empresa', $empresa->id]])
+            ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct'])
+            ->get();
+            $empresa->alumnos = $alumnos;
         }
 
         return response()->json($empresas, 200);
@@ -154,43 +137,36 @@ class ControladorTutorFCT extends Controller
     public function rellenarAnexo1(Request $val){
 
         $dni_tutor=$val->get('dni_tutor');
-        $curso=Curso::select('cod_curso')->where('dni_tutor',$dni_tutor)->get();
-        $empresas_id=EmpresaCurso::select('id_empresa')->where('cod_curso',$curso[0]->cod_curso)->get();
+        $grupo=Tutoria::select('cod_grupo')->where('dni_profesor',$dni_tutor)->get();
+        $empresas_id=EmpresaGrupo::select('id_empresa')->where('cod_grupo',$grupo[0]->cod_grupo)->get();
              //Recorrido id empresas
             foreach($empresas_id as $id){
                 try{
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id_empresa;
+                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1'.$id->id;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
-                //Fecha
+                //Fecha //CHECK
                 $fecha= Carbon::now();
-                //Codigo del centro
+                //Codigo del centro //CHECK
                 $cod_centro=Profesor::select('cod_centro_estudios')->where('dni',$dni_tutor)->get();
-                //Numero de Convenio
-                $num_convenio = EmpresaCentroEstudios::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre del centro
-                $nombre_centro=CentroEstudios::select('nombre')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre de la empresa
+                //Numero de Convenio //CHECK
+                $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
+                //Nombre del centro //CHECK
+                $nombre_centro=CentroEstudios::select('nombre')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
+                //Nombre de la empresa //CHECK
                 $nombre_empresa=Empresa::select('nombre')->where('id',$id->id_empresa)->get();
-                //Cif empresa
+                //Cif empresa //CHECK
                 $cif_empresa=Empresa::select('cif')->where('id',$id->id_empresa)->get();
-                //Direccion del centro //REVISAR
-                //$dir_centro=CentroTrabajo::select('direccion')->where('cif_empresa',$cif_empresa[0]->cif)->get();
-                $dir_centro=CentroEstudios::select('direccion')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre del ciclo //REVISAR
-                $nombre_ciclo = Profesor::join('centro_estudios', 'centro_estudios.cod_centro', '=', 'profesor.cod_centro_estudios')
-                ->join('centro_ciclo', 'centro_ciclo.cod_centro', '=', 'centro_estudios.cod_centro')
-                ->join('ciclo', 'ciclo.cod_ciclo', '=', 'centro_ciclo.cod_ciclo')
-                ->select('ciclo.nombre')
-                ->where('dni','=',$dni_tutor)
-                ->get();
-
-                //Año del curso
-                $curso_anio=Curso::select('anio')->where('dni_tutor',$dni_tutor)->get();
-                //Nombre del tutor
+                //Direccion del centro //CHECK
+                $dir_centro=Empresa::select('direccion')->where('id',$id->id_empresa)->get();
+                //Nombre del ciclo //CHECK
+                $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod',$grupo[0]->cod_grupo)->get();
+                //Año del curso //CHECK
+                $curso_anio=Convenio::select('curso_academico_inicio')->where('cod_convenio',$num_convenio[0]->cod_convenio)->get();
+                //Nombre del tutor  //CHECK
                 $nombre_tutor=Profesor::select('nombre')->where('dni',$dni_tutor)->get();
-                //Responsable de la empresa
+                //Responsable de la empresa //CHECK
                 $responsable_empresa=Empresa::join('trabajador', 'trabajador.id_empresa','=','empresa.id')
                 ->join('rol_trabajador_asignado','rol_trabajador_asignado.dni','=','trabajador.dni')
                 ->select('trabajador.nombre')
@@ -198,11 +174,12 @@ class ControladorTutorFCT extends Controller
                 ->where('rol_trabajador_asignado.id_rol','=',Parametros::REPRESENTANTE_LEGAL)
                 ->get();
 
-                //Ciudad del centro de estudios
-                $ciudad_centro_estudios=CentroEstudios::select('localidad')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
-                //Alumnos
-                $alumnos=EmpresaAlumno::join('alumno','alumno.dni','=','empresa_alumno.dni_alumno')
-                ->select('alumno.nombre','alumno.apellido','alumno.dni','alumno.localidad','empresa_alumno.horario','empresa_alumno.num_horas','empresa_alumno.fecha_ini','empresa_alumno.fecha_fin')
+                //Ciudad del centro de estudios //CHECK
+                $ciudad_centro_estudios=CentroEstudios::select('localidad')->where('cod',$cod_centro[0]->cod_centro_estudios)->get();
+
+                //Alumnos //CHECK
+                $alumnos=Fct::join('alumno','alumno.dni','=','fct.dni_alumno')
+                ->select('alumno.nombre','alumno.apellidos','alumno.dni','alumno.localidad','fct.horario','fct.num_horas','fct.fecha_ini','fct.fecha_fin')
                 ->where('id_empresa','=',$id->id_empresa)
                 ->get();
 
@@ -219,7 +196,7 @@ class ControladorTutorFCT extends Controller
                 $table->addCell(1500)->addText('FECHA DE FINALIZACION');
                 foreach ($alumnos as $a) {
                     $table->addRow();
-                    $table->addCell(1500)->addText($a->apellido.' '.$a->nombre);
+                    $table->addCell(1500)->addText($a->apellidos.' '.$a->nombre);
                     $table->addCell(1500)->addText($a->dni);
                     $table->addCell(1500)->addText($a->localidad);
                     $table->addCell(1500)->addText($a->horario);
@@ -239,7 +216,7 @@ class ControladorTutorFCT extends Controller
                   'dir_centro'=>$dir_centro[0]->direccion,
                   'nombre_tutor'=>$nombre_tutor[0]->nombre,
                   'ciudad_centro'=>$ciudad_centro_estudios[0]->localidad,
-                  'anio_curso'=>$curso_anio[0]->anio,
+                  'anio_curso'=>$curso_anio[0]->curso_academico_inicio,
                   'ciclo_nombre'=>$nombre_ciclo[0]->nombre,
                   'responsable_empresa'=>$responsable_empresa[0]->nombre,
               ];
@@ -300,7 +277,7 @@ class ControladorTutorFCT extends Controller
 
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
         $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $director = $this->getDirectorCentroEstudios($centroEstudios->cod_centro)->makeHidden('created_at', 'updated_at', 'password');
+        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
 
         //Ahora hago lo propio con la empresa en cuestión
         $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
@@ -415,7 +392,7 @@ class ControladorTutorFCT extends Controller
      * @author @DaniJCoello
      */
     public function getCentroEstudiosFromConvenio(string $codConvenio) {
-        return CentroEstudios::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
     }
 
     /**
@@ -476,7 +453,7 @@ class ControladorTutorFCT extends Controller
      * @author @DaniJCoello
      */
     public function getEmpresaFromConvenio(string $codConvenio) {
-        return Empresa::find(EmpresaCentroEstudios::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
     }
 
     /**
@@ -541,18 +518,19 @@ class ControladorTutorFCT extends Controller
      * @author Malena
      * @param string $dniTutor, el dni del tutor que se encuentra logueado.
      * @param int $id_empresa, el id de la empresa que se registra.
-     * @return EmpresaCentroEstudios convenio entre la empresa y el centro de estudios.
+     * @return Convenio convenio entre la empresa y el centro de estudios.
      */
     public function addConvenio(string $dniTutor, int $id_empresa){
         //Consigo el centro de estudios a partir del Dni del tutor:
         $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
         $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio,'C');
-        $convenio = EmpresaCentroEstudios::create([
+        $convenio = Convenio::create([
             'cod_convenio' => $codConvenio,
-            'cod_centro' => $centroEstudios->cod_centro,
+            'cod_centro' => $centroEstudios->cod,
             'id_empresa' => $id_empresa,
-            'fecha' => Carbon::now(),
+            'curso_academico_inicio' => '',
+            'curso_academico_fin' => '',
             'firmado_director' => 0,
             'firmado_empresa' => 0,
             'ruta_anexo' => ''
