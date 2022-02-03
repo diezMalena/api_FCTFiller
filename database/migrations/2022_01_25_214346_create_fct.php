@@ -32,7 +32,7 @@ class CreateFct extends Migration
             $table->integer('firmado_director');
             $table->integer('firmado_empresa');
             $table->string('ruta_anexo');
-            //??????
+            $table->string('departamento');
             $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('dni_alumno')->references('dni')->on('alumno')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
