@@ -173,13 +173,12 @@ class ControladorTutorFCT extends Controller
                 $num_convenio = EmpresaCentroEstudios::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
                 //Nombre del centro
                 $nombre_centro=CentroEstudios::select('nombre')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
-                //Nombre de la empresa
-                $nombre_empresa=Empresa::select('nombre')->where('id',$id->id_empresa)->get();
-                //Cif empresa
-                $cif_empresa=Empresa::select('cif')->where('id',$id->id_empresa)->get();
-                //Direccion del centro //REVISAR
-                //$dir_centro=CentroTrabajo::select('direccion')->where('cif_empresa',$cif_empresa[0]->cif)->get();
-                $dir_centro=CentroEstudios::select('direccion')->where('cod_centro',$cod_centro[0]->cod_centro_estudios)->get();
+                //Nombre de la empresa //TRUE
+                $nombre_empresa=Empresa::select('nombre')->where('id',$id->id)->get();
+                //Cif empresa //TRUE
+                $cif_empresa=Empresa::select('cif')->where('id',$id->id)->get();
+                //Direccion del centro //TRUE
+                $dir_centro=Empresa::select('direccion')->where('id',$id->id)->get();
                 //Nombre del ciclo //REVISAR
                 $nombre_ciclo = Profesor::join('centro_estudios', 'centro_estudios.cod_centro', '=', 'profesor.cod_centro_estudios')
                 ->join('centro_ciclo', 'centro_ciclo.cod_centro', '=', 'centro_estudios.cod_centro')
