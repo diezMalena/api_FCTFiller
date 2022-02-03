@@ -18,7 +18,7 @@ class AlumnoFactory extends Factory
     public function definition()
     {
         return [
-            'dni' => $this->faker->unique()->doi(),
+            'dni' => $this->faker->unique()->dni(),
             'email' => $this->faker->email(),
             'password' => Hash::make('superman'),
             'nombre' => $this->faker->firstName(),

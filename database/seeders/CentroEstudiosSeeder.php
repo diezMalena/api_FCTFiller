@@ -26,7 +26,7 @@ class CentroEstudiosSeeder extends Seeder
             //Lo establezco en la factoría del profesor para que los profesores se asocien al centro
             ProfesorFactory::$CODCENTRO = $cod;
             //Creo unos cuantos profesores
-            for ($j = 0; $j < rand(15,25); $j++) {
+            for ($j = 0; $j < 10; $j++) {
                 //Creo el profesor
                 $profe = Profesor::factory()->create();
                 //Extraigo su clave primaria y la establezco en la factoría de los roles del profe
