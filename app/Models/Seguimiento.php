@@ -16,8 +16,7 @@ class Seguimiento extends Model
     use HasFactory;
 
     protected $fillable = [
-        'id_empresa',
-        'dni_alumno',
+        'id_fct',
         'fecha_jornada', //Cuando el alumno hizo las actividades
         'actividades',
         'observaciones',

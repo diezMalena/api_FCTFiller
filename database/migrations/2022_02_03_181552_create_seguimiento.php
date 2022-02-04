@@ -20,14 +20,12 @@ class CreateSeguimiento extends Migration
     {
         Schema::create('seguimiento', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('id_empresa');
-            $table->string('dni_alumno');
+            $table->unsignedBigInteger('id_fct');
             $table->date('fecha_jornada');
             $table->string('actividades');
             $table->string('observaciones');
             $table->integer('tiempo_empleado');
-            $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreign('dni_alumno')->references('dni')->on('alumno')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('id_fct')->references('id')->on('fct');
             $table->timestamps();
         });
     }
