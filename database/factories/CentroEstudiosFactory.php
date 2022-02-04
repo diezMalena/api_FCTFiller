@@ -2,28 +2,33 @@
 
 namespace Database\Factories;
 
+use App\Models\CentroEstudios;
+use Faker\Factory as FakerFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CentroEstudiosFactory extends Factory
 {
+    protected $model = CentroEstudios::class;
+
     /**
      * Define the model's default state.
-     *
+     * @author @DaniJCoello
      * @return array
      */
     public function definition()
     {
+        $faker = FakerFactory::create('es_ES');
         return [
-            'cod_centro' => $this->faker->unique()->rand(11111,99999),
-            'cif' => $this->faker->unique()->rand(11111111,99999999),
-            'cod_centro_convenio' => $this->faker->unique()->rand(0,999),
-            'nombre' => $this->faker->name(),
-            'localidad' => $this->faker->city(),
-            'provincia' => $this->faker->country(),
-            'direccion' => $this->faker->address(),
-            'cp' => rand(10000,99999),
-            'telefono' => $this->faker->phoneNumber(),
-            'email' => $this->faker->email()
+            'cod' => rand(11111,99999),
+            'cif' => $faker->dni(),
+            'cod_centro_convenio' => $faker->countryCode(),
+            'nombre' => $faker->company(),
+            'localidad' => $faker->city(),
+            'provincia' => $faker->state(),
+            'direccion' => $faker->streetAddress(),
+            'cp' => $faker->postcode(),
+            'telefono' => $faker->phoneNumber(),
+            'email' => $faker->companyEmail()
         ];
     }
 }
