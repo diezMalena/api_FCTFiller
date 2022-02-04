@@ -48,15 +48,17 @@ class ControladorJefatura extends Controller
                 if ($resultado != 0) {
                     $errores[$nombreCaja] = $resultado;
                 } else {
-                //Si es cero, el fichero está bien y pasamos a insertar los registros en
-                //base de datos
+                    //Si es cero, el fichero está bien y pasamos a insertar los registros en
+                    //base de datos
                     $resultado = $this->procesarFicheroABBDD($nombreCaja);
 
-                //Si el resultado es distinto de cero, el fichero ha tenido errores al insertarse
-                //por lo tanto, se mete el resultado en errores
 
+                    //Si el resultado es distinto de cero, el fichero ha tenido errores al insertarse
+                    //por lo tanto, se mete el resultado en errores
+
+                    if ($resultado != 0) {
                         $errores[$nombreCaja] = $resultado;
-
+                    }
                 }
 
                 //Borramos el fichero al final
@@ -65,7 +67,7 @@ class ControladorJefatura extends Controller
         }
         #endregion
 
-        if(count($errores) > 0){
+        if (count($errores) > 0) {
             $mensaje = "Los siguientes ficheros han tenido errores:";
 
             foreach ($errores as $key => $variable) {
@@ -74,7 +76,7 @@ class ControladorJefatura extends Controller
 
             return response()->json(['mensaje' => $mensaje], 200);
         } else {
-            return response()->json(['mensaje' => 'ok'], 200);
+            return response()->json(['mensaje' => 'Todos los ficheros se han procesado correctamente'], 200);
         }
     }
 
@@ -146,6 +148,7 @@ class ControladorJefatura extends Controller
      *
      * @param string $nombreCaja
      * @param string $fichero
+     * @return boolean True en caso de éxito, false en caso de error
      * @author David Sánchez Barragán
      */
     private function guardarFichero($nombreCaja, $fichero)
@@ -183,32 +186,32 @@ class ControladorJefatura extends Controller
 
     private function procesarFicheroABBDDAlumnos($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
     private function procesarFicheroABBDDMaterias($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
     private function procesarFicheroABBDDMatriculas($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
     private function procesarFicheroABBDDNotas($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
     private function procesarFicheroABBDDProfesores($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
     private function procesarFicheroABBDDUnidades($nombreCaja)
     {
-        return 'Guardado correctamente';
+        return 0;
     }
 
 
