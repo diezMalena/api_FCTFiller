@@ -20,10 +20,10 @@ class ProfesorFactory extends Factory
     public function definition()
     {
         return [
-            'dni' => rand(111111111, 999999999),
+            'dni' => $this->faker->unique()->doi(),
             'email' => $this->faker->email(),
             'password' => Hash::make('superman'),
-            'nombre' => $this->faker->name(),
+            'nombre' => $this->faker->firstName(),
             'apellidos' => $this->faker->lastName() . ' ' . $this->faker->lastName(),
             'cod_centro_estudios' => self::$CODCENTRO
         ];

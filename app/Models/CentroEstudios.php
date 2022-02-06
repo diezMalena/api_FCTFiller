@@ -5,11 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Migración para crear la tabla centro_estudios
+ *
+ * Contiene información sobre los centros educativos dados de alta en el sistema.
+ *
+ * @author laura <lauramorenoramos97@gmail.com>
+ * @author David Sánchez Barragán (1-2-22)
+ */
 class CentroEstudios extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'cod_centro',
+        'cod',
         'cif',
         'cod_centro_convenio',
         'nombre',
@@ -18,99 +26,11 @@ class CentroEstudios extends Model
         'direccion',
         'cp',
         'telefono',
-        'email',
-        // 'dni_director'
+        'email'
     ];
     protected $table = 'centro_estudios';
-    protected $primaryKey = 'cod_centro';
+    protected $primaryKey = 'cod';
     public $incrementing = false;
     protected $keyType = 'string';
 
-    /**
-     * Union entre la tabla centro_estudios y la tabla centro_ciclo, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroCicloMany()
-    {
-        return $this->hasMany('App\Models\CentroCiclo', 'cod_centro', 'cod_centro');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla centro_ciclo, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroCicloHasOne()
-    {
-        return $this->hasOne('App\Models\CentroCiclo', 'cod_centro', 'cod_centro');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla empresa_centro, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroEmpresaMany()
-    {
-        return $this->hasMany('App\Models\EmpresaCentroEstudios', 'cod_centro', 'cod_centro');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla empresa_centro, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroEmpresaHasOne()
-    {
-        return $this->hasOne('App\Models\EmpresaCentroEstudios', 'cod_centro', 'cod_centro');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla profesor, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroProfesorMany()
-    {
-        return $this->hasMany('App\Models\Profesor', 'dni_director', 'dni');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla profesor, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroProfesorHasOne()
-    {
-        return $this->hasOne('App\Models\EmpresaCentroEstudios', 'dni_director', 'dni');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla centro_jefe_estudios, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroJefeEstudiosMany()
-    {
-        return $this->hasMany('App\Models\CentroJefeEstudios', 'cod_centro', 'cod_centro');
-    }
-
-    /**
-     * Union entre la tabla centro_estudios y la tabla centro_jefe_estudios, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function centroJefeEstudiosHasOne()
-    {
-        return $this->hasOne('App\Models\CentroJefeEstudios', 'cod_centro', 'cod_centro');
-    }
 }
