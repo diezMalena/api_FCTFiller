@@ -33,6 +33,8 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
+use Illuminate\Support\Facades\Storage;
+
 
 class ControladorTutorFCT extends Controller
 {
@@ -144,7 +146,7 @@ class ControladorTutorFCT extends Controller
         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
         $empresas_id = EmpresaGrupo::select('id_empresa')->where('cod_grupo', $grupo[0]->cod_grupo)->get();
         $fecha = Carbon::now();
-        $AuxNombre = $dni_tutor . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . $fecha->format('Y_h_i_s_A');
+        $AuxNombre = $dni_tutor . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . $fecha->format('_h_i_s_A');
 
 
         //***************************************ZIP********************************************** */
@@ -160,9 +162,10 @@ class ControladorTutorFCT extends Controller
                     //Nombre de la empresa
                     $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
 
-                    $rutaOriginal = 'anexos/plantillas/Anexo1_';
-                    $AuxNombre = '_' . Str::random(5) . '_' .$dni_tutor . '_' .$nombre_empresa.'_'. $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year .'_'. $fecha->format('Y_h_i_s_A');
-                    $rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
+                    $rutaOriginal = 'anexos/plantillas/Anexo1';
+                    $AuxNombre = '_' . Str::random(5) . '_' . $dni_tutor . '_' . $nombre_empresa[0]->nombre . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year;
+                    //$rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
+                    $rutaDestino = $dni_tutor . '/Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
 
@@ -274,9 +277,10 @@ class ControladorTutorFCT extends Controller
         return $nombreZip;
     }
 
+
     /**
      * Esta funcion nos permite convertir un word en un pdf
-     *
+     *@author @DaniJCoello
      * @param String $rutaArchivo
      * @return void
      */
@@ -299,6 +303,45 @@ class ControladorTutorFCT extends Controller
             unlink($rutaArchivo . '.docx');
         }
     }
+
+
+    public function crudAnexos(Request $val)
+    {
+        $dni_tutor=$val->get('dni_tutor');
+        $directorios=Array();
+        $datos = Array();
+        $datosAux=Array();
+
+
+        //Ver los nombres de los archivos de una carpeta
+        $thefolder = "/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/".$dni_tutor;
+        if ($handler = opendir($thefolder)) {
+            while (false !== ($file = readdir($handler))) {
+
+                //Comparar string en php
+                if(strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0){
+                    $directorios[]=$file;
+                    //dividir un nombre por su separador
+                    $datosAux=explode("_", $file);
+                    //meter ese nombre en un array asociativo
+                    $datos=[
+                     'nombre'=>$datosAux[0],
+                     'codigo'=>$datosAux[1],
+                     'empresa'=>$datosAux[3],
+                     //Laura, usa el nombre de la empresa para sacar el ID para las firmas
+                     //Usa el dni del tutor para sacar el cod del centro para las firmas
+                      //Usa la tabla convenio para sacar las firmas
+                    ];
+                }
+
+            }
+            closedir($handler);
+        }
+
+        return response($datos);
+
+    }
+
 
 
     /**
