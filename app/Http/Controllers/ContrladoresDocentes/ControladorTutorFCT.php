@@ -257,7 +257,7 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Este metodo sirve para comprimir varios archivos en un zip
+     * Este metodo sirve para comprimir varios archivos del Anexo1 en un zip
      * @author Laura <lauramorenoramos97@gmail.com>
      *
      * @param String $rutaArchivo es la ruta en la que se van a buscar los archivos a comprimir
@@ -360,31 +360,96 @@ class ControladorTutorFCT extends Controller
     }
 
 
-/**
- * Esta funcion nos permite descargar un anexo en concreto
- *@author Laura <lauramorenoramos97@gmail.com>
- * @param Request $val
- * @return void
- */
+    /**
+     * Esta funcion nos permite descargar un anexo en concreto
+     *@author Laura <lauramorenoramos97@gmail.com>
+     * @param Request $val
+     * @return void
+     */
     public function descargarAnexo(Request $val)
     {
-        $dni_tutor=$val->get('dni_tutor');
-        $cod_anexo=$val->get('codigo');
-        $rutaOriginal = $dni_tutor.'/'.$cod_anexo;
+        $dni_tutor = $val->get('dni_tutor');
+        $cod_anexo = $val->get('codigo');
+        $rutaOriginal = $dni_tutor . '/' . $cod_anexo;
 
         return response()->download(public_path($rutaOriginal));
-
     }
 
 
+    /**
+     * Esta funcion te permite eliminar un fichero de una carpeta
+     *@author Laura <lauramorenoramos97@gmail.com>
+     * @param Request $val
+     * @return void
+     */
     public function eliminarAnexo(Request $val)
     {
-        $dni_tutor=$val->get('dni_tutor');
+        $dni_tutor = $val->get('dni_tutor');
+        $cod_anexo = $val->get('codigo');
+        $ruta = '/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/';
+
+        //Eliminar un fichero
+        unlink($ruta . $dni_tutor . '/' . $cod_anexo);
+        return response()->json(['message' => 'Archivo eliminado'], 200);
     }
 
+
+
+    /**
+     * Esta funcion permite descargar todos los anexos del crud de anexos, menos el 3
+     *
+     * @param Request $val
+     * @return void
+     */
     public function descargarTodo(Request $val)
     {
-        $dni_tutor=$val->get('dni_tutor');
+        $dni_tutor = $val->get('dni_tutor');
+
+        $zip = new ZipArchive;
+        $AuxNombre = Str::random(7);
+        $nombreZip = 'tmp/anexos/myzip_' . $AuxNombre . '.zip';
+
+        //Convertir en Zip
+        $nombreZip = $this->montarZipCrud($dni_tutor, $zip, $nombreZip);
+
+        return response()->download(public_path($nombreZip));
+    }
+
+    /**
+     * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos
+     *@author Laura <lauramorenoramos97@gmail.com>
+     * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
+     * @param ZipArchive $zip , el zip donde se almacenaran los archivos
+     * @param String $nombreZip, el nombre que tendrá el zip
+     * @return void
+     */
+    public function montarZipCrud(String $dni_tutor, ZipArchive $zip, String $nombreZip)
+    {
+        $files = File::files(public_path($dni_tutor));
+        $fechaArchivo = '';
+        $fechaActual = Carbon::now();
+        $anexo = '';
+
+        if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
+
+            foreach ($files as $value) {
+
+                ///////////////ANEXO1//////////////////////////
+                //saco el año  del fichero con un substring
+                $fechaArchivo = substr($value, 90, 4);
+                //saco el tipo de anexo con un substring
+                $anexo = substr($value, 57, 6);
+
+                if (strcmp($anexo, "Anexo1") == 0) {
+                    if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
+                        $relativeNameZipFile = basename($value);
+                        $zip->addFile($value, $relativeNameZipFile);
+                    }
+                }
+            }
+            $zip->close();
+        }
+        return $nombreZip;
     }
 
 

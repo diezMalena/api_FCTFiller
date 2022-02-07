@@ -27,9 +27,12 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
 });
+
 Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 Route::any('/listarAnexos', [ControladorTutorFCT::class, 'verAnexos']);
 Route::any('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
+Route::any('/eliminarAnexo', [ControladorTutorFCT::class, 'eliminarAnexo']);
+Route::any('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
