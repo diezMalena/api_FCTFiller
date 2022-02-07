@@ -33,7 +33,6 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
-use Illuminate\Support\Facades\Storage;
 
 
 class ControladorTutorFCT extends Controller
@@ -159,8 +158,17 @@ class ControladorTutorFCT extends Controller
             try {
                 foreach ($empresas_id as $id) {
 
+                    //Codigo del centro
+                    $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
+                    //Numero de Convenio
+                    $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
+                    //Nombre del ciclo
+                    $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod', $grupo[0]->cod_grupo)->get();
+                    //Codigo Ciclo
+                    $cod_ciclo=Grupo::select('cod')->where('nombre_ciclo',  $nombre_ciclo[0]->nombre_ciclo )->get();
+
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year;
+                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' .$cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year;
                     //$rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
                     $rutaDestino = $dni_tutor . '/Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
@@ -168,16 +176,10 @@ class ControladorTutorFCT extends Controller
 
                     //Nombre de la empresa
                     $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
-                    //Codigo del centro
-                    $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
-                    //Numero de Convenio
-                    $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
                     //Nombre del centro
                     $nombre_centro = CentroEstudios::select('nombre')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
                     //Direccion del centro
                     $dir_centro = Empresa::select('direccion')->where('id', $id->id_empresa)->get();
-                    //Nombre del ciclo
-                    $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod', $grupo[0]->cod_grupo)->get();
                     //Año del curso
                     $curso_anio = Convenio::select('curso_academico_inicio')->where('cod_convenio', $num_convenio[0]->cod_convenio)->get();
                     //Nombre del tutor
@@ -304,6 +306,12 @@ class ControladorTutorFCT extends Controller
     }
 
 
+    /**
+     * Esta funcion devuelve los anexos de un tutor menos el anexo3
+     *
+     * @param Request $val
+     * @return void
+     */
     public function crudAnexos(Request $val)
     {
         $dni_tutor = $val->get('dni_tutor');
@@ -322,19 +330,20 @@ class ControladorTutorFCT extends Controller
                     $directorios[] = $file;
                     //dividir un nombre por su separador
                     $datosAux = explode("_", $file);
-                    $firma_empresa=Convenio::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->get();
-                    $cod_centro=Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
-                    $firma_centro=Convenio::select('firmado_director')->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
 
-                    //meter ese nombre en un array asociativo
-                    $datos[] = [
-                        'nombre' => $datosAux[0],
-                        'codigo' => $datosAux[1],
-                        'empresa' => $datosAux[2],
-                        'firma_empresa'=>$firma_empresa[0]->firmado_empresa,
-                        'firma_centro'=>$firma_centro[0]->firmado_director
+                    $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
+                    $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
 
-                    ];
+                    if (strcmp($file, "Anexo1") !== 0) {
+                        //meter ese nombre en un array asociativo
+                        $datos[] = [
+                            'nombre' => $datosAux[0],
+                            'codigo' => $datosAux[3],
+                            'empresa' => $datosAux[2],
+                            'firma_empresa' => $firma_empresa[0]->firmado_empresa,
+                            'firma_centro' => $firma_centro[0]->firmado_director
+                        ];
+                    }
                 }
             }
             closedir($handler);
