@@ -333,8 +333,7 @@ class ControladorTutorFCT extends Controller
                     //dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
-                    $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
-                    $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
+
 
                     //ANEXO 0//////////////////////////////////////
 
@@ -342,11 +341,16 @@ class ControladorTutorFCT extends Controller
                     //ANEXO 1//////////////////////////////////////
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
+
+                            $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $empresa_nombre=Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
+
                             //meter ese nombre en un array asociativo
                             $datos[] = [
                                 'nombre' => $datosAux[0],
                                 'codigo' => $file,
-                                'empresa' => $datosAux[2],
+                                'empresa' => $empresa_nombre[0]->nombre,
                                 'firma_empresa' => $firma_empresa[0]->firmado_empresa,
                                 'firma_centro' => $firma_centro[0]->firmado_director
                             ];
