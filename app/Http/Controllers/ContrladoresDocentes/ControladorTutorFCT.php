@@ -159,16 +159,15 @@ class ControladorTutorFCT extends Controller
             try {
                 foreach ($empresas_id as $id) {
 
-                    //Nombre de la empresa
-                    $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
-
                     $rutaOriginal = 'anexos/plantillas/Anexo1';
-                    $AuxNombre = '_' . Str::random(5) . '_' . $dni_tutor . '_' . $nombre_empresa[0]->nombre . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year;
+                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year;
                     //$rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
                     $rutaDestino = $dni_tutor . '/Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
 
+                    //Nombre de la empresa
+                    $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
                     //Numero de Convenio
@@ -307,39 +306,41 @@ class ControladorTutorFCT extends Controller
 
     public function crudAnexos(Request $val)
     {
-        $dni_tutor=$val->get('dni_tutor');
-        $directorios=Array();
-        $datos = Array();
-        $datosAux=Array();
+        $dni_tutor = $val->get('dni_tutor');
+        $directorios = array();
+        $datos = array();
+        $datosAux = array();
 
 
         //Ver los nombres de los archivos de una carpeta
-        $thefolder = "/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/".$dni_tutor;
+        $thefolder = "/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/" . $dni_tutor;
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
 
                 //Comparar string en php
-                if(strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0){
-                    $directorios[]=$file;
+                if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
+                    $directorios[] = $file;
                     //dividir un nombre por su separador
-                    $datosAux=explode("_", $file);
+                    $datosAux = explode("_", $file);
+                    $firma_empresa=Convenio::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->get();
+                    $cod_centro=Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
+                    $firma_centro=Convenio::select('firmado_director')->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
+
                     //meter ese nombre en un array asociativo
-                    $datos=[
-                     'nombre'=>$datosAux[0],
-                     'codigo'=>$datosAux[1],
-                     'empresa'=>$datosAux[3],
-                     //Laura, usa el nombre de la empresa para sacar el ID para las firmas
-                     //Usa el dni del tutor para sacar el cod del centro para las firmas
-                      //Usa la tabla convenio para sacar las firmas
+                    $datos[] = [
+                        'nombre' => $datosAux[0],
+                        'codigo' => $datosAux[1],
+                        'empresa' => $datosAux[2],
+                        'firma_empresa'=>$firma_empresa[0]->firmado_empresa,
+                        'firma_centro'=>$firma_centro[0]->firmado_director
+
                     ];
                 }
-
             }
             closedir($handler);
         }
 
         return response($datos);
-
     }
 
 
