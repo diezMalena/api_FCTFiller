@@ -31,9 +31,9 @@ Route::group(['middleware' => ['Cors']], function () {
 });
 
 //Justo lo que devuelve un archivo, no funciona en el middleware
-Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 Route::any('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::any('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
+Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {

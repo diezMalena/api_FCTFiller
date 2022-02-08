@@ -35,6 +35,7 @@ use Illuminate\Support\Str;
 use App\Models\Tutoria;
 
 
+
 class ControladorTutorFCT extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
@@ -130,8 +131,6 @@ class ControladorTutorFCT extends Controller
     }
 
 
-
-
     /**
      * Esta funcion nos permite rellenar el Anexo 1
      *@author LauraM <lauramorenoramos97@gmail.com>
@@ -150,7 +149,7 @@ class ControladorTutorFCT extends Controller
 
         //***************************************ZIP********************************************** */
         $zip = new ZipArchive;
-        $nombreZip = 'tmp/anexos/myzip_' . $AuxNombre . '.zip';
+        $nombreZip = 'tmp'.DIRECTORY_SEPARATOR.'anexos'.DIRECTORY_SEPARATOR.'myzip_' . $AuxNombre . '.zip';
         //******************************************************************************************** */
 
 
@@ -173,10 +172,10 @@ class ControladorTutorFCT extends Controller
                     //Codigo Ciclo
                     $cod_ciclo = Grupo::select('cod')->where('nombre_ciclo',  $nombre_ciclo[0]->nombre_ciclo)->get();
 
-                    $rutaOriginal = 'anexos/plantillas/Anexo1';
+                    $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
                     $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
                     //$rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
-                    $rutaDestino = $dni_tutor . '/Anexo1' . $AuxNombre;
+                    $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
 
@@ -247,7 +246,7 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //Convertir en Zip
-                $nombreZip = $this->montarZip('anexos/rellenos/anexo1', $zip, $nombreZip);
+                $nombreZip = $this->montarZip('anexos'.DIRECTORY_SEPARATOR.'rellenos'.DIRECTORY_SEPARATOR.'anexo1', $zip, $nombreZip);
 
                 return response()->download(public_path($nombreZip));
             } catch (Exception $e) {
@@ -323,7 +322,8 @@ class ControladorTutorFCT extends Controller
 
 
         //Ver los nombres de los archivos de una carpeta
-        $thefolder = "/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/" . $dni_tutor;
+        //CREAR CONSTANTE RELATIVA DE LA RUTA
+        $thefolder = public_path().DIRECTORY_SEPARATOR.$dni_tutor;
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
 
@@ -333,10 +333,7 @@ class ControladorTutorFCT extends Controller
                     //dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
-
-
                     //ANEXO 0//////////////////////////////////////
-
 
                     //ANEXO 1//////////////////////////////////////
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
@@ -344,7 +341,7 @@ class ControladorTutorFCT extends Controller
 
                             $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
                             $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
-                            $empresa_nombre=Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
+                            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
 
                             //meter ese nombre en un array asociativo
                             $datos[] = [
@@ -374,7 +371,7 @@ class ControladorTutorFCT extends Controller
     {
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
-        $rutaOriginal = $dni_tutor . '/' . $cod_anexo;
+        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo;
 
         return response()->download(public_path($rutaOriginal));
     }
@@ -390,13 +387,12 @@ class ControladorTutorFCT extends Controller
     {
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
-        $ruta = '/home/alumno/Escritorio/html/DESAFIOS/Desafio 3/api_FCTFiller/public/';
+
 
         //Eliminar un fichero
-        unlink($ruta . $dni_tutor . '/' . $cod_anexo);
+        unlink(public_path(). DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }
-
 
 
     /**
@@ -411,7 +407,9 @@ class ControladorTutorFCT extends Controller
 
         $zip = new ZipArchive;
         $AuxNombre = Str::random(7);
-        $nombreZip = 'tmp/anexos/myzip_' . $AuxNombre . '.zip';
+
+        $nombreZip ='tmp'.DIRECTORY_SEPARATOR.'anexos'.DIRECTORY_SEPARATOR.'myzip_'.$AuxNombre.'.zip';
+
 
         //Convertir en Zip
         $nombreZip = $this->montarZipCrud($dni_tutor, $zip, $nombreZip);
