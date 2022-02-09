@@ -26,15 +26,13 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
-    Route::any('/listarAnexos', [ControladorTutorFCT::class, 'verAnexos']);
-    Route::any('/eliminarAnexo', [ControladorTutorFCT::class, 'eliminarAnexo']);
 });
 
-//Justo lo que devuelve un archivo, no funciona en el middleware
+Route::any('/listarAnexos', [ControladorTutorFCT::class, 'verAnexos']);
 Route::any('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::any('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
 Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
-
+Route::any('/eliminarAnexo', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,

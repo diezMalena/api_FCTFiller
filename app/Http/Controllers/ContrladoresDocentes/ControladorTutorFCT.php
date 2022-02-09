@@ -172,9 +172,10 @@ class ControladorTutorFCT extends Controller
                     //Codigo Ciclo
                     $cod_ciclo = Grupo::select('cod')->where('nombre_ciclo',  $nombre_ciclo[0]->nombre_ciclo)->get();
 
+
+                    //ARCHIVO
                     $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
                     $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
-                    //$rutaDestino = 'anexos/rellenos/anexo1/Anexo1' . $AuxNombre;
                     $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
@@ -371,9 +372,9 @@ class ControladorTutorFCT extends Controller
     {
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
-        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo;
+        $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
 
-        return response()->download(public_path($rutaOriginal));
+         return response()->download($rutaOriginal);
     }
 
 
