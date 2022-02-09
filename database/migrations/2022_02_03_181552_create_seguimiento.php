@@ -21,6 +21,7 @@ class CreateSeguimiento extends Migration
         Schema::create('seguimiento', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('id_fct');
+            $table->unsignedBigInteger('orden_jornada');
             $table->date('fecha_jornada');
             $table->string('actividades');
             $table->string('observaciones');

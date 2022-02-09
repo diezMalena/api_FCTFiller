@@ -17,6 +17,7 @@ class Seguimiento extends Model
 
     protected $fillable = [
         'id_fct',
+        'orden_jornada',
         'fecha_jornada', //Cuando el alumno hizo las actividades
         'actividades',
         'observaciones',
