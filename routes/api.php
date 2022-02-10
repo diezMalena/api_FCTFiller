@@ -3,6 +3,7 @@
 use App\Http\Controllers\ContrladoresDocentes\ControladorGenericoDocente;
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
+use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 /*
@@ -34,6 +35,17 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
     Route::put('update_representante', [ControladorTutorFCT::class, 'updateRepresentante']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
+
+    Route::any('/addJornada',[ControladorAlumno::class,'addJornada']);
+    Route::any('/devolverDatosAlumno',[ControladorAlumno::class,'devolverDatosAlumno']);
+    Route::any('/gestionarDepartamento',[ControladorAlumno::class,'gestionarDepartamento']);
+    Route::put('/addDepartamento',[ControladorAlumno::class,'addDepartamento']);
+    Route::post('/sumatorioHorasTotales', [ControladorAlumno::class, 'sumatorioHorasTotales']);
+    Route::post('/devolverJornadas', [ControladorAlumno::class, 'devolverJornadas']);
+    Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
+    Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
+    Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
+
 
 });
 
