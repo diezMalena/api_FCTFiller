@@ -49,14 +49,7 @@ class ControladorTutorFCT extends Controller
      */
     public function solicitarAlumnosSinEmpresa(string $dni)
     {
-        $hoy = date("Y-m-d H:i:s");
-        $cursoAcademico = AuxCursoAcademico::where([['fecha_inicio', '<', $hoy], ['fecha_fin', '>', $hoy]])
-            ->get()->first();
-        if ($cursoAcademico) {
-            $cursoAcademico = $cursoAcademico->cod_curso;
-        } else {
-            $cursoAcademico = AuxCursoAcademico::where('id', AuxCursoAcademico::max('id'))->get()->first()->cod_curso;
-        }
+        $cursoAcademico = Auxiliar::obtenerCursoAcademico();
         $alumnosEnEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
             ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
             ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
@@ -103,28 +96,86 @@ class ControladorTutorFCT extends Controller
             ->get();
 
         foreach ($empresas as  $empresa) {
+            //Aquí rocojo el nombre del responsable de esa empresa
+            $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->select('trabajador.nombre')
+                ->get()[0]->nombre;
+            $empresa->responsable = $responsable;
+            //Aquí rocojo el dni del responsable de esa empresa
+            $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->select('trabajador.dni')
+                ->get()[0]->dni;
+            $empresa->dni_responsable = $dni_responsable;
+            //Aquí rocojo los alumnos asociados a esa empresa
             $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
                 ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
                 ->join('fct', 'fct.dni_alumno', '=', 'alumno.dni')
                 ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
                 ->where([['tutoria.dni_profesor', $dni], ['fct.id_empresa', $empresa->id]])
-                ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct'])
+                ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct', 'fct.horario', 'fct.fecha_ini', 'fct.fecha_fin'])
                 ->get();
             $empresa->alumnos = $alumnos;
         }
 
         return response()->json($empresas, 200);
     }
+
     /**
      *  Esta función se encarga de actualizar la empresa a la que están asignados
      *  los alumnos.
      *
      *  @author alvaro <alvarosantosmartin6@gmail.com>
-     *  @param $empresas son las empresas
+     *  @param $request tiene las empresas con los datos del id, el responsable, y un array con sus alumnos asiganados
+     *  que estos tienen dentro si van a fct, su dni, fecha de inicio de las prácticas y de finalización, el horario.
+     *  También tiene el array de alumnos sin empresa.
      */
     public function actualizarEmpresaAsignadaAlumno(Request $request)
     {
-        return response()->json($request, 200);
+        try {
+            $cursoAcademico = Auxiliar::obtenerCursoAcademico();
+            $alumnos_solos = $request->get('alumnos_solos');
+            $empresas = $request->get('empresas');
+            // error_log(print_r($alumnos_solos, true));
+            //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
+            foreach ($alumnos_solos as $alumno) {
+                Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+
+            }
+
+            //este for mete el nuevo nombre del responsable, se haya cambiado o no.
+            //elimina el registro de la tabla fct de los alumnos que están en una empresa y
+            //los inserta de nuevo con los cambios que se han hecho.
+            foreach ($empresas as $empresa) {
+                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['responsable']]);
+                $alumnos = $empresa['alumnos'];
+                foreach ($alumnos as $alumno) {
+                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+
+                    Fct::create([
+                        'id_empresa' => $empresa['id'],
+                        'dni_alumno' => $alumno['dni'],
+                        'dni_tutor_empresa' => '',
+                        'curso_academico' => $cursoAcademico,
+                        'horario' => $alumno['horario'],
+                        'num_horas' => '400',
+                        'fecha_ini' => $alumno['fecha_ini'],
+                        'fecha_fin' => $alumno['fecha_fin'],
+                        'firmado_director' => '0',
+                        'firmado_empresa' => '0',
+                        'ruta_anexo' => ''
+                    ]);
+                }
+            }
+            return response()->json(['message' => 'Actualizacion completada'], 200);
+        } catch (Exception $th) {
+            return response()->json(['message' => $th->getMessage()], 400);
+        }
+
+
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Auxiliar;
 
+use App\Models\AuxCursoAcademico;
 use Illuminate\Database\Eloquent\Model;
 
 class Auxiliar
@@ -65,5 +66,25 @@ class Auxiliar
                 $superArray[$prefijoClave . '.' . $key] = $value;
             }
         }
+    }
+
+    /**
+     *  Esta función devuelve el curso academico actual, y si aún no está en la base de datos, devuelve
+     *  el último curso.
+     *
+     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
+     *  @param $dni es el dni del tutor
+     */
+    public static function obtenerCursoAcademico(){
+        $hoy = date("Y-m-d H:i:s");
+        $cursoAcademico = AuxCursoAcademico::where([['fecha_inicio', '<', $hoy], ['fecha_fin', '>', $hoy]])
+            ->get()->first();
+
+        if ($cursoAcademico) {
+            $cursoAcademico = $cursoAcademico->cod_curso;
+        } else {
+            $cursoAcademico = AuxCursoAcademico::where('id', AuxCursoAcademico::max('id'))->get()->first()->cod_curso;
+        }
+        return $cursoAcademico;
     }
 }
