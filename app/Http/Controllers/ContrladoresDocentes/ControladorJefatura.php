@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\ContrladoresDocentes;
 
+use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
 use App\Models\CentroEstudios;
+use App\Models\Grupo;
+use App\Models\Matricula;
+use App\Models\OfertaGrupo;
 use App\Models\Profesor;
+use App\Models\Tutoria;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ControladorJefatura extends Controller
 {
     const CABECERA_ALUMNOS = ["ALUMNO", "APELLIDOS", "NOMBRE", "SEXO", "DNI", "NIE", "FECHA_NACIMIENTO", "LOCALIDAD_NACIMIENTO", "PROVINCIA_NACIMIENTO", "NOMBRE_CORRESPONDENCIA", "DOMICILIO", "LOCALIDAD", "PROVINCIA", "TELEFONO", "MOVIL", "CODIGO_POSTAL", "TUTOR1", "DNI_TUTOR1", "TUTOR2", "DNI_TUTOR2", "PAIS", "NACIONALIDAD", "EMAIL_ALUMNO", "EMAIL_TUTOR2", "EMAIL_TUTOR1", "TELEFONOTUTOR1", "TELEFONOTUTOR2", "MOVILTUTOR1", "MOVILTUTOR2", "APELLIDO1", "APELLIDO2", "TIPODOM", "NTUTOR1", "NTUTOR2", "NSS"];
-    //const CABECERA_MATERIAS = ["MATERIA", "DESCRIPCION", "ABREVIATURA", "DEPARTAMENTO", "CURSO"];
     const CABECERA_MATRICULAS = ["ALUMNO", "APELLIDOS", "NOMBRE", "MATRICULA", "ETAPA", "ANNO", "TIPO", "ESTUDIOS", "GRUPO", "REPETIDOR", "FECHAMATRICULA", "CENTRO", "PROCEDENCIA", "ESTADOMATRICULA", "FECHARESMATRICULA", "NUM_EXP_CENTRO", "PROGRAMA_2"];
-    //const CABECERA_NOTAS = [];
     const CABECERA_PROFESORES = ["CODIGO", "APELLIDOS", "NOMBRE", "NRP", "DNI", "ABREVIATURA", "FECHA_NACIMIENTO", "SEXO", "TITULO", "DOMICILIO", "LOCALIDAD", "CODIGO_POSTAL", "PROVINCIA", "TELEFONO_RP", "ESPECIALIDAD", "CUERPO", "DEPARTAMENTO", "FECHA_ALTA_CENTRO", "FECHA_BAJA_CENTRO", "EMAIL", "TELEFONO"];
     const CABECERA_UNIDADES = ["ANNO", "GRUPO", "ESTUDIO", "CURSO", "TUTOR"];
 
@@ -42,12 +46,11 @@ class ControladorJefatura extends Controller
             $nombreFichero = $item['file_name'];
             $fichero = $item['file_content'];
 
-
             //Si se guarda el fichero satisfactoriamente, se comprueba
             //si el fichero es íntegro
             if ($this->guardarFichero($nombreCaja, $fichero)) {
                 $resultado = $this->comprobarFichero($nombreCaja, $nombreFichero);
-
+                //error_log($resultado);
                 //Si el resultado es distinto de cero, el fichero no está bien
                 //por lo tanto, se mete el resultado en errores
                 if ($resultado != 0) {
@@ -68,6 +71,8 @@ class ControladorJefatura extends Controller
 
                 //Borramos el fichero al final
                 $this->borrarFichero($this->getCSVPathFile($nombreCaja));
+            } else {
+                $errores[$nombreCaja] = 'No se pudo guardar el fichero en el servidor';
             }
         }
         #endregion
@@ -99,8 +104,9 @@ class ControladorJefatura extends Controller
     {
 
         $resultado = false;
-
+        //error_log($nombreCaja);
         switch ($nombreCaja) {
+
             case 'alumnos':
                 $resultado = $this->procesarFicheroABBDDAlumnos($nombreCaja);
                 break;
@@ -218,27 +224,28 @@ class ControladorJefatura extends Controller
                         //error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
                             //Se recoge el DNI, si está vacío, se recoge el NIE
-                            $dni = trim($vec[array_search('DNI', self::CABECERA_ALUMNOS)] != '' ?  $vec[array_search('DNI', self::CABECERA_ALUMNOS)] : $vec[array_search('NIE', self::CABECERA_ALUMNOS)]);
+                            $dni = trim($vec[array_search('DNI', self::CABECERA_ALUMNOS)] != '' ?  $vec[array_search('DNI', self::CABECERA_ALUMNOS)] : $vec[array_search('NIE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\"");
                             Alumno::create([
                                 'dni' => $dni,
+                                'cod_alumno' => trim($vec[array_search('ALUMNO', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 //Para mantener la integridad de la base de datos, si el correo
                                 //está vacío, se genera uno con el DNI
-                                'email' => trim($vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] != '' ? $vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] : $dni . '@fctfiller.com'),
+                                'email' => trim($vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] != '' ? $vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
                                 //Se debería crear una contraseña por defecto para todos los usuarios dados de alta automáticamente
                                 'password' => md5('12345'),
-                                'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_ALUMNOS)]),
-                                'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_ALUMNOS)]),
-                                'provincia' => trim($vec[array_search('PROVINCIA', self::CABECERA_ALUMNOS)]),
-                                'localidad' => trim($vec[array_search('LOCALIDAD', self::CABECERA_ALUMNOS)]),
+                                'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
+                                'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
+                                'provincia' => trim($vec[array_search('PROVINCIA', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
+                                'localidad' => trim($vec[array_search('LOCALIDAD', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'va_a_fct' => '0'
                             ]);
                         } catch (Exception $th) {
-                            if(str_contains($th->getMessage(), 'Integrity')) {
+                            if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
                             } else {
-                                $errores = $errores .'Error en línea'. $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
+                                $errores = $errores . 'Error en línea' . $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
                             }
-                            //error_log($th->getMessage());
+                            ////error_log($th->getMessage());
                         }
                     }
                 }
@@ -249,13 +256,11 @@ class ControladorJefatura extends Controller
             return 'Error al procesar el fichero.';
         }
 
-        if($errores != '') {
+        if ($errores != '') {
             return $errores;
         } else {
             return 0;
         }
-
-
     }
 
     // private function procesarFicheroABBDDMaterias($nombreCaja)
@@ -263,15 +268,82 @@ class ControladorJefatura extends Controller
     //     return 0;
     // }
 
-    private function procesarFicheroABBDDMatriculas($nombreCaja)
+
+    /**
+     * Método que procesa el fichero de Matriculas.csv e inserta su contenido en BBDD (tabla ??)
+     *
+     * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
+     * @param string $DNILogueado Por defecto, vacío, representa el DNI de la persona que se ha loguedo en el sistema.
+     * Se utilizará para obtener el centro de estudios en el cual insertar a los profesores de este CSV
+     * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
+     *
+     * @author David Sánchez Barragán
+     */
+    private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado = '')
     {
-        return 0;
+        $numLinea = 0;
+        $filePath = $this->getCSVPathFile($nombreCaja);
+        $errores = '';
+        if ($file = fopen($filePath, "r")) {
+            while (!feof($file)) {
+                $vec = explode("\t", fgets($file));
+
+                if ($numLinea != 0) {
+                    if (count($vec) > 1) {
+                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
+                        try {
+                            //Se DEBE sustituir esta variable con una select al centro de estudios
+                            //según el DNI de la persona que se ha logueado.
+                            //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
+                            //hacer solo la búsqueda en la tabla profesores.
+                            //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
+                            //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""));
+
+                            $codNivel = explode(' ', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))[2];
+                            $nombreCiclo = strtolower(explode('-', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)]), " \t\n\r\0\x0B\"")[1]);
+                            $codGrupo = Grupo::where([
+                                ['cod_nivel', $codNivel],
+                                ['nombre_ciclo', $nombreCiclo]
+                            ])->get()[0]->cod;
+
+                            $anio = trim($vec[array_search('ANNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\"");
+
+                            Matricula::create([
+                                'cod' => trim($vec[array_search('MATRICULA', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""),
+                                'cod_centro' => $codCentroEstudios,
+                                'dni_alumno' => $dniAlumno,
+                                'cod_grupo' => $codGrupo,
+                                'curso_academico' => Auxiliar::obtenerCursoAcademicoPorAnio($anio)
+                            ]);
+                        } catch (Exception $th) {
+                            if (str_contains($th->getMessage(), 'Integrity')) {
+                                $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
+                            } else {
+                                $errores = $errores . 'Error en línea' . $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
+                            }
+                        }
+                    }
+                }
+                $numLinea++;
+            }
+            fclose($file);
+        } else {
+            return 'Error al procesar el fichero.';
+        }
+
+        if ($errores != '') {
+            return $errores;
+        } else {
+            return 0;
+        }
     }
 
-    private function procesarFicheroABBDDNotas($nombreCaja)
-    {
-        return 0;
-    }
+    // private function procesarFicheroABBDDNotas($nombreCaja)
+    // {
+    //     return 0;
+    // }
 
     /**
      * Método que procesa el fichero de Profesores.csv e inserta su contenido en BBDD (tabla Profesor)
@@ -294,9 +366,9 @@ class ControladorJefatura extends Controller
 
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        //error_log('Lo proceso. La línea es la ' . $numLinea);
+                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
-                            $dni = trim($vec[array_search('DNI', self::CABECERA_PROFESORES)]);
+                            $dni = trim($vec[array_search('DNI', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\"");
 
                             //Se DEBE sustituir esta variable con una select al centro de estudios
                             //según el DNI de la persona que se ha logueado.
@@ -308,18 +380,17 @@ class ControladorJefatura extends Controller
 
                             Profesor::create([
                                 'dni' => $dni,
-                                'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com'),
+                                'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
                                 'password' => md5('12345'),
-                                'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_PROFESORES)]),
-                                'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)]),
+                                'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
+                                'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'cod_centro_estudios' => $codCentroEstudios
                             ]);
-
                         } catch (Exception $th) {
-                            if(str_contains($th->getMessage(), 'Integrity')) {
+                            if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
                             } else {
-                                $errores = $errores .'Error en línea'. $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
+                                $errores = $errores . 'Error en línea' . $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
                             }
                         }
                     }
@@ -331,27 +402,26 @@ class ControladorJefatura extends Controller
             return 'Error al procesar el fichero.';
         }
 
-        if($errores != '') {
+        if ($errores != '') {
             return $errores;
         } else {
             return 0;
         }
-
-
     }
 
     /**
-     * Método que procesa el fichero de Profesores.csv e inserta su contenido en BBDD (tabla Profesor)
+     * Método que procesa el fichero de Unidades.csv e inserta su contenido en BBDD (tablas OfertaGrupo y Tutoria)
      *
      * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
      * @param string $DNILogueado Por defecto, vacío, representa el DNI de la persona que se ha loguedo en el sistema.
-     * Se utilizará para obtener el centro de estudios en el cual insertar a los profesores de este CSV
+     * Se utilizará para obtener el centro de estudios en el cual insertar a los grupos de este CSV
      * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDUnidades($nombreCaja)
+    private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado = '')
     {
+        //error_log('hola');
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
         $errores = '';
@@ -361,10 +431,8 @@ class ControladorJefatura extends Controller
 
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        //error_log('Lo proceso. La línea es la ' . $numLinea);
+                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
-                            $dni = trim($vec[array_search('DNI', self::CABECERA_PROFESORES)]);
-
                             //Se DEBE sustituir esta variable con una select al centro de estudios
                             //según el DNI de la persona que se ha logueado.
                             //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
@@ -372,20 +440,56 @@ class ControladorJefatura extends Controller
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            //error_log('Cod centro estudios: ' . $codCentroEstudios);
 
-                            // Grupo::create([
-                            //     'cod' => '2DAM',
-                            //     'nombre_largo' => '2º Desarrollo de Aplicaciones Multiplataforma (LOE)',
-                            //     'nombre_ciclo' => 'Desarrollo de Aplicaciones Multiplataforma',
-                            //     'cod_familia_profesional' => 4,
-                            //     'cod_nivel' => 'CFGS'
-                            // ]);
+                            //Se obtiene el nombre del ciclo (columna ESTUDIO), separando la cadena por
+                            //paréntesis. Nos quedamos con la cadena central y la buscamos en la tabla.
+                            $estudio =  preg_split("(\(|\))", trim($vec[array_search('ESTUDIO', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\""));
+                            //error_log('estudio: ' . print_r($estudio, true));
 
+                            //return response()->json(200);
+
+                            //Esta consulta se hace "a pelo" porque no coge la funcion lower de SQL
+                            //$codGrupo = Grupo::where('lower(nombre_ciclo)', $estudio)->get()[0]->cod;
+                            $codGrupo = DB::select('select cod from grupo
+                            where lower(nombre_ciclo) = ' . "'" . strtolower($estudio[1]) . "'
+                            and cod_nivel = '". $estudio[0]."'")[0]->cod;
+
+
+                            OfertaGrupo::create([
+                                'cod_centro' => $codCentroEstudios,
+                                'cod_grupo' => $codGrupo
+                            ]);
+
+                            $anio = trim($vec[array_search('ANNO', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\"");
+
+                            $profesor = explode(",", str_replace("\"", "", trim($vec[array_search('TUTOR', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\"")));
+                            //error_log(print_r($profesor, true));
+                            // error_log(trim($profesor[1], " \t\n\r\0\x0B\""));
+                            // error_log(trim($profesor[0], " \t\n\r\0\x0B\""));
+                            // error_log($codCentroEstudios);
+
+                            $dniProfesor = Profesor::where(
+                                [
+                                    ['nombre', '=', trim($profesor[1], " \t\n\r\0\x0B\"")],
+                                    ['apellidos', '=', trim($profesor[0], " \t\n\r\0\x0B\"")],
+                                    ['cod_centro_estudios', '=', $codCentroEstudios]
+                                ]
+                            )->get()[0]->dni;
+                            error_log($dniProfesor);
+
+                            Tutoria::create([
+                                'dni_profesor' => $dniProfesor,
+                                'cod_grupo' => $codGrupo,
+                                'curso_academico' => Auxiliar::obtenerCursoAcademicoPorAnio($anio),
+                                'cod_centro' => $codCentroEstudios
+                            ]);
                         } catch (Exception $th) {
-                            if(str_contains($th->getMessage(), 'Integrity')) {
+                            error_log($th);
+                            if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
                             } else {
-                                $errores = $errores .'Error en línea'. $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
+                                $errores = $errores . 'Error en línea' . $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
                             }
                         }
                     }
@@ -397,13 +501,11 @@ class ControladorJefatura extends Controller
             return 'Error al procesar el fichero.';
         }
 
-        if($errores != '') {
+        if ($errores != '') {
             return $errores;
         } else {
             return 0;
         }
-
-
     }
 
 

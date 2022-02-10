@@ -2,7 +2,9 @@
 
 namespace App\Auxiliar;
 
+use App\Models\AuxCursoAcademico;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Auxiliar
 {
@@ -65,5 +67,17 @@ class Auxiliar
                 $superArray[$prefijoClave . '.' . $key] = $value;
             }
         }
+    }
+
+    /**
+     * Obtiene el id del curso académico según el año pasado por parámetro
+     *
+     * @param int $anio Año del cual se quiere conocer el curso académico
+     * @return string Id del curso académico deseado
+     * @author David Sánchez Barragán
+     */
+    public static function obtenerCursoAcademicoPorAnio($anio){
+        //Select realizada "a pelo" para utilizar la función YEAR() de MySQL
+        return DB::select("select cod_curso from aux_curso_academico where year(fecha_inicio) = '" . $anio . "'")[0]->cod_curso ;
     }
 }
