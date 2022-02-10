@@ -299,10 +299,11 @@ class ControladorJefatura extends Controller
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""));
+                            $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))->get()[0]->dni;
 
                             $codNivel = explode(' ', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))[2];
-                            $nombreCiclo = strtolower(explode('-', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)]), " \t\n\r\0\x0B\"")[1]);
+                            $nombreCiclo = trim(strtolower(explode('-', $vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)])[1]));
+
                             $codGrupo = Grupo::where([
                                 ['cod_nivel', $codNivel],
                                 ['nombre_ciclo', $nombreCiclo]
@@ -310,13 +311,20 @@ class ControladorJefatura extends Controller
 
                             $anio = trim($vec[array_search('ANNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\"");
 
+                            $matricula = trim($vec[array_search('MATRICULA', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\"");
+                            //error_log($matricula);
+
+                            $cursoAcademico = Auxiliar::obtenerCursoAcademicoPorAnio($anio);
+
+
                             Matricula::create([
-                                'cod' => trim($vec[array_search('MATRICULA', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""),
+                                'cod' => $matricula,
                                 'cod_centro' => $codCentroEstudios,
                                 'dni_alumno' => $dniAlumno,
                                 'cod_grupo' => $codGrupo,
-                                'curso_academico' => Auxiliar::obtenerCursoAcademicoPorAnio($anio)
+                                'curso_academico' => $cursoAcademico
                             ]);
+
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
