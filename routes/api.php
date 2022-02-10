@@ -28,7 +28,13 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
     Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
-    Route::get('solicitar_empresas/tutor={dniProfesor}', [ControladorGenericoDocente::class, 'getEmpresasFromProfesor']);
+
+    //CRUD Empresas
+    Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
+    Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
+    Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
+    Route::put('update_representante', [ControladorTutorFCT::class, 'updateRepresentante']);
+    Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
 });
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
