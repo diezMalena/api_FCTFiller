@@ -428,7 +428,6 @@ class ControladorTutorFCT extends Controller
 
         $nombreZip ='tmp'.DIRECTORY_SEPARATOR.'anexos'.DIRECTORY_SEPARATOR.'myzip_'.$AuxNombre.'.zip';
 
-
         //Convertir en Zip
         $nombreZip = $this->montarZipCrud($dni_tutor, $zip, $nombreZip);
 
@@ -451,18 +450,17 @@ class ControladorTutorFCT extends Controller
         $anexo = '';
 
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
-
             foreach ($files as $value) {
-
                 ///////////////ANEXO1//////////////////////////
                 //saco el año  del fichero con un substring
-                $fechaArchivo = substr($value, 90, 4);
+                $fechaArchivo = substr($value, 91, 4);
+
                 //saco el tipo de anexo con un substring
                 $anexo = substr($value, 57, 6);
-
                 if (strcmp($anexo, "Anexo1") == 0) {
                     if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
                         $relativeNameZipFile = basename($value);
+                        error_log($relativeNameZipFile);
                         $zip->addFile($value, $relativeNameZipFile);
                     }
                 }
