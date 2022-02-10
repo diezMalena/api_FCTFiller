@@ -36,6 +36,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/devolverJornadas', [ControladorAlumno::class, 'devolverJornadas']);
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
+    Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
 
 
 });

@@ -3,14 +3,25 @@
 namespace App\Http\Controllers\ControladorAlumnos;
 
 use App\Http\Controllers\Controller;
+use App\Models\Alumno;
+use App\Models\CentroEstudios;
+use App\Models\Empresa;
+use App\Models\FamiliaProfesional;
 use App\Models\Fct;
+use App\Models\NivelEstudios;
+use App\Models\Profesor;
 use App\Models\Seguimiento;
+use App\Models\Trabajador;
+use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
+use Carbon\Carbon;
+use App\Auxiliar\Parametros as AuxiliarParametros;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 class ControladorAlumno extends Controller
 {
@@ -209,5 +220,211 @@ class ControladorAlumno extends Controller
         }catch(Exception $ex){
             return response()->json(['message'=>'Error, la jornada no se ha actualizado.'],450);
         }
+    }
+
+    /**
+     * Mètodo que genera el Anexo III con los datos necesarios extraídos de la BBDD.
+     * @author Malena.
+     */
+    public function generarAnexo3(Request $req){
+        $dni_alumno = $req->get('dni');
+        //error_log($dni_alumno);
+
+        //Primero, vamos a sacar el centro donde está el alumno:
+        $centro = $this->centroDelAlumno($dni_alumno)[0];
+        //Sacamos el nombre del alumno:
+        $alumno = $this->getNombreAlumno($dni_alumno)[0];
+        //Sacamos el nombre del tutor del alumno:
+        $tutor = $this->getNombreTutor($dni_alumno)[0];
+        //Sacamos la familia profesional que le corresponde al alumno:
+        $familia_profesional = $this->getFamiliaProfesional($dni_alumno)[0];
+        //Sacamos el nombre del ciclo en el que esta matriculado el alumno:
+        $ciclo = $this->getCicloFormativo($dni_alumno)[0];
+        //Sacamos el nombre de la empresa en la que esta el alumno haciendo las practicas:
+        $empresa = $this->getNombreEmpresa($dni_alumno)[0];
+        //Sacamos el nombre del tutor de la empresa al que esta asignado el alumno:
+        $tutor_empresa = $this->getNombreTutorEmpresa($dni_alumno)[0];
+        //Sacamos los registros que necesitamos de la tabla FCT:
+        $fct = $this->getDatosFct($dni_alumno)[0];
+        //Cogemos las ultimas 5 jornadas, para ponerlas en el documento:
+        $jornadas = $this->las5UltimasJornadas($dni_alumno);
+
+        //Construyo el array con todos los datos y ss correspondientes prefijos.
+        $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional','ciclo','empresa','tutor_empresa','fct'];
+        $auxDatos = [$centro, $alumno, $tutor, $familia_profesional,$ciclo,$empresa,$tutor_empresa,$fct];
+        $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+        //Recorro las 5 jornadas, y les establezco su valor correspondiente en el documento.
+        for($i = 0; $i < count($jornadas); $i++){
+            $datos['jornada'.$i.'.actividades'] = $jornadas[$i]->actividades;
+            $datos['jornada'.$i.'.tiempo_empleado'] = $jornadas[$i]->tiempo_empleado;
+            $datos['jornada'.$i.'.observaciones'] = $jornadas[$i]->observaciones;
+        }
+        //Nombre de la plantilla:
+        $nombrePlantilla = 'anexo3';
+
+        //La ruta donde se va a almacenar el documento:
+        $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
+
+        //Establezco la fecha para ponerlo en el nombre del documento:
+        $fecha = Carbon::now();
+        $fecha_doc = $fecha->day . '_' . AuxiliarParametros::MESES[$fecha->month] . '_' . $fecha->year % 100;
+
+        //De momento, formare el nombre del documento con el dni del alumno + fecha.
+        $rutaDestino = 'anexos/rellenos/anexo3/' . $nombrePlantilla . '-' . $dni_alumno . '-' . $fecha_doc . '.docx';
+
+        //Creo la plantilla y la relleno con los valores establecidos anteriormente.
+        $template = new TemplateProcessor($rutaOrigen);
+        $template->setValues($datos);
+        $template->saveAs($rutaDestino);
+
+        return response()->json(['message'=>'Se ha generado el documento.'],200);
+    }
+
+
+    /**
+     * Método que recoge los campos necesarios del centro de estudios de la BBDD.
+     * @return $centro.
+     * @author Malena.
+     */
+    public function centroDelAlumno(string $dni_alumno){
+        $centro = CentroEstudios::join('matricula', 'centro_estudios.cod','=','matricula.cod_centro')
+        ->select('centro_estudios.cif AS cif', 'centro_estudios.nombre AS nombre')
+        ->where('matricula.dni_alumno','=',$dni_alumno)
+        ->get();
+
+        return $centro;
+    }
+
+
+    /**
+     * Método que recoge el nombre del alumno.
+     * Para futuro cambio, concatenar el nombre + apellidos.
+     * @return $nombre
+     * @author Malena.
+     */
+    public function getNombreAlumno(string $dni_alumno){
+        $nombre = Alumno::select('nombre')
+        ->where('dni','=',$dni_alumno)
+        ->get();
+
+        return $nombre;
+    }
+
+
+    /**
+     * Método que recoge el nombre del tutor del centro estudios que le corresponde al alumno.
+     * Para futuro cambio, concatenar el nombre + apellidos.
+     * @return @tutor
+     * @author Malena
+     */
+    public function getNombreTutor(string $dni_alumno){
+        $tutor = Profesor::join('tutoria','profesor.dni','=','tutoria.dni_profesor')
+        ->join('grupo','tutoria.cod_grupo','=','grupo.cod')
+        ->join('matricula','matricula.cod_grupo','=','grupo.cod')
+        ->where('matricula.dni_alumno','=',$dni_alumno)
+        ->select('profesor.nombre AS nombre')
+        ->get();
+
+        return $tutor;
+    }
+
+
+    /**
+     * Método que recoge la familia profesional del ciclo en el que está matriculado el alumno.
+     * @return $familia_profesional
+     * @author Malena
+     */
+    public function getFamiliaProfesional(string $dni_alumno){
+        $familia_profesional = FamiliaProfesional::join('grupo','familia_profesional.id','=','grupo.cod_familia_profesional')
+        ->join('matricula','matricula.cod_grupo','=','grupo.cod')
+        ->where('matricula.dni_alumno','=',$dni_alumno)
+        ->select('familia_profesional.descripcion AS descripcion')
+        ->get();
+
+        return $familia_profesional;
+    }
+
+
+    /**
+     * Método que recoge el ciclo formativo en el que está matriculado el alumno.
+     * @return $ciclo_formativo
+     * @author Malena
+     */
+    public function getCicloFormativo(string $dni_alumno){
+        $ciclo_formativo = NivelEstudios::join('grupo','nivel_estudios.cod','=','grupo.cod_nivel')
+        ->join('matricula','matricula.cod_grupo','=','grupo.cod')
+        ->where('matricula.dni_alumno','=',$dni_alumno)
+        ->select('nivel_estudios.cod AS cod_nivel','grupo.nombre_largo AS nombre')
+        ->get();
+
+        return $ciclo_formativo;
+    }
+
+
+    /**
+     * Método que recoge el nombre de la empresa en la que está asociado el alumno.
+     * @return $nombre_empresa
+     * @author Malena
+     */
+    public function getNombreEmpresa(string $dni_alumno){
+        $nombre_empresa = Empresa::join('empresa_grupo','empresa.id','=','empresa_grupo.id_empresa')
+        ->join('grupo','grupo.cod','=','empresa_grupo.cod_grupo')
+        ->join('matricula','matricula.cod_grupo','=','grupo.cod')
+        ->where('matricula.dni_alumno','=',$dni_alumno)
+        ->select('empresa.nombre AS nombre')
+        ->get();
+
+        return $nombre_empresa;
+    }
+
+
+    /**
+     * Método que recoge de la BBDD el nombre del tutor que tiene asignado el alumno en la empresa.
+     * @return $tutor_empresa
+     * @author Malena
+     */
+    public function getNombreTutorEmpresa(string $dni_alumno){
+        $tutor_empresa = Trabajador::join('fct','trabajador.dni','=','fct.dni_tutor_empresa')
+        ->where('fct.dni_alumno','=',$dni_alumno)
+        ->select('trabajador.nombre AS nombre')
+        ->get();
+
+        return $tutor_empresa;
+    }
+
+
+    /**
+     * Método que recoge los datos necesarios correspondientes a la tabla FCT.
+     * @return $fct
+     * @author Malena
+     */
+    public function getDatosFct(string $dni_alumno){
+        $fct = FCT::where('fct.dni_alumno','=',$dni_alumno)
+        ->select('fecha_ini AS fecha_ini','fecha_fin AS fecha_fin','departamento AS departamento','num_horas AS horas')
+        ->get();
+
+        return $fct;
+    }
+
+
+    /**
+     * Método que recoge las últimas 5 jornadas para insertarlas en la tabla del Anexo III.
+     * @return array $jornadas
+     * @author Malena
+     */
+    public function las5UltimasJornadas(string $dni_alumno){
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+
+        $jornadas = Seguimiento::join('fct', 'fct.id','=','seguimiento.id_fct')
+        ->select('seguimiento.actividades AS actividades','seguimiento.observaciones AS observaciones','seguimiento.tiempo_empleado AS tiempo_empleado')
+        ->where('fct.dni_alumno','=',$dni_alumno)
+        ->where('fct.id_empresa','=',$id_empresa)
+        ->orderBy('seguimiento.orden_jornada','DESC')
+        ->take(5)
+        ->get();
+
+        return $jornadas;
     }
 }
