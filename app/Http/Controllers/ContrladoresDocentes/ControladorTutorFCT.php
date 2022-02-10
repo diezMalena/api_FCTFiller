@@ -159,9 +159,12 @@ class ControladorTutorFCT extends Controller
 
                     //Alumnos
                     $alumnos = Fct::join('alumno', 'alumno.dni', '=', 'fct.dni_alumno')
+                    ->join('matricula','matricula.dni_alumno','=','fct.dni_alumno')
                         ->select('alumno.nombre', 'alumno.apellidos', 'alumno.dni', 'alumno.localidad', 'fct.horario', 'fct.num_horas', 'fct.fecha_ini', 'fct.fecha_fin')
-                        ->where('id_empresa', '=', $id->id_empresa)
+                        ->where('fct.id_empresa', '=', $id->id_empresa)
+                        ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                         ->get();
+
 
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
@@ -178,7 +181,6 @@ class ControladorTutorFCT extends Controller
                     $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
-
 
                     //Nombre de la empresa
                     $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
@@ -240,6 +242,9 @@ class ControladorTutorFCT extends Controller
                     ];
 
 
+                    $rutaCarpeta=public_path($dni_tutor);
+                    $this->existeCarpeta($rutaCarpeta);
+
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
                     $template->saveAs($rutaDestino . '.docx');
@@ -277,6 +282,18 @@ class ControladorTutorFCT extends Controller
             $zip->close();
         }
         return $nombreZip;
+    }
+
+/**
+ * Esta funcion crea una carpeta si esta no existe
+ *@author Laura <lauramorenoramos97@gmail.com>
+ * @param [string] $ruta
+ * @return void
+ */
+    public function existeCarpeta($ruta){
+        if(!is_dir($ruta)){
+            mkdir($ruta, 0777, true);
+        }
     }
 
 
