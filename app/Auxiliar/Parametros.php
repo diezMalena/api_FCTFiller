@@ -23,4 +23,6 @@ class Parametros {
         11 => 'noviembre',
         12 => 'diciembre'
     ];
+
+    public const NUEVA_LINEA = '\r\n';
 }

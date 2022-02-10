@@ -12,11 +12,12 @@ use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use App\Models\Alumno;
+use App\Models\AuxCursoAcademico;
+use App\Models\EmpresaGrupo;
 use App\Models\Fct;
+use App\Models\GrupoFamilia;
 use App\Models\Matricula;
 use App\Models\Tutoria;
-use Illuminate\Support\Facades\Route;
-
 
 RolEmpresa::create([
     'descripcion' => 'JefazoMaximo'
@@ -50,7 +51,8 @@ Empresa::create([
     'localidad' => 'Puertollano',
     'provincia' => 'Ciudad Real',
     'direccion' => 'Calle de la llorería, 1',
-    'cp' => '13500'
+    'cp' => '13500',
+    'es_privada' => 1
 ]);
 Empresa::create([
     'cif' => '12346',
@@ -60,7 +62,8 @@ Empresa::create([
     'localidad' => 'Almodovar del Campo',
     'provincia' => 'Ciudad Real',
     'direccion' => 'Calle de la abundancia, 1',
-    'cp' => '13280'
+    'cp' => '13280',
+    'es_privada' => 1
 ]);
 
 
@@ -213,21 +216,18 @@ Grupo::create([
     'cod' => '2DAM',
     'nombre_largo' => '2º Desarrollo de Aplicaciones Multiplataforma (LOE)',
     'nombre_ciclo' => 'Desarrollo de Aplicaciones Multiplataforma',
-    'cod_familia_profesional' => 4,
     'cod_nivel' => 'CFGS'
 ]);
 Grupo::create([
     'cod' => '2DAW',
     'nombre_largo' => '2º Desarrollo de Aplicaciones Web (LOE)',
     'nombre_ciclo' => 'Desarrollo de Aplicaciones Web',
-    'cod_familia_profesional' => 4,
     'cod_nivel' => 'CFGS'
 ]);
 Grupo::create([
     'cod' => '2GAC',
     'nombre_largo' => '2º Gestión de Actividades Comerciales (LOE)',
     'nombre_ciclo' => 'Gestión de Actividades Comerciales',
-    'cod_familia_profesional' => 3,
     'cod_nivel' => 'CFGM'
 ]);
 
@@ -244,9 +244,20 @@ OfertaGrupo::create([
 ]);
 
 
+GrupoFamilia::create([
+    'cod_grupo' => '2DAM', 'id_familia' => 4
+]);
+GrupoFamilia::create([
+    'cod_grupo' => '2DAW', 'id_familia' => 4
+]);
+GrupoFamilia::create([
+    'cod_grupo' => '2DAM', 'id_familia' => 2
+]);
+
 
 Alumno::create([
     'dni' => '10x',
+    'cod_alumno' => 1381853,
     'email' => 'david@mail.com',
     'password' => '12345',
     'nombre' => 'David',
@@ -257,6 +268,7 @@ Alumno::create([
 ]);
 Alumno::create([
     'dni' => '11x',
+    'cod_alumno' => 1381852,
     'email' => 'malena@mail.com',
     'password' => '12345',
     'nombre' => 'Malena',
@@ -267,6 +279,7 @@ Alumno::create([
 ]);
 Alumno::create([
     'dni' => '12x',
+    'cod_alumno' => 1381851,
     'email' => 'alvaro@mail.com',
     'password' => '12345',
     'nombre' => 'Álvaro',
@@ -279,21 +292,21 @@ Alumno::create([
 
 
 Matricula::create([
-    'cod' => '123456789A'
+    'cod' => '123456789A',
     'cod_centro' => '1350090894',
     'dni_alumno' => '10x',
     'cod_grupo' => '2DAM',
     'curso_academico' => '21/22'
 ]);
 Matricula::create([
-    'cod' => '456789123B'
+    'cod' => '456789123B',
     'cod_centro' => '1350090894',
     'dni_alumno' => '11x',
     'cod_grupo' => '2DAM',
     'curso_academico' => '20/21'
 ]);
 Matricula::create([
-    'cod' => '789123456C'
+    'cod' => '789123456C',
     'cod_centro' => '1350090894',
     'dni_alumno' => '12x',
     'cod_grupo' => '2DAW',
@@ -304,13 +317,13 @@ Matricula::create([
 
 
 Tutoria::create([
-    'dni_profesor' => '3c', 'cod_grupo' => '2DAW', 'curso_academico' => '21/22'
+    'dni_profesor' => '3c', 'cod_grupo' => '2DAW', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 Tutoria::create([
-    'dni_profesor' => '4d', 'cod_grupo' => '2DAM', 'curso_academico' => '21/22'
+    'dni_profesor' => '4d', 'cod_grupo' => '2DAM', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 Tutoria::create([
-    'dni_profesor' => '5e', 'cod_grupo' => '2GAC', 'curso_academico' => '21/22'
+    'dni_profesor' => '5e', 'cod_grupo' => '2GAC', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 
 
@@ -326,7 +339,8 @@ Fct::create([
     'fecha_fin' => date("Y-m-d H:i:s"),
     'firmado_director' => '0',
     'firmado_empresa' => '0',
-    'ruta_anexo' => ''
+    'ruta_anexo' => '',
+    'departamento' => ''
 ]);
 
 

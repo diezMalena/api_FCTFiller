@@ -12,12 +12,16 @@ use Illuminate\Database\Eloquent\Model;
  * (2DAM, 2DAW, 2ASIR,...)
  *
  * @author laura <lauramorenoramos97@gmail.com>
- * @author David Sánchez Barragán (1-2-22)
+ * @author David Sánchez Barragán (1-2-22, rev 08/02/22)
  */
 class Grupo extends Model
 {
     use HasFactory;
-    protected $fillable = ['cod', 'nombre_largo', 'nombre_ciclo', 'cod_familia_profesional', 'cod_nivel'];
+    /**
+     * DSB Eliminación del campo cod_familia_profesional, que se traspasa a la tabla GrupoFamilia,
+     * puesto que un grupo puede tener más de una familia profesional
+    */
+    protected $fillable = ['cod', 'nombre_largo', 'nombre_ciclo', 'cod_nivel'];
     protected $primaryKey = ['cod'];
     protected $table = 'grupo';
     public $incrementing = false;
