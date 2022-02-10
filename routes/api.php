@@ -26,8 +26,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
-    Route::any('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
-    Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
+    Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
 
     //CRUD Empresas
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
@@ -35,7 +34,14 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
     Route::put('update_representante', [ControladorTutorFCT::class, 'updateRepresentante']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
+
 });
+
+Route::any('/listarAnexos', [ControladorTutorFCT::class, 'verAnexos']);
+Route::any('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
+Route::any('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
+Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
+Route::any('/eliminarAnexo', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
