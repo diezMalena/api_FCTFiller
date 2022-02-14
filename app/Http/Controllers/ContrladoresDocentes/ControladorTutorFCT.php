@@ -304,7 +304,7 @@ class ControladorTutorFCT extends Controller
                         'nombre_tutor' => $nombre_tutor[0]->nombre,
                         'ciudad_centro' => $ciudad_centro_estudios[0]->localidad,
                         'anio_curso' => $curso_anio[0]->curso_academico_inicio,
-                        'ciclo_nombre' => $nombre_ciclo[0]->nombre,
+                        'ciclo_nombre' =>  $nombre_ciclo[0]->nombre_ciclo,
                         'responsable_empresa' => $responsable_empresa[0]->nombre,
                         'directora'=>$directora[0]->nombre,
                         'representante_centro' => $representante_centro[0]->nombre,
