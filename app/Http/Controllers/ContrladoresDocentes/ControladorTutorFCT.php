@@ -321,7 +321,7 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //Convertir en Zip
-                $nombreZip = $this->montarZip('anexos'.DIRECTORY_SEPARATOR.'rellenos'.DIRECTORY_SEPARATOR.'anexo1', $zip, $nombreZip);
+                $nombreZip = $this->montarZip($dni_tutor, $zip, $nombreZip);
 
                 return response()->download(public_path($nombreZip));
             } catch (Exception $e) {
