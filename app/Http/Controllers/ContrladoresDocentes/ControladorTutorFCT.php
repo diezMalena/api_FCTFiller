@@ -20,6 +20,7 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
@@ -33,7 +34,7 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
-
+use Database\Factories\RolProfesorAsignadoFactory;
 
 
 class ControladorTutorFCT extends Controller
@@ -250,6 +251,22 @@ class ControladorTutorFCT extends Controller
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
                         ->get();
 
+                        //representante del centro de trabajo
+                        $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                        ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
+                        ->select('trabajador.nombre')
+                        ->where('trabajador.id_empresa', '=', $id->id_empresa)
+                        ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
+                        ->get();
+
+                        //Directora
+                        $directora=Profesor::join('rol_profesor_asignado','rol_profesor_asignado.dni','=', 'profesor.dni')
+                        ->select('profesor.nombre')
+                        ->where('profesor.cod_centro_estudios', '=', $cod_centro[0]->cod_centro_estudios)
+                        ->where('rol_profesor_asignado.id_rol','=',Parametros::DIRECTOR)
+                        ->get();
+
+
                     //Ciudad del centro de estudios
                     $ciudad_centro_estudios = CentroEstudios::select('localidad')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
 
@@ -289,6 +306,8 @@ class ControladorTutorFCT extends Controller
                         'anio_curso' => $curso_anio[0]->curso_academico_inicio,
                         'ciclo_nombre' => $nombre_ciclo[0]->nombre,
                         'responsable_empresa' => $responsable_empresa[0]->nombre,
+                        'directora'=>$directora[0]->nombre,
+                        'representante_centro' => $representante_centro[0]->nombre,
                     ];
 
 
@@ -407,8 +426,16 @@ class ControladorTutorFCT extends Controller
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
 
-                            $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
-                            $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
+                            $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                                ->select('alumno.dni')
+                                ->where('cod_centro', '=', $cod_centro[0]->cod_centro)
+                                ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
+                                ->first();
+
+                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni)->get();
+                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni)->get();
                             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
 
                             //meter ese nombre en un array asociativo
@@ -502,15 +529,18 @@ class ControladorTutorFCT extends Controller
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             foreach ($files as $value) {
                 ///////////////ANEXO1//////////////////////////
+                $nombreAux=basename($value);
+                $nombreDesglosado=explode("_", $nombreAux);
+
                 //saco el año  del fichero con un substring
-                $fechaArchivo = substr($value, 91, 4);
+                $fechaArchivo = $nombreDesglosado[7];
 
                 //saco el tipo de anexo con un substring
-                $anexo = substr($value, 57, 6);
+                $anexo = $nombreDesglosado[0];
+
                 if (strcmp($anexo, "Anexo1") == 0) {
                     if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
                         $relativeNameZipFile = basename($value);
-                        error_log($relativeNameZipFile);
                         $zip->addFile($value, $relativeNameZipFile);
                     }
                 }
