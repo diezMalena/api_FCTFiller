@@ -95,7 +95,6 @@ class ControladorTutorFCT extends Controller
             ->join('empresa', 'empresa.id', '=', 'empresa_grupo.id_empresa')
             ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->where('tutoria.dni_profesor', $dni)
-            ->select(['empresa.id', 'empresa.nombre'])
             ->get();
 
         foreach ($empresas as  $empresa) {
@@ -105,7 +104,7 @@ class ControladorTutorFCT extends Controller
                 ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
                 ->select('trabajador.nombre')
                 ->get()[0]->nombre;
-            $empresa->responsable = $responsable;
+            $empresa->nombre_responsable = $responsable;
             //Aquí rocojo el dni del responsable de esa empresa
             $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
@@ -153,7 +152,7 @@ class ControladorTutorFCT extends Controller
             //elimina el registro de la tabla fct de los alumnos que están en una empresa y
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
-                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['responsable']]);
+                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
                 $alumnos = $empresa['alumnos'];
                 foreach ($alumnos as $alumno) {
                     Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -169,7 +168,8 @@ class ControladorTutorFCT extends Controller
                         'fecha_fin' => $alumno['fecha_fin'],
                         'firmado_director' => '0',
                         'firmado_empresa' => '0',
-                        'ruta_anexo' => ''
+                        'ruta_anexo' => '',
+                        'departamento' =>''
                     ]);
                 }
             }
