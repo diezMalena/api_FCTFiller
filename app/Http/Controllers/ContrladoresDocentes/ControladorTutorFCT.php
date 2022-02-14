@@ -429,13 +429,15 @@ class ControladorTutorFCT extends Controller
                             $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
                             $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=', $datosAux[3])->get();
                             $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                                ->select('alumno.dni')
-                                ->where('cod_centro', '=', $cod_centro[0]->cod_centro)
+                            ->join('fct','fct.dni_alumno','=','matricula.dni_alumno')
+                                ->select('fct.dni_alumno')
+                                ->where('fct.id_empresa', '=', $datosAux[2])
+                                ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
                                 ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                                 ->first();
 
-                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni)->get();
-                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni)->get();
+                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
                             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
 
                             //meter ese nombre en un array asociativo
