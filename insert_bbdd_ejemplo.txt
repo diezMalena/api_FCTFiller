@@ -257,6 +257,7 @@ GrupoFamilia::create([
 
 Alumno::create([
     'dni' => '10x',
+    'cod_alumno' => 1381853,
     'email' => 'david@mail.com',
     'password' => '12345',
     'nombre' => 'David',
@@ -267,6 +268,7 @@ Alumno::create([
 ]);
 Alumno::create([
     'dni' => '11x',
+    'cod_alumno' => 1381852,
     'email' => 'malena@mail.com',
     'password' => '12345',
     'nombre' => 'Malena',
@@ -277,6 +279,7 @@ Alumno::create([
 ]);
 Alumno::create([
     'dni' => '12x',
+    'cod_alumno' => 1381851,
     'email' => 'alvaro@mail.com',
     'password' => '12345',
     'nombre' => 'Álvaro',
@@ -314,13 +317,13 @@ Matricula::create([
 
 
 Tutoria::create([
-    'dni_profesor' => '3c', 'cod_grupo' => '2DAW', 'curso_academico' => '21/22'
+    'dni_profesor' => '3c', 'cod_grupo' => '2DAW', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 Tutoria::create([
-    'dni_profesor' => '4d', 'cod_grupo' => '2DAM', 'curso_academico' => '21/22'
+    'dni_profesor' => '4d', 'cod_grupo' => '2DAM', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 Tutoria::create([
-    'dni_profesor' => '5e', 'cod_grupo' => '2GAC', 'curso_academico' => '21/22'
+    'dni_profesor' => '5e', 'cod_grupo' => '2GAC', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
 ]);
 
 
