@@ -20,6 +20,7 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
@@ -33,7 +34,7 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
-
+use Database\Factories\RolProfesorAsignadoFactory;
 
 
 class ControladorTutorFCT extends Controller
@@ -94,7 +95,6 @@ class ControladorTutorFCT extends Controller
             ->join('empresa', 'empresa.id', '=', 'empresa_grupo.id_empresa')
             ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->where('tutoria.dni_profesor', $dni)
-            ->select(['empresa.id', 'empresa.nombre'])
             ->get();
 
         foreach ($empresas as  $empresa) {
@@ -104,7 +104,7 @@ class ControladorTutorFCT extends Controller
                 ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
                 ->select('trabajador.nombre')
                 ->get()[0]->nombre;
-            $empresa->responsable = $responsable;
+            $empresa->nombre_responsable = $responsable;
             //Aquí rocojo el dni del responsable de esa empresa
             $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
@@ -152,7 +152,7 @@ class ControladorTutorFCT extends Controller
             //elimina el registro de la tabla fct de los alumnos que están en una empresa y
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
-                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['responsable']]);
+                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
                 $alumnos = $empresa['alumnos'];
                 foreach ($alumnos as $alumno) {
                     Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -168,7 +168,8 @@ class ControladorTutorFCT extends Controller
                         'fecha_fin' => $alumno['fecha_fin'],
                         'firmado_director' => '0',
                         'firmado_empresa' => '0',
-                        'ruta_anexo' => ''
+                        'ruta_anexo' => '',
+                        'departamento' =>''
                     ]);
                 }
             }
@@ -250,6 +251,22 @@ class ControladorTutorFCT extends Controller
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
                         ->get();
 
+                        //representante del centro de trabajo
+                        $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                        ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
+                        ->select('trabajador.nombre')
+                        ->where('trabajador.id_empresa', '=', $id->id_empresa)
+                        ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
+                        ->get();
+
+                        //Directora
+                        $directora=Profesor::join('rol_profesor_asignado','rol_profesor_asignado.dni','=', 'profesor.dni')
+                        ->select('profesor.nombre')
+                        ->where('profesor.cod_centro_estudios', '=', $cod_centro[0]->cod_centro_estudios)
+                        ->where('rol_profesor_asignado.id_rol','=',Parametros::DIRECTOR)
+                        ->get();
+
+
                     //Ciudad del centro de estudios
                     $ciudad_centro_estudios = CentroEstudios::select('localidad')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
 
@@ -287,8 +304,10 @@ class ControladorTutorFCT extends Controller
                         'nombre_tutor' => $nombre_tutor[0]->nombre,
                         'ciudad_centro' => $ciudad_centro_estudios[0]->localidad,
                         'anio_curso' => $curso_anio[0]->curso_academico_inicio,
-                        'ciclo_nombre' => $nombre_ciclo[0]->nombre,
+                        'ciclo_nombre' =>  $nombre_ciclo[0]->nombre_ciclo,
                         'responsable_empresa' => $responsable_empresa[0]->nombre,
+                        'directora'=>$directora[0]->nombre,
+                        'representante_centro' => $representante_centro[0]->nombre,
                     ];
 
 
@@ -302,7 +321,7 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //Convertir en Zip
-                $nombreZip = $this->montarZip('anexos'.DIRECTORY_SEPARATOR.'rellenos'.DIRECTORY_SEPARATOR.'anexo1', $zip, $nombreZip);
+                $nombreZip = $this->montarZip($dni_tutor, $zip, $nombreZip);
 
                 return response()->download(public_path($nombreZip));
             } catch (Exception $e) {
@@ -407,8 +426,18 @@ class ControladorTutorFCT extends Controller
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
 
-                            $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
-                            $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
+                            $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                            ->join('fct','fct.dni_alumno','=','matricula.dni_alumno')
+                                ->select('fct.dni_alumno')
+                                ->where('fct.id_empresa', '=', $datosAux[2])
+                                ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
+                                ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
+                                ->first();
+
+                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
                             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
 
                             //meter ese nombre en un array asociativo
@@ -502,15 +531,18 @@ class ControladorTutorFCT extends Controller
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             foreach ($files as $value) {
                 ///////////////ANEXO1//////////////////////////
+                $nombreAux=basename($value);
+                $nombreDesglosado=explode("_", $nombreAux);
+
                 //saco el año  del fichero con un substring
-                $fechaArchivo = substr($value, 91, 4);
+                $fechaArchivo = $nombreDesglosado[7];
 
                 //saco el tipo de anexo con un substring
-                $anexo = substr($value, 57, 6);
+                $anexo = $nombreDesglosado[0];
+
                 if (strcmp($anexo, "Anexo1") == 0) {
                     if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
                         $relativeNameZipFile = basename($value);
-                        error_log($relativeNameZipFile);
                         $zip->addFile($value, $relativeNameZipFile);
                     }
                 }
