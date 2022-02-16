@@ -399,9 +399,9 @@ class ControladorTutorFCT extends Controller
      * @param Request $val
      * @return void
      */
-    public function verAnexos(Request $val)
+    public function verAnexos($dni_tutor)
     {
-        $dni_tutor = $val->get('dni_tutor');
+        //$dni_tutor = $val->get('dni_tutor');
         $directorios = array();
         $datos = array();
         $datosAux = array();
@@ -480,12 +480,8 @@ class ControladorTutorFCT extends Controller
      * @param Request $val
      * @return void
      */
-    public function eliminarAnexo(Request $val)
+    public function eliminarAnexo($dni_tutor,$cod_anexo)
     {
-        $dni_tutor = $val->get('dni_tutor');
-        $cod_anexo = $val->get('codigo');
-
-
         //Eliminar un fichero
         unlink(public_path(). DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
         return response()->json(['message' => 'Archivo eliminado'], 200);
