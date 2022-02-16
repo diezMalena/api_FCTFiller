@@ -49,11 +49,15 @@ Route::group(['middleware' => ['Cors']], function () {
 
 });
 
-Route::any('/listarAnexos', [ControladorTutorFCT::class, 'verAnexos']);
-Route::any('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
-Route::any('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
-Route::any('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
-Route::any('/eliminarAnexo', [ControladorTutorFCT::class, 'eliminarAnexo']);
+
+//Crud Anexos
+Route::get('/listarAnexos/{dni_tutor}', [ControladorTutorFCT::class, 'verAnexos']);
+Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
+Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
+Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
+Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
+
+
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
