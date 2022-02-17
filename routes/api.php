@@ -4,6 +4,7 @@ use App\Http\Controllers\ContrladoresDocentes\ControladorGenericoDocente;
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
+use App\Http\Controllers\ControladorGenerico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 /*
@@ -29,6 +30,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
 
+    Route::post('/login', [ControladorGenerico::class, 'login']);
     //CRUD Empresas
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
     Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
