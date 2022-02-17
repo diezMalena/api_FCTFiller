@@ -207,7 +207,6 @@ class ControladorTutorFCT extends Controller
         foreach ($empresas_id as $id) {
             try {
                 foreach ($empresas_id as $id) {
-
                     //Alumnos
                     $alumnos = Fct::join('alumno', 'alumno.dni', '=', 'fct.dni_alumno')
                     ->join('matricula','matricula.dni_alumno','=','fct.dni_alumno')
@@ -215,7 +214,6 @@ class ControladorTutorFCT extends Controller
                         ->where('fct.id_empresa', '=', $id->id_empresa)
                         ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                         ->get();
-
 
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
@@ -229,7 +227,8 @@ class ControladorTutorFCT extends Controller
 
                     //ARCHIVO
                     $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
-                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
+                    $convenioAux=str_replace('/','-',$num_convenio[0]->cod_convenio);
+                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $convenioAux. '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
@@ -310,13 +309,14 @@ class ControladorTutorFCT extends Controller
                         'representante_centro' => $representante_centro[0]->nombre,
                     ];
 
-
                     $rutaCarpeta=public_path($dni_tutor);
                     $this->existeCarpeta($rutaCarpeta);
+
 
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
                     $template->saveAs($rutaDestino . '.docx');
+
                     // $this->convertirWordPDF($rutaDestino);
                 }
 
@@ -413,7 +413,6 @@ class ControladorTutorFCT extends Controller
         $thefolder = public_path().DIRECTORY_SEPARATOR.$dni_tutor;
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
-
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
@@ -426,8 +425,9 @@ class ControladorTutorFCT extends Controller
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
 
+                            $convenioAux=str_replace('-', '/', $datosAux[3]);
                             $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
-                            $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
                             $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
                             ->join('fct','fct.dni_alumno','=','matricula.dni_alumno')
                                 ->select('fct.dni_alumno')

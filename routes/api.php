@@ -22,12 +22,6 @@ use Illuminate\Support\Facades\Route;
 // });
 
 Route::group(['middleware' => ['Cors']], function () {
-    Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
-    Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
-    Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
-    Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
-    Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
-    Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
 
     //CRUD Empresas
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
@@ -58,6 +52,12 @@ Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
 
+Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
+Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
+Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
+Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
+Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
+Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
