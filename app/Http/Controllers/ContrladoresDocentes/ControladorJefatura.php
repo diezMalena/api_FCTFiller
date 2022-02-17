@@ -279,7 +279,7 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado = '')
+    private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado = '1A')
     {
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
@@ -297,8 +297,8 @@ class ControladorJefatura extends Controller
                             //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
-                            //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))->get()[0]->dni;
 
                             $codNivel = explode(' ', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))[2];
@@ -363,7 +363,7 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado = '')
+    private function procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado = '1A')
     {
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
@@ -383,8 +383,8 @@ class ControladorJefatura extends Controller
                             //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
-                            //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
 
                             Profesor::create([
                                 'dni' => $dni,
@@ -427,7 +427,7 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado = '')
+    private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado = '1A')
     {
         //error_log('hola');
         $numLinea = 0;
@@ -446,8 +446,8 @@ class ControladorJefatura extends Controller
                             //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
-                            //$codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             //error_log('Cod centro estudios: ' . $codCentroEstudios);
 
                             //Se obtiene el nombre del ciclo (columna ESTUDIO), separando la cadena por
