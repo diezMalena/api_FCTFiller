@@ -229,7 +229,7 @@ class ControladorTutorFCT extends Controller
                     $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
                     $convenioAux=str_replace('/','-',$num_convenio[0]->cod_convenio);
                     $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $convenioAux. '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
-                    $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
+                    $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1'.DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
                     //Nombre de la empresa
@@ -321,7 +321,7 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //Convertir en Zip
-                $nombreZip = $this->montarZip($dni_tutor, $zip, $nombreZip);
+                $nombreZip = $this->montarZip($dni_tutor.DIRECTORY_SEPARATOR.'Anexo1', $zip, $nombreZip);
 
                 return response()->download(public_path($nombreZip));
             } catch (Exception $e) {
@@ -407,21 +407,18 @@ class ControladorTutorFCT extends Controller
         $datosAux = array();
         $fecha = Carbon::now();
 
-
-        //Ver los nombres de los archivos de una carpeta
-        //CREAR CONSTANTE RELATIVA DE LA RUTA
-        $thefolder = public_path().DIRECTORY_SEPARATOR.$dni_tutor;
+        ///////////////////////////////ANEXO 0//////////////////////////////////////
+        ///////////////////////////////ANEXO 1//////////////////////////////////////
+        $thefolder = public_path().DIRECTORY_SEPARATOR.$dni_tutor.DIRECTORY_SEPARATOR.'Anexo1';
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
+
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
                     //dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
-                    //ANEXO 0//////////////////////////////////////
-
-                    //ANEXO 1//////////////////////////////////////
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
 
@@ -468,7 +465,13 @@ class ControladorTutorFCT extends Controller
     {
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
-        $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
+        $codAux= explode("_", $cod_anexo);
+        $rutaOriginal='';
+
+        if($codAux[0]=='Anexo1'){
+            $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR .'Anexo1'. DIRECTORY_SEPARATOR . $cod_anexo);
+        }
+
 
          return response()->download($rutaOriginal);
     }
@@ -482,8 +485,14 @@ class ControladorTutorFCT extends Controller
      */
     public function eliminarAnexo($dni_tutor,$cod_anexo)
     {
+        $codAux= explode("_", $cod_anexo);
+        $rutaOriginal='';
+
+        if($codAux[0]=='Anexo1'){
+            unlink(public_path(). DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR .'Anexo1'. DIRECTORY_SEPARATOR . $cod_anexo);
+        }
         //Eliminar un fichero
-        unlink(public_path(). DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
+
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }
 
@@ -519,10 +528,11 @@ class ControladorTutorFCT extends Controller
      */
     public function montarZipCrud(String $dni_tutor, ZipArchive $zip, String $nombreZip)
     {
-        $files = File::files(public_path($dni_tutor));
+        $files = File::files(public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo1'));
         $fechaArchivo = '';
         $fechaActual = Carbon::now();
         $anexo = '';
+
 
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             foreach ($files as $value) {
@@ -543,6 +553,13 @@ class ControladorTutorFCT extends Controller
                     }
                 }
             }
+            //////////////////////ANEXO0//////////////////////////////////////////
+            $files = File::files(public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo0'));
+            foreach ($files as $value) {
+
+            //LOGICA PARA EL ANEXO 0
+            }
+
             $zip->close();
         }
         return $nombreZip;
