@@ -20,6 +20,7 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
@@ -33,7 +34,7 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
-
+use Database\Factories\RolProfesorAsignadoFactory;
 
 
 class ControladorTutorFCT extends Controller
@@ -51,14 +52,7 @@ class ControladorTutorFCT extends Controller
      */
     public function solicitarAlumnosSinEmpresa(string $dni)
     {
-        $hoy = date("Y-m-d H:i:s");
-        $cursoAcademico = AuxCursoAcademico::where([['fecha_inicio', '<', $hoy], ['fecha_fin', '>', $hoy]])
-            ->get()->first();
-        if ($cursoAcademico) {
-            $cursoAcademico = $cursoAcademico->cod_curso;
-        } else {
-            $cursoAcademico = AuxCursoAcademico::where('id', AuxCursoAcademico::max('id'))->get()->first()->cod_curso;
-        }
+        $cursoAcademico = Auxiliar::obtenerCursoAcademico();
         $alumnosEnEmpresa = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
             ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
             ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
@@ -101,33 +95,90 @@ class ControladorTutorFCT extends Controller
             ->join('empresa', 'empresa.id', '=', 'empresa_grupo.id_empresa')
             ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->where('tutoria.dni_profesor', $dni)
-            ->select(['empresa.id', 'empresa.nombre'])
             ->get();
 
         foreach ($empresas as  $empresa) {
+            //Aquí rocojo el nombre del responsable de esa empresa
+            $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->select('trabajador.nombre')
+                ->get()[0]->nombre;
+            $empresa->nombre_responsable = $responsable;
+            //Aquí rocojo el dni del responsable de esa empresa
+            $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->select('trabajador.dni')
+                ->get()[0]->dni;
+            $empresa->dni_responsable = $dni_responsable;
+            //Aquí rocojo los alumnos asociados a esa empresa
             $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
                 ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
                 ->join('fct', 'fct.dni_alumno', '=', 'alumno.dni')
                 ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
                 ->where([['tutoria.dni_profesor', $dni], ['fct.id_empresa', $empresa->id]])
-                ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct'])
+                ->select(['alumno.nombre', 'alumno.dni', 'alumno.va_a_fct', 'fct.horario', 'fct.fecha_ini', 'fct.fecha_fin'])
                 ->get();
             $empresa->alumnos = $alumnos;
         }
 
         return response()->json($empresas, 200);
     }
+
     /**
      *  Esta función se encarga de actualizar la empresa a la que están asignados
      *  los alumnos.
      *
      *  @author alvaro <alvarosantosmartin6@gmail.com>
-     *  @param $empresas son las empresas
+     *  @param $request tiene las empresas con los datos del id, el responsable, y un array con sus alumnos asiganados
+     *  que estos tienen dentro si van a fct, su dni, fecha de inicio de las prácticas y de finalización, el horario.
+     *  También tiene el array de alumnos sin empresa.
      */
     public function actualizarEmpresaAsignadaAlumno(Request $request)
     {
-        dd($request);
-        return response()->json($request, 200);
+        try {
+            $cursoAcademico = Auxiliar::obtenerCursoAcademico();
+            $alumnos_solos = $request->get('alumnos_solos');
+            $empresas = $request->get('empresas');
+            // error_log(print_r($alumnos_solos, true));
+            //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
+            foreach ($alumnos_solos as $alumno) {
+                Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+
+            }
+
+            //este for mete el nuevo nombre del responsable, se haya cambiado o no.
+            //elimina el registro de la tabla fct de los alumnos que están en una empresa y
+            //los inserta de nuevo con los cambios que se han hecho.
+            foreach ($empresas as $empresa) {
+                Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
+                $alumnos = $empresa['alumnos'];
+                foreach ($alumnos as $alumno) {
+                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+
+                    Fct::create([
+                        'id_empresa' => $empresa['id'],
+                        'dni_alumno' => $alumno['dni'],
+                        'dni_tutor_empresa' => '',
+                        'curso_academico' => $cursoAcademico,
+                        'horario' => $alumno['horario'],
+                        'num_horas' => '400',
+                        'fecha_ini' => $alumno['fecha_ini'],
+                        'fecha_fin' => $alumno['fecha_fin'],
+                        'firmado_director' => '0',
+                        'firmado_empresa' => '0',
+                        'ruta_anexo' => '',
+                        'departamento' =>''
+                    ]);
+                }
+            }
+            return response()->json(['message' => 'Actualizacion completada'], 200);
+        } catch (Exception $th) {
+            return response()->json(['message' => $th->getMessage()], 400);
+        }
+
+
     }
 
 
@@ -156,7 +207,6 @@ class ControladorTutorFCT extends Controller
         foreach ($empresas_id as $id) {
             try {
                 foreach ($empresas_id as $id) {
-
                     //Alumnos
                     $alumnos = Fct::join('alumno', 'alumno.dni', '=', 'fct.dni_alumno')
                     ->join('matricula','matricula.dni_alumno','=','fct.dni_alumno')
@@ -164,7 +214,6 @@ class ControladorTutorFCT extends Controller
                         ->where('fct.id_empresa', '=', $id->id_empresa)
                         ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                         ->get();
-
 
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
@@ -178,7 +227,8 @@ class ControladorTutorFCT extends Controller
 
                     //ARCHIVO
                     $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
-                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $num_convenio[0]->cod_convenio . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
+                    $convenioAux=str_replace('/','-',$num_convenio[0]->cod_convenio);
+                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $convenioAux. '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
@@ -199,6 +249,22 @@ class ControladorTutorFCT extends Controller
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
                         ->get();
+
+                        //representante del centro de trabajo
+                        $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                        ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
+                        ->select('trabajador.nombre')
+                        ->where('trabajador.id_empresa', '=', $id->id_empresa)
+                        ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
+                        ->get();
+
+                        //Directora
+                        $directora=Profesor::join('rol_profesor_asignado','rol_profesor_asignado.dni','=', 'profesor.dni')
+                        ->select('profesor.nombre')
+                        ->where('profesor.cod_centro_estudios', '=', $cod_centro[0]->cod_centro_estudios)
+                        ->where('rol_profesor_asignado.id_rol','=',Parametros::DIRECTOR)
+                        ->get();
+
 
                     //Ciudad del centro de estudios
                     $ciudad_centro_estudios = CentroEstudios::select('localidad')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
@@ -237,22 +303,25 @@ class ControladorTutorFCT extends Controller
                         'nombre_tutor' => $nombre_tutor[0]->nombre,
                         'ciudad_centro' => $ciudad_centro_estudios[0]->localidad,
                         'anio_curso' => $curso_anio[0]->curso_academico_inicio,
-                        'ciclo_nombre' => $nombre_ciclo[0]->nombre,
+                        'ciclo_nombre' =>  $nombre_ciclo[0]->nombre_ciclo,
                         'responsable_empresa' => $responsable_empresa[0]->nombre,
+                        'directora'=>$directora[0]->nombre,
+                        'representante_centro' => $representante_centro[0]->nombre,
                     ];
-
 
                     $rutaCarpeta=public_path($dni_tutor);
                     $this->existeCarpeta($rutaCarpeta);
 
+
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
                     $template->saveAs($rutaDestino . '.docx');
+
                     // $this->convertirWordPDF($rutaDestino);
                 }
 
                 //Convertir en Zip
-                $nombreZip = $this->montarZip('anexos'.DIRECTORY_SEPARATOR.'rellenos'.DIRECTORY_SEPARATOR.'anexo1', $zip, $nombreZip);
+                $nombreZip = $this->montarZip($dni_tutor, $zip, $nombreZip);
 
                 return response()->download(public_path($nombreZip));
             } catch (Exception $e) {
@@ -330,9 +399,9 @@ class ControladorTutorFCT extends Controller
      * @param Request $val
      * @return void
      */
-    public function verAnexos(Request $val)
+    public function verAnexos($dni_tutor)
     {
-        $dni_tutor = $val->get('dni_tutor');
+        //$dni_tutor = $val->get('dni_tutor');
         $directorios = array();
         $datos = array();
         $datosAux = array();
@@ -344,7 +413,6 @@ class ControladorTutorFCT extends Controller
         $thefolder = public_path().DIRECTORY_SEPARATOR.$dni_tutor;
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
-
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
@@ -357,8 +425,19 @@ class ControladorTutorFCT extends Controller
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
                         if ($datosAux[7] == $fecha->year) {
 
-                            $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $datosAux[3])->get();
-                            $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $datosAux[3])->get();
+                            $convenioAux=str_replace('-', '/', $datosAux[3]);
+                            $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
+                            $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
+                            $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                            ->join('fct','fct.dni_alumno','=','matricula.dni_alumno')
+                                ->select('fct.dni_alumno')
+                                ->where('fct.id_empresa', '=', $datosAux[2])
+                                ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
+                                ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
+                                ->first();
+
+                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
                             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
 
                             //meter ese nombre en un array asociativo
@@ -401,12 +480,8 @@ class ControladorTutorFCT extends Controller
      * @param Request $val
      * @return void
      */
-    public function eliminarAnexo(Request $val)
+    public function eliminarAnexo($dni_tutor,$cod_anexo)
     {
-        $dni_tutor = $val->get('dni_tutor');
-        $cod_anexo = $val->get('codigo');
-
-
         //Eliminar un fichero
         unlink(public_path(). DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $cod_anexo);
         return response()->json(['message' => 'Archivo eliminado'], 200);
@@ -452,15 +527,18 @@ class ControladorTutorFCT extends Controller
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             foreach ($files as $value) {
                 ///////////////ANEXO1//////////////////////////
+                $nombreAux=basename($value);
+                $nombreDesglosado=explode("_", $nombreAux);
+
                 //saco el año  del fichero con un substring
-                $fechaArchivo = substr($value, 91, 4);
+                $fechaArchivo = $nombreDesglosado[7];
 
                 //saco el tipo de anexo con un substring
-                $anexo = substr($value, 57, 6);
+                $anexo = $nombreDesglosado[0];
+
                 if (strcmp($anexo, "Anexo1") == 0) {
                     if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
                         $relativeNameZipFile = basename($value);
-                        error_log($relativeNameZipFile);
                         $zip->addFile($value, $relativeNameZipFile);
                     }
                 }
@@ -674,6 +752,75 @@ class ControladorTutorFCT extends Controller
     public function getRepresentanteLegal(int $id)
     {
         return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
+    }
+
+    /**
+     * Devuelve una response JSON con los datos del representante legal de una empresa
+     * @param int $id La ID de la empresa
+     * @return response JSON con los datos del representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     */
+    public function getRepresentanteLegalResponse(int $id)
+    {
+        return response()->json($this->getRepresentanteLegal($id), 200);
+    }
+
+    /**
+     * Devuelve las empresas asociadas a un profesor mediante los convenios con su centro de estudios
+     *
+     * @param string $dniProfesor el DNI del profesor
+     * @return response JSON con la colección de empresas asociadas
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     */
+    public function getEmpresasFromProfesor(string $dniProfesor)
+    {
+        $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
+        $empresas = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
+            ->where('convenio.cod_centro', $codCentro)
+            ->get();
+        return response()->json($empresas, 200);
+    }
+
+    /**
+     * Actualiza la información de una empresa y su representante legal en la base de datos
+     *
+     * @param Request $req contiene los datos de la empresa
+     * @return response JSON con la respuesta del servidor: 200 -> todo OK, 400 -> error
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     */
+    public function updateEmpresa(Request $req) {
+        Empresa::where('id', $req->id)->update([
+            'cif' => $req->cif,
+            'nombre' => $req->nombre,
+            'email' => $req->email,
+            'telefono' => $req->telefono,
+            'localidad' => $req->localidad,
+            'provincia' => $req->provincia,
+            'direccion' => $req->direccion,
+            'cp' => $req->cp
+        ]);
+        return response()->json(['message' => 'Empresa actualizada'], 200);
+    }
+
+    public function updateRepresentante(Request $req) {
+        Trabajador::where('dni', $req->dni)->update([
+            'nombre' => $req->nombre,
+            'apellidos' => $req->apellidos,
+            'email' => $req->email
+        ]);
+        return response()->json(['message' => 'Representante actualizado'], 200);
+    }
+
+    /**
+     * Elimina una empresa de la base de datos
+     * @param int $idEmpresa el ID de la empresa a eliminar
+     * @return response JSON con la respuesta del servidor: 200 -> OK, 400 -> error
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function deleteEmpresa(int $idEmpresa) {
+        $nombreEmpresa = Empresa::find($idEmpresa)->nombre;
+        Empresa::destroy($idEmpresa);
+        return response()->json(['message' => 'Empresa eliminada: ' . $nombreEmpresa], 200);
     }
 
     /**
