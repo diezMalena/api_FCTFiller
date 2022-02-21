@@ -228,7 +228,7 @@ class ControladorTutorFCT extends Controller
                     //ARCHIVO
                     $rutaOriginal = 'anexos'.DIRECTORY_SEPARATOR.'plantillas'.DIRECTORY_SEPARATOR.'Anexo1';
                     $convenioAux=str_replace('/','-',$num_convenio[0]->cod_convenio);
-                    $AuxNombre = '_' . Str::random(5) . '_' . $id->id_empresa . '_' . $convenioAux. '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
+                    $AuxNombre = '_' . $id->id_empresa . '_' . $convenioAux. '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  .DIRECTORY_SEPARATOR.'Anexo1'.DIRECTORY_SEPARATOR.'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
 
@@ -420,22 +420,22 @@ class ControladorTutorFCT extends Controller
                     $datosAux = explode("_", $file);
 
                     if (strcmp($datosAux[0], "Anexo1") == 0) {
-                        if ($datosAux[7] == $fecha->year) {
+                        if ($datosAux[6] == $fecha->year) {
 
-                            $convenioAux=str_replace('-', '/', $datosAux[3]);
+                            $convenioAux=str_replace('-', '/', $datosAux[2]);
                             $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
                             $cod_centro=Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
                             $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
                             ->join('fct','fct.dni_alumno','=','matricula.dni_alumno')
                                 ->select('fct.dni_alumno')
-                                ->where('fct.id_empresa', '=', $datosAux[2])
+                                ->where('fct.id_empresa', '=', $datosAux[1])
                                 ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
                                 ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                                 ->first();
 
-                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[2])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[2])->get();
+                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[1])->get();
 
                             //meter ese nombre en un array asociativo
                             $datos[] = [
@@ -541,7 +541,7 @@ class ControladorTutorFCT extends Controller
                 $nombreDesglosado=explode("_", $nombreAux);
 
                 //saco el año  del fichero con un substring
-                $fechaArchivo = $nombreDesglosado[7];
+                $fechaArchivo = $nombreDesglosado[6];
 
                 //saco el tipo de anexo con un substring
                 $anexo = $nombreDesglosado[0];
