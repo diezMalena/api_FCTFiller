@@ -2,7 +2,13 @@
 
 namespace App\Auxiliar;
 
+use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
+use App\Models\Profesor;
+use App\Models\RolEmpresa;
+use App\Models\RolProfesorAsignado;
+use App\Models\RolTrabajadorAsignado;
+use App\Models\Trabajador;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -99,5 +105,38 @@ class Auxiliar
     public static function obtenerCursoAcademicoPorAnio($anio){
         //Select realizada "a pelo" para utilizar la función YEAR() de MySQL
         return DB::select("select cod_curso from aux_curso_academico where year(fecha_inicio) = '" . $anio . "'")[0]->cod_curso ;
+    }
+
+    /**
+     * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email.
+     *
+     * @param int $usuario array con los datos del usuario
+     * @author alvaro <alvarosantosmartin6@gmail.com>
+     */
+    public static function getDatosUsuario($usuario_view)
+    {
+        if ($usuario_view->perfil == 'alumno') {
+            $usuario = Alumno::where('email', '=', $usuario_view->email)
+            ->select(['email', 'nombre', 'apellidos', 'dni'])
+            ->first();
+        }else if($usuario_view->perfil == 'trabajador'){
+            $usuario = Trabajador::where('email', '=', $usuario_view->email)
+            ->select(['email', 'nombre', 'apellidos', 'dni'])
+            ->first();
+            $roles = RolTrabajadorAsignado::where('dni', '=', $usuario->dni)
+            ->select('id_rol')
+            ->get();
+            $usuario->roles = $roles;
+        } else {
+            $usuario = Profesor::where('email', '=', $usuario_view->email)
+            ->select(['email', 'nombre', 'apellidos', 'dni'])
+            ->first();
+            $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
+            ->select('id_rol')
+            ->get();
+            $usuario->roles = $roles;
+        }
+        $usuario->tipo = $usuario_view->perfil;
+        return $usuario;
     }
 }
