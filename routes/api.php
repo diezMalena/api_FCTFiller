@@ -51,13 +51,18 @@ Route::group(['middleware' => ['Cors']], function () {
 
 
 //Crud Anexos
+Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 Route::get('/listarAnexos/{dni_tutor}', [ControladorTutorFCT::class, 'verAnexos']);
 Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
-Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
 Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
-
+//Crud Profesores
+Route::get('/listarProfesores', [ControladorJefatura::class, 'verProfesores']);
+Route::get('/listarProfesor/{dni_profesor}', [ControladorJefatura::class, 'verProfesor']);
+Route::delete('/eliminarProfesor/{dni_profesor}', [ControladorJefatura::class, 'eliminarProfesor']);
+Route::post('/modificarProfesor/{dni_profesor}', [ControladorJefatura::class, 'modificarProfesor']);
+Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,

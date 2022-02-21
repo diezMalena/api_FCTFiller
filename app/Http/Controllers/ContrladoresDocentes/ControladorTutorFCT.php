@@ -420,7 +420,7 @@ class ControladorTutorFCT extends Controller
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
-                    //dividir un nombre por su separador
+                    //Dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
                     if (strcmp($datosAux[0], "Anexo1") == 0) {

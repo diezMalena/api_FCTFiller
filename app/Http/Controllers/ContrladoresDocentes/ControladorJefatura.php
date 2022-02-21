@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ContrladoresDocentes;
 use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros;
 use App\Http\Controllers\Controller;
+use App\Models\RolProfesorAsignado;
 use App\Models\Alumno;
 use App\Models\CentroEstudios;
 use App\Models\Grupo;
@@ -324,7 +325,6 @@ class ControladorJefatura extends Controller
                                 'cod_grupo' => $codGrupo,
                                 'curso_academico' => $cursoAcademico
                             ]);
-
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
@@ -461,7 +461,7 @@ class ControladorJefatura extends Controller
                             //$codGrupo = Grupo::where('lower(nombre_ciclo)', $estudio)->get()[0]->cod;
                             $codGrupo = DB::select('select cod from grupo
                             where lower(nombre_ciclo) = ' . "'" . strtolower($estudio[1]) . "'
-                            and cod_nivel = '". $estudio[0]."'")[0]->cod;
+                            and cod_nivel = '" . $estudio[0] . "'")[0]->cod;
 
 
                             OfertaGrupo::create([
@@ -591,4 +591,127 @@ class ControladorJefatura extends Controller
 
         return true;
     }
+
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     *Esta funcion te devuelve todos los profesores de la base de datos
+     * @return void
+     */
+    public function verProfesores()
+    {
+        $datos=Array();
+        $roles= Array();
+
+        foreach(Profesor::all() as $p){
+            foreach(RolProfesorAsignado::select('id_rol')->where('dni','=',$p->dni)->get() as $rol){
+                $roles[]= $rol->id_rol;
+            }
+            $centro_estudios=CentroEstudios::select('nombre')->where('cod','=',$p->cod_centro_estudios)->get();
+            $datos[]=[
+                'dni'=> $p->dni,
+                'email' => $p->email,
+                'nombre'=> $p->nombre,
+                'apellidos'=> $p->apellidos,
+                'centro_estudios'=> $centro_estudios[0]->nombre,
+                'roles' => $roles
+            ];
+            unset($roles);
+            $roles= Array();
+        }
+
+        if ($datos){
+            return response()->json($datos, 200);
+        }else{
+            return response()->json([
+                'message' => 'Error al recuperar los profesores'
+            ], 401);
+        }
+
+    }
+
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion nos devuelve un profesor en concreto
+     *
+     * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd
+     * @return void
+     */
+    public function verProfesor($dni_profesor)
+    {
+        $datos= Array();
+        $roles= Array();
+
+        foreach(Profesor::where('dni','=',$dni_profesor)->get() as $p){
+            foreach(RolProfesorAsignado::select('id_rol')->where('dni','=',$p->dni)->get() as $rol){
+                $roles[]= $rol->id_rol;
+            }
+
+            $centro_estudios=CentroEstudios::select('nombre')->where('cod','=',$p->cod_centro_estudios)->get();
+            $datos[]=[
+                'dni'=> $p->dni,
+                'email' => $p->email,
+                'nombre'=> $p->nombre,
+                'apellidos'=> $p->apellidos,
+                'centro_estudios'=> $centro_estudios[0]->nombre,
+                'roles' => $roles
+            ];
+            unset($roles);
+            $roles= Array();
+        }
+
+        if ($datos){
+            return response()->json($datos, 200);
+        }else{
+            return response()->json([
+                'message' => 'Error al recuperar el profesor'
+            ], 401);
+        }
+    }
+
+/**
+ * Esta funcion elimina un profesor y su respectiva carpeta
+ *
+ * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd y eliminarlo
+ * @return void
+ */
+    public function eliminarProfesor($dni_profesor){
+
+        $profesorEliminar=Profesor::where('dni','=',$dni_profesor)->delete();
+
+        if($profesorEliminar){
+
+            $ruta= public_path($dni_profesor);
+            $this->eliminarCarpetaRecursivo($ruta);
+            return response()->json([
+                'message' => 'Profesor Eliminado con exito'
+            ], 201);
+        }else{
+            return response()->json([
+                'message' => 'Error al eliminar el profesor'
+            ], 401);
+        }
+
+    }
+
+
+
+
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion elimina de manera recursiva una carpeta y su contenido
+     *
+     * @param [string] $carpeta -> La ruta de la carpeta
+     * @return void
+     */
+    function eliminarCarpetaRecursivo($carpeta)
+    {
+      foreach(glob($carpeta . "/*") as $archivos_carpeta){
+        if (is_dir($archivos_carpeta)){
+          $this->eliminarCarpetaRecursivo($archivos_carpeta);
+        } else {
+        unlink($archivos_carpeta);
+        }
+      }
+      rmdir($carpeta);
+     }
 }
