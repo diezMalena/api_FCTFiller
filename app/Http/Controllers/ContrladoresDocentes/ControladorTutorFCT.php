@@ -550,6 +550,8 @@ class ControladorTutorFCT extends Controller
                 //saco el tipo de anexo con un substring
                 $anexo = $nombreDesglosado[0];
 
+
+            //////////////////////ANEXO1//////////////////////////////////////////
                 if (strcmp($anexo, "Anexo1") == 0) {
                     if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
                         $relativeNameZipFile = basename($value);
@@ -558,11 +560,10 @@ class ControladorTutorFCT extends Controller
                 }
             }
             //////////////////////ANEXO0//////////////////////////////////////////
-            $files = File::files(public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo0'));
+            /*$files = File::files(public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo0'));
             foreach ($files as $value) {
-
             //LOGICA PARA EL ANEXO 0
-            }
+            }*/
 
             $zip->close();
         }
