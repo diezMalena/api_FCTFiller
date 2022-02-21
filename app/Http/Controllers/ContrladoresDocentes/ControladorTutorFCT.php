@@ -362,6 +362,10 @@ class ControladorTutorFCT extends Controller
     public function existeCarpeta($ruta){
         if(!is_dir($ruta)){
             mkdir($ruta, 0777, true);
+            $rutaAux=$ruta.DIRECTORY_SEPARATOR.'Anexo1';
+            mkdir($rutaAux, 0777, true);
+            //$rutaAux=$ruta.DIRECTORY_SEPARATOR.'Anexo0';
+           // mkdir($rutaAux, 0777, true);
         }
     }
 
