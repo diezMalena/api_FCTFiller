@@ -490,34 +490,86 @@ class ControladorTutorFCT extends Controller
         return $datos;
     }
 
+    /**
+     * Esta funcion permite al director o jefe de estudios ver todos los anexos generados por su centro de estudios
+     *
+     *@author Laura <lauramorenoramos97@gmail.com>
+     * @param [string] $dni_director es el dni del director
+     * @return void
+     */
     public function verAnexosDirector($dni_director)
     {
         $directorios = array();
         $datos = array();
+        $fecha = Carbon::now();
 
 
-        foreach (Fct::select('ruta_anexo')->get() as $ruta) {
-            $directorios[] = $ruta->ruta_anexo;
+        //Primero hay que sacar solo los anexos del centro educativo del director/jefe de estudios
+        $centroEducativo = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni_director)->get();
+        //Los alumnos sirven para sacar los datos de la tabla FCT
+        $alumnosCentro = Matricula::select('dni_alumno')->where('cod_centro', '=', $centroEducativo[0]->cod_centro_estudios)->get();
 
+        //Saco las rutas en un array y borro los duplicados
+        foreach ($alumnosCentro as $a) {
+            $datoAux = Fct::select('ruta_anexo')->where('dni_alumno', '=', $a->dni_alumno)->get();
+            foreach ($datoAux as $d) {
+                $directorios[] = $d->ruta_anexo;
+            }
+
+            $directorios = array_unique($directorios);
         }
-        /*
+
+
+        /*ANEXO0
         foreach (Convenio::select('ruta_anexo')->get() as $ruta) {
-            $directorios[] = [
-                'ruta' =>$ruta->ruta_anexo
-            ];
+            $directorios[] =
+
+
         }*/
 
-        $rutasAux = $this->transformarRutasSO($directorios);
+        //Transformamos los directorios para que tengan el formato adecuado para el SO
+        $directorios = $this->transformarRutasSO($directorios);
 
-        foreach($rutasAux as $r){
-               $rutasAnexosDesglosados=explode(DIRECTORY_SEPARATOR,$r);
-               $Anexo=$rutasAnexosDesglosados[2];
-               $AnexoDesglosado=explode('_',$Anexo);
+        foreach ($directorios as $r) {
 
+            //Las rutas vienen casi completas, yo solo necesito el nombre del documento
+            $rutasAnexosDesglosados = explode(DIRECTORY_SEPARATOR, $r);
+            $Anexo = $rutasAnexosDesglosados[2];
+
+
+
+            $AnexoDesglosado = explode('_', $Anexo);
+            $tipoAnexo = $AnexoDesglosado[0];
+
+            //////////////////////ANEXO1////////////////////////////////
+            if (strcmp($tipoAnexo, "Anexo1") == 0) {
+                if ($AnexoDesglosado[6] == $fecha->year) {
+
+                    $alumno = Fct::select('dni_alumno')->where('ruta_anexo', '=', $r)->first();
+                    $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $AnexoDesglosado[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                    $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $AnexoDesglosado[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                    $empresa_nombre = Empresa::select('nombre')->where('id', '=', $AnexoDesglosado[1])->get();
+
+
+                    //meter ese nombre en un array asociativo
+                    $datos[] = [
+                        'nombre' => $AnexoDesglosado[0],
+                        'codigo' => $Anexo,
+                        'empresa' => $empresa_nombre[0]->nombre,
+                        'firma_empresa' => $firma_empresa[0]->firmado_empresa,
+                        'firma_centro' => $firma_centro[0]->firmado_director
+                    ];
+                }
+            }
+
+            //////////////////////ANEXO0////////////////////////////////
+
+            /*if(strcmp($tipoAnexo, "Anexo0") == 0) {
+                  }*/
         }
 
 
-        return response($rutasAux);
+        return $datos;
     }
 
     public function transformarRutasSO($rutas)
@@ -574,23 +626,37 @@ class ControladorTutorFCT extends Controller
     }
 
 
+
+
     /**
-     * Esta funcion permite descargar todos los anexos del crud de anexos, menos el 3
+     * Esta funcion permite descargar todos los anexos del crud de anexos del tutor, menos el 3
      *
      * @param Request $val
      * @return void
      */
     public function descargarTodo(Request $val)
     {
-        $dni_tutor = $val->get('dni_tutor');
-
         $zip = new ZipArchive;
         $AuxNombre = Str::random(7);
+        $esDirector = false;
+        $dni = $val->get('dni_tutor');
+
 
         $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
+        $rolProfesor = RolProfesorAsignado::select('id_rol')->where('dni', '=', $dni)->get();
 
-        //Convertir en Zip
-        $nombreZip = $this->montarZipCrud($dni_tutor, $zip, $nombreZip);
+        foreach ($rolProfesor as $r) {
+            if ($r->id_rol == 1 || $r->id_rol == 2) {
+                $esDirector = true;
+            }
+        }
+
+        if ($esDirector) {
+            $nombreZip = $this->montarZipCrudDirector($dni, $zip, $nombreZip);
+        } else {
+            //Convertir en Zip
+            $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip);
+        }
 
         return response()->download(public_path($nombreZip));
     }
@@ -640,6 +706,74 @@ class ControladorTutorFCT extends Controller
 
             $zip->close();
         }
+        return $nombreZip;
+    }
+
+
+    /**
+     * Esta funcion recorre todas las carpetas de los tutores de un centro de estudios de un director,
+     * a traves del dni de estos turores, comprobando que existe la carpeta y permitiendo descargar todos
+     * los anexos que se encuentran en ellas en formato zip
+     *
+     *@author Laura <lauramorenoramos97@gmail.com>
+     * @param String $dni_director
+     * @param ZipArchive $zip
+     * @param String $nombreZip
+     * @return void
+     */
+    public function montarZipCrudDirector(String $dni_director, ZipArchive $zip, String $nombreZip)
+    {
+        $centroEducativo = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni_director)->get();
+        $tutores = Profesor::join('rol_profesor_asignado', 'rol_profesor_asignado.dni', '=', 'profesor.dni')
+            ->select('profesor.dni')
+            ->where('profesor.cod_centro_estudios', '=', $centroEducativo[0]->cod_centro_estudios)
+            ->where('rol_profesor_asignado.id_rol', '=', Parametros::TUTOR)
+            ->get();
+
+        foreach ($tutores as $dni) {
+
+            $rutaAux = public_path($dni->dni);
+            if (is_dir($rutaAux)) {
+
+                $files = File::files(public_path($dni->dni . DIRECTORY_SEPARATOR . 'Anexo1'));
+                $fechaArchivo = '';
+                $fechaActual = Carbon::now();
+                $anexo = '';
+
+
+                if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
+                    foreach ($files as $value) {
+                        ///////////////ANEXO1//////////////////////////
+                        $nombreAux = basename($value);
+                        $nombreDesglosado = explode("_", $nombreAux);
+
+                        //saco el año  del fichero con un substring
+                        $fechaArchivo = $nombreDesglosado[6];
+
+                        //saco el tipo de anexo con un substring
+                        $anexo = $nombreDesglosado[0];
+
+
+                        //////////////////////ANEXO1//////////////////////////////////////////
+                        if (strcmp($anexo, "Anexo1") == 0) {
+                            if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
+                                $relativeNameZipFile = basename($value);
+                                $zip->addFile($value, $relativeNameZipFile);
+                            }
+                        }
+                    }
+                    //////////////////////ANEXO0//////////////////////////////////////////
+                    /*$files = File::files(public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo0'));
+                       $rutaAux = public_path($dni_tutor.DIRECTORY_SEPARATOR.'Anexo0');
+                        foreach ($files as $value) {
+                        //LOGICA PARA EL ANEXO 0
+                        }*/
+
+                    $zip->close();
+                }
+            }
+        }
+
         return $nombreZip;
     }
 
