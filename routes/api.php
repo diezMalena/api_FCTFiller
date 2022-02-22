@@ -52,7 +52,7 @@ Route::group(['middleware' => ['Cors']], function () {
 
 //Crud Anexos
 Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
-Route::get('/listarAnexos/{dni_tutor}', [ControladorTutorFCT::class, 'verAnexos']);
+Route::get('/listarAnexos/{dni}', [ControladorTutorFCT::class, 'verAnexos']);
 Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
 Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
