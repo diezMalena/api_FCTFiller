@@ -25,11 +25,15 @@ class CreateGrupo extends Migration
             $table->string('nombre_largo');
             //Desarrollo de Aplicaciones Multiplataforma
             $table->string('nombre_ciclo');
-            //Informática y telecomunicaciones
-            $table->unsignedBigInteger('cod_familia_profesional');
+            /**
+            * DSB Eliminación del campo cod_familia_profesional, que se traspasa a la tabla GrupoFamilia,
+            * puesto que un grupo puede tener más de una familia profesional
+            */
+            // //Informática y telecomunicaciones
+            // $table->unsignedBigInteger('cod_familia_profesional');
             //CFGS
             $table->string('cod_nivel');
-            $table->foreign('cod_familia_profesional')->references('id')->on('familia_profesional')->onDelete('cascade')->onUpdate('cascade');
+            //$table->foreign('cod_familia_profesional')->references('id')->on('familia_profesional')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('cod_nivel')->references('cod')->on('nivel_estudios')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
