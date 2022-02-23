@@ -12,6 +12,7 @@ use App\Models\Trabajador;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+
 class Auxiliar
 {
 
@@ -108,7 +109,7 @@ class Auxiliar
     }
 
     /**
-     * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email.
+     * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email, según qué tipo de usuario sea.
      *
      * @param int $usuario array con los datos del usuario
      * @author alvaro <alvarosantosmartin6@gmail.com>
