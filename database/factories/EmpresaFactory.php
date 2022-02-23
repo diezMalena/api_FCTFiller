@@ -11,20 +11,21 @@ class EmpresaFactory extends Factory
 
     /**
      * Define the model's default state.
-     * @author @DaniJCoello
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
      * @return array
      */
     public function definition()
     {
         return [
-            'cif' => rand(11111111,99999999),
+            'cif' => $this->faker->unique()->dni(),
             'nombre' => $this->faker->company(),
             'telefono' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),
             'localidad' => $this->faker->city(),
-            'provincia' => $this->faker->country(),
-            'direccion' => $this->faker->address(),
-            'cp' => rand(10000,99999)
+            'provincia' => $this->faker->state(),
+            'direccion' => $this->faker->streetAddress(),
+            'cp' => $this->faker->postcode(),
+            'es_privada' => rand(0,1)
         ];
     }
 }

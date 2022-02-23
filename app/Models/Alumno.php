@@ -5,74 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo para la tabla alumno
+ *
+ * Contiene información acerca de los alumnos dados de alta en el sistema
+ *
+ * @author laura <lauramorenoramos97@gmail.com>
+ * @author David Sánchez Barragán (1-2-22, rev 10/02/2022)
+ */
 class Alumno extends Model
 {
     use HasFactory;
-    protected $fillable=['dni','nombre','apellido','localidad','provincia','horario','num_horas','fecha_ini','fecha_fin','cif','cod_curso'];
+    protected $fillable = ['dni', 'cod_alumno', 'email', 'password', 'nombre', 'apellidos', 'provincia', 'localidad', 'va_a_fct'];
     protected $table = 'alumno';
     protected $primaryKey = 'dni';
     public $incrementing = false;
     protected $keyType = 'string';
-
-
-    /**
-     * Union entre la tabla alumno y la tabla alumno_materia, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function alumnoMateriaMany(){
-       return $this->hasMany('App\Models\AlumnoMateria','dni','dni');
-     }
-
-    /**
-     * Union entre la tabla alumno y la tabla alumno_materia, intercambiando
-     * información concreta
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function alumnoMateriaHasOne(){
-        return $this->hasOne('App\Models\AlumnoMateria','dni','dni');
-     }
-
-/**
- * Union entre la tabla alumno y la tabla empresa, intercambiando
- * múltiple información
- *@author laura <lauramorenoramos97@gmail.com>
- * @return void
- */
-    public function empresaMany(){
-        return $this->hasMany('App\Models\Empresa','cif','cif');
-     }
-
-     /**
-      * Union entre la tabla alumno y la tabla empresa, intercambiando
-      *información concreta
-      *@author laura <lauramorenoramos97@gmail.com>
-      * @return void
-      */
-     public function empresaHasOne(){
-        return $this->hasOne('App\Models\Empresa','cif','cif');
-     }
-
-
-
-     /**
-     * Union entre la tabla alumno y la tabla curso, intercambiando
-     * múltiple información
-     *@author laura <lauramorenoramos97@gmail.com>
-     * @return void
-     */
-    public function alumnoCursoMany(){
-        return $this->hasMany('App\Models\Curso','cod_curso','cod_curso');
-     }
-      /**
-      * Union entre la tabla alumno y la tabla curso, intercambiando
-      *información concreta
-      *@author laura <lauramorenoramos97@gmail.com>
-      * @return void
-      */
-     public function alumnoCursoHasOne(){
-        return $this->hasOne('App\Models\Curso','cod_curso','cod_curso');
-     }
 }

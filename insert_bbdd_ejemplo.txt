@@ -1,0 +1,361 @@
+use App\Models\CentroEstudios;
+use App\Models\Convenio;
+use App\Models\RolEmpresa;
+use App\Models\RolProfesor;
+use App\Models\Empresa;
+use App\Models\FamiliaProfesional;
+use App\Models\Grupo;
+use App\Models\NivelEstudios;
+use App\Models\OfertaGrupo;
+use App\Models\Profesor;
+use App\Models\RolProfesorAsignado;
+use App\Models\RolTrabajadorAsignado;
+use App\Models\Trabajador;
+use App\Models\Alumno;
+use App\Models\AuxCursoAcademico;
+use App\Models\EmpresaGrupo;
+use App\Models\Fct;
+use App\Models\GrupoFamilia;
+use App\Models\Matricula;
+use App\Models\Tutoria;
+
+RolEmpresa::create([
+    'descripcion' => 'JefazoMaximo'
+]);
+RolEmpresa::create([
+    'descripcion' => 'ResponsableCentro'
+]);
+RolEmpresa::create([
+    'descripcion' => 'Tutor'
+]);
+
+
+
+RolProfesor::create([
+    'descripcion' => 'Director'
+]);
+RolProfesor::create([
+    'descripcion' => 'JefeEstudios'
+]);
+RolProfesor::create([
+    'descripcion' => 'Tutor'
+]);
+
+
+
+Empresa::create([
+    'cif' => '12345',
+    'nombre' => 'Empresa 1',
+    'telefono' => '500900600',
+    'email' => 'empresa1@mail.com',
+    'localidad' => 'Puertollano',
+    'provincia' => 'Ciudad Real',
+    'direccion' => 'Calle de la llorería, 1',
+    'cp' => '13500',
+    'es_privada' => 1
+]);
+Empresa::create([
+    'cif' => '12346',
+    'nombre' => 'Empresa 2',
+    'telefono' => '500900630',
+    'email' => 'empresa2@mail.com',
+    'localidad' => 'Almodovar del Campo',
+    'provincia' => 'Ciudad Real',
+    'direccion' => 'Calle de la abundancia, 1',
+    'cp' => '13280',
+    'es_privada' => 1
+]);
+
+
+
+Trabajador::create([
+    'dni' => '1a',
+    'email' => 'trabajador1@mail.com',
+    'password' => '12345',
+    'nombre' => 'Juanito',
+    'apellidos' => 'Valderrama',
+    'id_empresa' => 1
+]);
+Trabajador::create([
+    'dni' => '2b',
+    'email' => 'trabajador2@mail.com',
+    'password' => '12345',
+    'nombre' => 'Pepi',
+    'apellidos' => 'Valladares',
+    'id_empresa' => 2
+]);
+
+
+
+RolTrabajadorAsignado::create([
+    'dni' => '1a', 'id_rol' => 1
+]);
+RolTrabajadorAsignado::create([
+    'dni' => '1a', 'id_rol' => 2
+]);
+RolTrabajadorAsignado::create([
+    'dni' => '1a', 'id_rol' => 3
+]);
+RolTrabajadorAsignado::create([
+    'dni' => '2b', 'id_rol' => 2
+]);
+RolTrabajadorAsignado::create([
+    'dni' => '2b', 'id_rol' => 3
+]);
+
+
+
+CentroEstudios::create([
+    'cod' => '1350090894',
+    'cif' => 'H785B786',
+    'cod_centro_convenio' => 'x',
+    'nombre' => 'CIFP Virgen de Gracia',
+    'localidad' => 'Puertollano',
+    'provincia' => 'Ciudad Real',
+    'direccion' => 'Calle Copa 1',
+    'cp' => '13500',
+    'telefono' => '625812584',
+    'email' => 'cifpvg@mail.com'
+]);
+
+
+
+Profesor::create([
+    'dni' => '3c',
+    'email' => 'diego@mail.com',
+    'password' => '12345',
+    'nombre' => 'Diego',
+    'apellidos' => 'Tutor',
+    'cod_centro_estudios' => '1350090894'
+]);
+Profesor::create([
+    'dni' => '4d',
+    'email' => 'irene@mail.com',
+    'password' => '12345',
+    'nombre' => 'Irene',
+    'apellidos' => 'JefaEstudios',
+    'cod_centro_estudios' => '1350090894'
+]);
+Profesor::create([
+    'dni' => '5e',
+    'email' => 'ana@mail.com',
+    'password' => '12345',
+    'nombre' => 'Ana Belén',
+    'apellidos' => 'Directora',
+    'cod_centro_estudios' => '1350090894'
+]);
+
+
+
+RolProfesorAsignado::create([
+    'dni' => '3c', 'id_rol' => 3
+]);
+RolProfesorAsignado::create([
+    'dni' => '4d', 'id_rol' => 2
+]);
+RolProfesorAsignado::create([
+    'dni' => '5e', 'id_rol' => 1
+]);
+
+
+
+
+Convenio::create([
+    'cod_convenio' => 'AA',
+    'cod_centro' => '1350090894',
+    'id_empresa' => 1,
+    'curso_academico_inicio' => '21/22',
+    'curso_academico_fin' => '24/25',
+    'firmado_director' => '0',
+    'firmado_empresa' => '0',
+    'ruta_anexo' => ''
+]);
+Convenio::create([
+    'cod_convenio' => 'AB',
+    'cod_centro' => '1350090894',
+    'id_empresa' => 2,
+    'curso_academico_inicio' => '21/22',
+    'curso_academico_fin' => '24/25',
+    'firmado_director' => '0',
+    'firmado_empresa' => '0',
+    'ruta_anexo' => ''
+]);
+
+
+
+
+FamiliaProfesional::create([
+    'descripcion' => 'Actividades físicas y deportivas'
+]);
+FamiliaProfesional::create([
+    'descripcion' => 'Administración y gestión'
+]);
+FamiliaProfesional::create([
+    'descripcion' => 'Comercio y marketing'
+]);
+FamiliaProfesional::create([
+    'descripcion' => 'Informática y comunicaciones'
+]);
+
+
+
+NivelEstudios::create([
+    'cod' => 'CFGS',
+    'descripcion' => 'Ciclo formativo de Grado Superior'
+]);
+NivelEstudios::create([
+    'cod' => 'CFGM', 'descripcion' => 'Ciclo formativo de Grado Medio'
+]);
+NivelEstudios::create([
+    'cod' => 'CFGB', 'descripcion' => 'Ciclo formativo de Grado Básico'
+]);
+
+
+
+Grupo::create([
+    'cod' => '2DAM',
+    'nombre_largo' => '2º Desarrollo de Aplicaciones Multiplataforma (LOE)',
+    'nombre_ciclo' => 'Desarrollo de Aplicaciones Multiplataforma',
+    'cod_nivel' => 'CFGS'
+]);
+Grupo::create([
+    'cod' => '2DAW',
+    'nombre_largo' => '2º Desarrollo de Aplicaciones Web (LOE)',
+    'nombre_ciclo' => 'Desarrollo de Aplicaciones Web',
+    'cod_nivel' => 'CFGS'
+]);
+Grupo::create([
+    'cod' => '2GAC',
+    'nombre_largo' => '2º Gestión de Actividades Comerciales (LOE)',
+    'nombre_ciclo' => 'Gestión de Actividades Comerciales',
+    'cod_nivel' => 'CFGM'
+]);
+
+
+
+OfertaGrupo::create([
+    'cod_centro' => '1350090894', 'cod_grupo' => '2DAM'
+]);
+OfertaGrupo::create([
+    'cod_centro' => '1350090894', 'cod_grupo' => '2DAW'
+]);
+OfertaGrupo::create([
+    'cod_centro' => '1350090894', 'cod_grupo' => '2GAC'
+]);
+
+
+GrupoFamilia::create([
+    'cod_grupo' => '2DAM', 'id_familia' => 4
+]);
+GrupoFamilia::create([
+    'cod_grupo' => '2DAW', 'id_familia' => 4
+]);
+GrupoFamilia::create([
+    'cod_grupo' => '2DAM', 'id_familia' => 2
+]);
+
+
+Alumno::create([
+    'dni' => '10x',
+    'cod_alumno' => 1381853,
+    'email' => 'david@mail.com',
+    'password' => '12345',
+    'nombre' => 'David',
+    'apellidos' => 'Alumno 1',
+    'provincia' => 'Ciudad Real',
+    'localidad' => 'Puertollano',
+    'va_a_fct' => '0'
+]);
+Alumno::create([
+    'dni' => '11x',
+    'cod_alumno' => 1381852,
+    'email' => 'malena@mail.com',
+    'password' => '12345',
+    'nombre' => 'Malena',
+    'apellidos' => 'Alumno 2',
+    'provincia' => 'Ciudad Real',
+    'localidad' => 'Puertollano',
+    'va_a_fct' => '0'
+]);
+Alumno::create([
+    'dni' => '12x',
+    'cod_alumno' => 1381851,
+    'email' => 'alvaro@mail.com',
+    'password' => '12345',
+    'nombre' => 'Álvaro',
+    'apellidos' => 'Alumno 3',
+    'provincia' => 'Ciudad Real',
+    'localidad' => 'Puertollano',
+    'va_a_fct' => '1'
+]);
+
+
+
+Matricula::create([
+    'cod' => '123456789A',
+    'cod_centro' => '1350090894',
+    'dni_alumno' => '10x',
+    'cod_grupo' => '2DAM',
+    'curso_academico' => '21/22'
+]);
+Matricula::create([
+    'cod' => '456789123B',
+    'cod_centro' => '1350090894',
+    'dni_alumno' => '11x',
+    'cod_grupo' => '2DAM',
+    'curso_academico' => '20/21'
+]);
+Matricula::create([
+    'cod' => '789123456C',
+    'cod_centro' => '1350090894',
+    'dni_alumno' => '12x',
+    'cod_grupo' => '2DAW',
+    'curso_academico' => '21/22'
+]);
+
+
+
+
+Tutoria::create([
+    'dni_profesor' => '3c', 'cod_grupo' => '2DAW', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
+]);
+Tutoria::create([
+    'dni_profesor' => '4d', 'cod_grupo' => '2DAM', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
+]);
+Tutoria::create([
+    'dni_profesor' => '5e', 'cod_grupo' => '2GAC', 'curso_academico' => '21/22', 'cod_centro' => '1350090894'
+]);
+
+
+
+Fct::create([
+    'id_empresa' => 1,
+    'dni_alumno' => '10x',
+    'dni_tutor_empresa' => '1a',
+    'curso_academico' => '21/22',
+    'horario' => '08:00 a 14:00 y 15:00 a 18:00',
+    'num_horas' => '400',
+    'fecha_ini' => date("Y-m-d H:i:s"),
+    'fecha_fin' => date("Y-m-d H:i:s"),
+    'firmado_director' => '0',
+    'firmado_empresa' => '0',
+    'ruta_anexo' => '',
+    'departamento' => ''
+]);
+
+
+EmpresaGrupo::create([
+    'id_empresa' => 1, 'cod_grupo' => '2DAM'
+]);
+EmpresaGrupo::create([
+    'id_empresa' => 1, 'cod_grupo' => '2DAW'
+]);
+EmpresaGrupo::create([
+    'id_empresa' => 2, 'cod_grupo' => '2GAC'
+]);
+
+AuxCursoAcademico::create([
+    'cod_curso' => '21/22',
+    'fecha_inicio' => date("Y-m-d H:i:s", strtotime("01 September 2021")),
+    'fecha_fin' => date("Y-m-d H:i:s", strtotime("01 September 2022"))
+]);

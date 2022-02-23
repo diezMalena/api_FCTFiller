@@ -20,10 +20,10 @@ class TrabajadorFactory extends Factory
     public function definition()
     {
         return [
-            'dni' => rand(111111111, 999999999),
+            'dni' => $this->faker->unique()->dni(),
             'email' => $this->faker->email(),
             'password' => Hash::make('superman'),
-            'nombre' => $this->faker->name(),
+            'nombre' => $this->faker->firstName(),
             'apellidos' => $this->faker->lastName() . ' ' . $this->faker->lastName(),
             'id_empresa' => self::$IDEMPRESA
         ];

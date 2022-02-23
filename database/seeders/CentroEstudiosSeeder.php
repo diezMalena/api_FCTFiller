@@ -8,6 +8,7 @@ use App\Models\RolProfesorAsignado;
 use Database\Factories\ProfesorFactory;
 use Database\Factories\RolProfesorAsignadoFactory;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class CentroEstudiosSeeder extends Seeder
 {
@@ -20,15 +21,41 @@ class CentroEstudiosSeeder extends Seeder
     {
         for ($i = 0; $i < 10; $i++) {
             //Creo los centros
-            $centro = CentroEstudios::factory()->create();
+            if ($i == 0) {
+                $centro = CentroEstudios::create([
+                    'cod' => '1111VDG',
+                    'cif' => '1VDG',
+                    'cod_centro_convenio' => 'VdG',
+                    'nombre' => 'CIFP Virgen de Gracia',
+                    'localidad' => 'Puertollano',
+                    'provincia' => 'Ciudad Real',
+                    'direccion' => 'Paseo de San Gregorio, 82-84',
+                    'cp' => '13500',
+                    'telefono' => '926426250',
+                    'email' => 'secretaria@cifpvirgendegracia.com'
+                ]);
+            } else {
+                $centro = CentroEstudios::factory()->create();
+            }
             //Saco el código del centro
-            $cod = $centro->cod_centro;
+            $cod = $centro->cod;
             //Lo establezco en la factoría del profesor para que los profesores se asocien al centro
             ProfesorFactory::$CODCENTRO = $cod;
             //Creo unos cuantos profesores
-            for ($j = 0; $j < rand(15,25); $j++) {
+            for ($j = 0; $j < 10; $j++) {
                 //Creo el profesor
-                $profe = Profesor::factory()->create();
+                if ($i == 0 && $j == 0) {
+                    $profe = Profesor::create([
+                        'dni' => '1A',
+                        'email' => 'anabelen@cifpvirgendegracia.es',
+                        'password' => Hash::make('superman'),
+                        'nombre' => 'Ana Belén',
+                        'apellidos' => 'Santos Cabaña',
+                        'cod_centro_estudios' => $centro->cod,
+                    ]);
+                } else {
+                    $profe = Profesor::factory()->create();
+                }
                 //Extraigo su clave primaria y la establezco en la factoría de los roles del profe
                 $dni = $profe->dni;
                 RolProfesorAsignadoFactory::$DNI = $dni;
