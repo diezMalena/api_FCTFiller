@@ -311,7 +311,7 @@ class ControladorTutorFCT extends Controller
                     'representante_centro' => $representante_centro[0]->nombre,
                 ];
 
-                $rutaCarpeta = public_path($dni_tutor);
+                $rutaCarpeta = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1');
                 $this->existeCarpeta($rutaCarpeta);
 
 
@@ -325,9 +325,11 @@ class ControladorTutorFCT extends Controller
             //Convertir en Zip
             $nombreZip = $this->montarZip($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1', $zip, $nombreZip);
 
-            return response()->download(public_path($nombreZip));
+            return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
-            dd($e);
+            return response()->json([
+                'message' => 'Error de ficheros: '. $e
+            ], 500);
         }
     }
 
@@ -364,10 +366,6 @@ class ControladorTutorFCT extends Controller
     {
         if (!is_dir($ruta)) {
             mkdir($ruta, 0777, true);
-            $rutaAux = $ruta . DIRECTORY_SEPARATOR . 'Anexo1';
-            mkdir($rutaAux, 0777, true);
-            //$rutaAux=$ruta.DIRECTORY_SEPARATOR.'Anexo0';
-            // mkdir($rutaAux, 0777, true);
         }
     }
 
@@ -554,7 +552,7 @@ class ControladorTutorFCT extends Controller
                     //meter ese nombre en un array asociativo
                     $datos[] = [
                         'nombre' => $AnexoDesglosado[0],
-                        'codigo' => $Anexo,
+                        'codigo' => $r . '.docx',
                         'empresa' => $empresa_nombre[0]->nombre,
                         'firma_empresa' => $firma_empresa[0]->firmado_empresa,
                         'firma_centro' => $firma_centro[0]->firmado_director
@@ -572,6 +570,14 @@ class ControladorTutorFCT extends Controller
         return $datos;
     }
 
+    /**
+     * @author Laura <lauramorenoramos97@gmail.com>
+     * A esta funcion le llegan un array de rutas y las modifica para que tengan el formato a favor del sistema
+     * operativo que se este usando
+     *
+     * @param [string] $rutas
+     * @return array
+     */
     public function transformarRutasSO($rutas)
     {
 
@@ -592,15 +598,31 @@ class ControladorTutorFCT extends Controller
      */
     public function descargarAnexo(Request $val)
     {
+
+        $esDirector = false;
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
         $codAux = explode("_", $cod_anexo);
         $rutaOriginal = '';
 
-        if ($codAux[0] == 'Anexo1') {
-            $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+        $rolProfesor = RolProfesorAsignado::select('id_rol')->where('dni', '=', $dni_tutor)->get();
+
+        foreach ($rolProfesor as $r) {
+            if ($r->id_rol == 1 || $r->id_rol == 2) {
+                $esDirector = true;
+            }
         }
 
+        if ($esDirector) {
+            $rutaOriginal = public_path($cod_anexo);
+            $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+        } else {
+
+            if ($codAux[0] == 'Anexo1') {
+                $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+                $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+            }
+        }
 
         return response()->download($rutaOriginal);
     }
@@ -615,12 +637,28 @@ class ControladorTutorFCT extends Controller
     public function eliminarAnexo($dni_tutor, $cod_anexo)
     {
         $codAux = explode("_", $cod_anexo);
-        $rutaOriginal = '';
+        $esDirector = false;
 
-        if ($codAux[0] == 'Anexo1') {
-            unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+        $rolProfesor = RolProfesorAsignado::select('id_rol')->where('dni', '=', $dni_tutor)->get();
+
+        foreach ($rolProfesor as $r) {
+            if ($r->id_rol == 1 || $r->id_rol == 2) {
+                $esDirector = true;
+            }
         }
-        //Eliminar un fichero
+
+
+        if ($esDirector) {
+            $cod_anexo=str_replace('*', DIRECTORY_SEPARATOR, $cod_anexo);
+            unlink(public_path($cod_anexo));
+        } else {
+            if ($codAux[0] == 'Anexo1') {
+                //Eliminar un fichero
+                unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+
+            }
+        }
+
 
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }

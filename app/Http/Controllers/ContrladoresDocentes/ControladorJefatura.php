@@ -599,34 +599,33 @@ class ControladorJefatura extends Controller
      */
     public function verProfesores()
     {
-        $datos=Array();
-        $roles= Array();
+        $datos = array();
+        $roles = array();
 
-        foreach(Profesor::all() as $p){
-            foreach(RolProfesorAsignado::select('id_rol')->where('dni','=',$p->dni)->get() as $rol){
-                $roles[]= $rol->id_rol;
+        foreach (Profesor::all() as $p) {
+            foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
+                $roles[] = $rol->id_rol;
             }
-            $centro_estudios=CentroEstudios::select('nombre')->where('cod','=',$p->cod_centro_estudios)->get();
-            $datos[]=[
-                'dni'=> $p->dni,
+            $centro_estudios = CentroEstudios::select('nombre')->where('cod', '=', $p->cod_centro_estudios)->get();
+            $datos[] = [
+                'dni' => $p->dni,
                 'email' => $p->email,
-                'nombre'=> $p->nombre,
-                'apellidos'=> $p->apellidos,
-                'centro_estudios'=> $centro_estudios[0]->nombre,
+                'nombre' => $p->nombre,
+                'apellidos' => $p->apellidos,
+                'centro_estudios' => $centro_estudios[0]->nombre,
                 'roles' => $roles
             ];
             unset($roles);
-            $roles= Array();
+            $roles = array();
         }
 
-        if ($datos){
+        if ($datos) {
             return response()->json($datos, 200);
-        }else{
+        } else {
             return response()->json([
                 'message' => 'Error al recuperar los profesores'
             ], 401);
         }
-
     }
 
     /**
@@ -638,63 +637,60 @@ class ControladorJefatura extends Controller
      */
     public function verProfesor($dni_profesor)
     {
-        $datos= Array();
-        $roles= Array();
+        $datos = array();
+        $roles = array();
 
-        foreach(Profesor::where('dni','=',$dni_profesor)->get() as $p){
-            foreach(RolProfesorAsignado::select('id_rol')->where('dni','=',$p->dni)->get() as $rol){
-                $roles[]= $rol->id_rol;
+        foreach (Profesor::where('dni', '=', $dni_profesor)->get() as $p) {
+            foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
+                $roles[] = $rol->id_rol;
             }
 
-            $centro_estudios=CentroEstudios::select('nombre')->where('cod','=',$p->cod_centro_estudios)->get();
-            $datos[]=[
-                'dni'=> $p->dni,
+            $centro_estudios = CentroEstudios::select('nombre')->where('cod', '=', $p->cod_centro_estudios)->get();
+            $datos[] = [
+                'dni' => $p->dni,
                 'email' => $p->email,
-                'nombre'=> $p->nombre,
-                'apellidos'=> $p->apellidos,
-                'centro_estudios'=> $centro_estudios[0]->nombre,
+                'nombre' => $p->nombre,
+                'apellidos' => $p->apellidos,
+                'centro_estudios' => $centro_estudios[0]->nombre,
                 'roles' => $roles
             ];
             unset($roles);
-            $roles= Array();
+            $roles = array();
         }
 
-        if ($datos){
+        if ($datos) {
             return response()->json($datos, 200);
-        }else{
+        } else {
             return response()->json([
                 'message' => 'Error al recuperar el profesor'
             ], 401);
         }
     }
 
-/**
- * Esta funcion elimina un profesor y su respectiva carpeta
- *
- * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd y eliminarlo
- * @return void
- */
-    public function eliminarProfesor($dni_profesor){
+    /**
+     * Esta funcion elimina un profesor y su respectiva carpeta
+     *
+     * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd y eliminarlo
+     * @return void
+     */
+    public function eliminarProfesor($dni_profesor)
+    {
 
-        $profesorEliminar=Profesor::where('dni','=',$dni_profesor)->delete();
+        $profesorEliminar = Profesor::where('dni', '=', $dni_profesor)->delete();
 
-        if($profesorEliminar){
+        if ($profesorEliminar) {
 
-            $ruta= public_path($dni_profesor);
+            $ruta = public_path($dni_profesor);
             $this->eliminarCarpetaRecursivo($ruta);
             return response()->json([
                 'message' => 'Profesor Eliminado con exito'
             ], 201);
-        }else{
+        } else {
             return response()->json([
                 'message' => 'Error al eliminar el profesor'
             ], 401);
         }
-
     }
-
-
-
 
     /**
      * @author Laura <lauramorenoramos@gmail.com>
@@ -703,15 +699,99 @@ class ControladorJefatura extends Controller
      * @param [string] $carpeta -> La ruta de la carpeta
      * @return void
      */
-    function eliminarCarpetaRecursivo($carpeta)
+    public function eliminarCarpetaRecursivo($carpeta)
     {
-      foreach(glob($carpeta . "/*") as $archivos_carpeta){
-        if (is_dir($archivos_carpeta)){
-          $this->eliminarCarpetaRecursivo($archivos_carpeta);
-        } else {
-        unlink($archivos_carpeta);
+        foreach (glob($carpeta . "/*") as $archivos_carpeta) {
+            if (is_dir($archivos_carpeta)) {
+                $this->eliminarCarpetaRecursivo($archivos_carpeta);
+            } else {
+                unlink($archivos_carpeta);
+            }
         }
-      }
-      rmdir($carpeta);
-     }
+        rmdir($carpeta);
+    }
+
+/**
+ * @author Laura <lauramorenoramos@gmail.com>
+ * Esta funcion recoge los datos de un nuevo profesor y el dni de la persona que lo esta creando, despues crea
+ * el profesor y sus respectivos roles
+ *
+ * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona que esta gestionando este nuevo profesor
+ * @return response
+ */
+    public function addProfesor(Request $val)
+    {
+        $dni = $val->get('dni');
+        $email = $val->get('email');
+        $nombre = $val->get('nombre');
+        $apellidos = $val->get('apellidos');
+        $password1 = $val->get('password1');
+        $password2 = $val->get('password2');
+        $roles = $val->get('roles');
+        $dniPersonaCreadora = $val->get('personaCreadora');
+
+        $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dniPersonaCreadora)->get();
+
+        if (strcmp($password1, $password2) == 0) {
+            $profesorAux = Profesor::where('dni', '=', $dni)->get();
+
+            if (sizeof($profesorAux, 0)) {
+                return response()->json([
+                    'message' => 'Este profesor ya existe'
+                ], 401);
+            } else {
+                Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1, 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
+
+                foreach ($roles as $r) {
+                    RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
+                }
+                return response()->json([
+                    'message' => 'Profesor Creado con exito'
+                ], 201);
+            }
+        } else {
+            return response()->json([
+                'message' => 'Contraseñas distintas'
+            ], 401);
+        }
+    }
+
+/**
+ * Esta funcion permite modificar un profesor
+ * Para conseguir que se modifique su rol, este es borrado de la tabla donde lo tiene asignado
+ * y añadido de nuevo.
+ *
+ * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona antes de ser modificada, para poder
+ * buscar su informacion
+ * @return response
+ */
+    public function modificarProfesor(Request $val){
+
+        $dni = $val->get('dni');
+        $email = $val->get('email');
+        $nombre = $val->get('nombre');
+        $apellidos = $val->get('apellidos');
+        $password1 = $val->get('password1');
+        $password2 = $val->get('password2');
+        $roles = $val->get('roles');
+        $dniPersonaAnt= $val->get('personaAnt');
+
+        if (strcmp($password1, $password2) == 0) {
+
+        Profesor::where('dni', $dniPersonaAnt)
+        ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
+
+        RolProfesorAsignado::where('dni', '=', $dni)->delete();
+        foreach ($roles as $r) {
+            RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
+        }
+        return response()->json([
+            'message' => 'Perfil Modificado'
+        ], 201);
+        }else{
+            return response()->json([
+                'message' => 'Las contraseñas son distintas'
+            ], 401);
+        }
+    }
 }

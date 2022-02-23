@@ -61,7 +61,7 @@ Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::cl
 Route::get('/listarProfesores', [ControladorJefatura::class, 'verProfesores']);
 Route::get('/listarProfesor/{dni_profesor}', [ControladorJefatura::class, 'verProfesor']);
 Route::delete('/eliminarProfesor/{dni_profesor}', [ControladorJefatura::class, 'eliminarProfesor']);
-Route::post('/modificarProfesor/{dni_profesor}', [ControladorJefatura::class, 'modificarProfesor']);
+Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
 Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
