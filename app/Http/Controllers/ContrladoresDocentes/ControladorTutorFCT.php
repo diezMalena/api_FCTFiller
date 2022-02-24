@@ -624,7 +624,7 @@ class ControladorTutorFCT extends Controller
         // $convenio->ruta_anexo = $rutaDestino;
         // $convenio->save();
 
-        //return $rutaDestino;
+        return $rutaDestino;
         /************************************************************************/
         /************************************************************************/
         /************************************************************************/
@@ -895,6 +895,12 @@ class ControladorTutorFCT extends Controller
         }else{
             return response()->json(['message'=>'El representante no se ha insertado: '.$representante],400);
         }*/
+    }
+
+    public function descargarAnexo0(Request $req){
+        $ruta_anexo = $req->get('ruta_anexo');
+        // error_log($ruta_anexo);
+        return response()->download($ruta_anexo);
     }
 
     /**
