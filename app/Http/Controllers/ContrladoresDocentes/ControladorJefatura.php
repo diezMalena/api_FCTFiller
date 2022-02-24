@@ -597,12 +597,13 @@ class ControladorJefatura extends Controller
      *Esta funcion te devuelve todos los profesores de la base de datos
      * @return void
      */
-    public function verProfesores()
+    public function verProfesores($dni_profesor)
     {
         $datos = array();
         $roles = array();
+        $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni_profesor)->get();
 
-        foreach (Profesor::all() as $p) {
+        foreach (Profesor::where('cod_centro_estudios','=',$centroEstudios[0]->cod_centro_estudios)->get() as $p) {
             foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
                 $roles[] = $rol->id_rol;
             }
@@ -630,7 +631,8 @@ class ControladorJefatura extends Controller
 
     /**
      * @author Laura <lauramorenoramos@gmail.com>
-     * Esta funcion nos devuelve un profesor en concreto
+     * Esta funcion nos devuelve un profesor en concreto, con unos datos en concreto
+     * que  son: dni, email, nombre, apellidos, centro de estudios y roles
      *
      * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd
      * @return void
@@ -676,22 +678,13 @@ class ControladorJefatura extends Controller
     public function eliminarProfesor($dni_profesor)
     {
 
-        $profesorEliminar = Profesor::where('dni', '=', $dni_profesor)->delete();
-
-        if ($profesorEliminar) {
-
-            $ruta = public_path($dni_profesor);
-            $this->eliminarCarpetaRecursivo($ruta);
-            return response()->json([
-                'message' => 'Profesor Eliminado con exito'
-            ], 201);
-        } else {
-            return response()->json([
-                'message' => 'Error al eliminar el profesor'
-            ], 401);
-        }
+        Profesor::where('dni', '=', $dni_profesor)->delete();
+        $ruta = public_path($dni_profesor);
+        $this->eliminarCarpetaRecursivo($ruta);
+        return response()->json([
+            'message' => 'Profesor Eliminado con exito'
+        ], 201);
     }
-
     /**
      * @author Laura <lauramorenoramos@gmail.com>
      * Esta funcion elimina de manera recursiva una carpeta y su contenido
@@ -701,24 +694,27 @@ class ControladorJefatura extends Controller
      */
     public function eliminarCarpetaRecursivo($carpeta)
     {
-        foreach (glob($carpeta . "/*") as $archivos_carpeta) {
-            if (is_dir($archivos_carpeta)) {
-                $this->eliminarCarpetaRecursivo($archivos_carpeta);
-            } else {
-                unlink($archivos_carpeta);
+        if (is_dir($carpeta)) {
+            foreach (glob($carpeta . "/*") as $archivos_carpeta) {
+                if (is_dir($archivos_carpeta)) {
+                    $this->eliminarCarpetaRecursivo($archivos_carpeta);
+                } else {
+                    unlink($archivos_carpeta);
+                }
             }
+            rmdir($carpeta);
         }
-        rmdir($carpeta);
+
     }
 
-/**
- * @author Laura <lauramorenoramos@gmail.com>
- * Esta funcion recoge los datos de un nuevo profesor y el dni de la persona que lo esta creando, despues crea
- * el profesor y sus respectivos roles
- *
- * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona que esta gestionando este nuevo profesor
- * @return response
- */
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion recoge los datos de un nuevo profesor y el dni de la persona que lo esta creando, despues crea
+     * el profesor y sus respectivos roles
+     *
+     * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona que esta gestionando este nuevo profesor
+     * @return response
+     */
     public function addProfesor(Request $val)
     {
         $dni = $val->get('dni');
@@ -728,13 +724,11 @@ class ControladorJefatura extends Controller
         $password1 = $val->get('password1');
         $password2 = $val->get('password2');
         $roles = $val->get('roles');
-        $dniPersonaCreadora = $val->get('personaCreadora');
-
+        $dniPersonaCreadora = $val->get('personaAux');
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dniPersonaCreadora)->get();
 
         if (strcmp($password1, $password2) == 0) {
             $profesorAux = Profesor::where('dni', '=', $dni)->get();
-
             if (sizeof($profesorAux, 0)) {
                 return response()->json([
                     'message' => 'Este profesor ya existe'
@@ -743,6 +737,7 @@ class ControladorJefatura extends Controller
                 Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1, 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
 
                 foreach ($roles as $r) {
+                    error_log($r);
                     RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
                 }
                 return response()->json([
@@ -756,16 +751,18 @@ class ControladorJefatura extends Controller
         }
     }
 
-/**
- * Esta funcion permite modificar un profesor
- * Para conseguir que se modifique su rol, este es borrado de la tabla donde lo tiene asignado
- * y añadido de nuevo.
- *
- * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona antes de ser modificada, para poder
- * buscar su informacion
- * @return response
- */
-    public function modificarProfesor(Request $val){
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion permite modificar un profesor
+     * Para conseguir que se modifique su rol, este es borrado de la tabla donde lo tiene asignado
+     * y añadido de nuevo.
+     *
+     * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona antes de ser modificada, para poder
+     * buscar su informacion
+     * @return response
+     */
+    public function modificarProfesor(Request $val)
+    {
 
         $dni = $val->get('dni');
         $email = $val->get('email');
@@ -774,23 +771,67 @@ class ControladorJefatura extends Controller
         $password1 = $val->get('password1');
         $password2 = $val->get('password2');
         $roles = $val->get('roles');
-        $dniPersonaAnt= $val->get('personaAnt');
+        $dniPersonaAnt = $val->get('personaAux');
 
         if (strcmp($password1, $password2) == 0) {
 
-        Profesor::where('dni', $dniPersonaAnt)
-        ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
+            Profesor::where('dni', $dniPersonaAnt)
+                ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
 
-        RolProfesorAsignado::where('dni', '=', $dni)->delete();
-        foreach ($roles as $r) {
-            RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
-        }
-        return response()->json([
-            'message' => 'Perfil Modificado'
-        ], 201);
-        }else{
+            RolProfesorAsignado::where('dni', '=', $dni)->delete();
+            foreach ($roles as $r) {
+                RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
+            }
+            return response()->json([
+                'message' => 'Perfil Modificado'
+            ], 201);
+        } else {
             return response()->json([
                 'message' => 'Las contraseñas son distintas'
+            ], 401);
+        }
+    }
+
+
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion nos permite ver un profesor que va a ser editado posteriormente
+     * y devuelve unos parametros especificos: dni, email, nombre, apellidos, password1, password2, roles
+     * y el dni antiguo del profesor a editar , por si este se editara, poder editarlo a través
+     * de este.
+     *
+     * @param [type] $dni_profesor
+     * @return void
+     */
+    public function verProfesorEditar($dni_profesor)
+    {
+        $datos = array();
+        $roles = array();
+
+        foreach (Profesor::where('dni', '=', $dni_profesor)->get() as $p) {
+            foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
+                $roles[] = $rol->id_rol;
+            }
+
+            $datos[] = [
+                'dni' => $p->dni,
+                'email' => $p->email,
+                'nombre' => $p->nombre,
+                'apellidos' => $p->apellidos,
+                'password1' => $p->password,
+                'password2' => $p->password,
+                'roles' => $roles,
+                'personaAux'=> $p->dni
+            ];
+            unset($roles);
+            $roles = array();
+        }
+
+        if ($datos) {
+            return response()->json($datos, 200);
+        } else {
+            return response()->json([
+                'message' => 'Error al recuperar el profesor'
             ], 401);
         }
     }
