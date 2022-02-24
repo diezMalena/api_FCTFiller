@@ -362,10 +362,6 @@ class ControladorTutorFCT extends Controller
     public function existeCarpeta($ruta){
         if(!is_dir($ruta)){
             mkdir($ruta, 0777, true);
-            $rutaAux=$ruta.DIRECTORY_SEPARATOR.'Anexo1';
-            mkdir($rutaAux, 0777, true);
-            //$rutaAux=$ruta.DIRECTORY_SEPARATOR.'Anexo0';
-           // mkdir($rutaAux, 0777, true);
         }
     }
 
@@ -573,12 +569,13 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Genera el Anexo 0, convenio entre una empresa y un centro
+     * @param string $codConvenio el código del convenio entre la empresa y el centro
      * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
-     * @param string $cifEmpresa el CIF de la empresa con la que se hará el convenio
+     * @return string la ruta en la que se guarda el anexo
      *
      * @author @DaniJCoello
      */
-    public function generarAnexo0(string $codConvenio)
+    public function generarAnexo0(string $codConvenio, string $dniTutor)
     {
 
         //Primero consigo los datos del centro de estudios asociado al tutor y su director
@@ -610,17 +607,23 @@ class ControladorTutorFCT extends Controller
         // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
         $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
         // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $rutaDestino = 'anexos/rellenos/anexo0/' . $nombrePlantilla . '-' . $codConvenioAux . '.docx'/*.pdf*/;
-
+        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . 'Anexo0'));
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $nombrePlantilla . '-' . $codConvenioAux . '.docx';
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
+        /************************************************************************/
+        /*************************IMPORTANTE HACER ESTO**************************/
+        /************************************************************************/
         //Y guardo la ruta en la base de datos
-        // $convenio = EmpresaCentroEstudios::find($codConvenio);
-        // $convenio->ruta_anexo = $rutaDestino;
-        // $convenio->save();
+        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
+
+        return $rutaDestino;
+        /************************************************************************/
+        /************************************************************************/
+        /************************************************************************/
 
         //Convierto el documento a PDF
         //Pendiente de revisar: no convierte las cabeceras. Se queda en Word de momento
@@ -862,8 +865,8 @@ class ControladorTutorFCT extends Controller
             'id_rol' => 1,
         ]);
         $convenio = $this->addConvenio($req->dni, $empresa->id);
-        $this->generarAnexo0($convenio->cod_convenio);
-        return response()->json(['message' => 'Registro correcto'], 200);
+        $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
+        return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
         /*}catch(Exception $ex){
             return response()->json(['message'=>'Registro fallido'],400);
         }*/
@@ -888,6 +891,12 @@ class ControladorTutorFCT extends Controller
         }else{
             return response()->json(['message'=>'El representante no se ha insertado: '.$representante],400);
         }*/
+    }
+
+    public function descargarAnexo0(Request $req){
+        $ruta_anexo = $req->get('ruta_anexo');
+        // error_log($ruta_anexo);
+        return response()->download($ruta_anexo);
     }
 
     /**
