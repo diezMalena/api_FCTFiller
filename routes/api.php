@@ -4,6 +4,7 @@ use App\Http\Controllers\ContrladoresDocentes\ControladorGenericoDocente;
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
+use App\Http\Controllers\ControladorGenerico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 /*
@@ -32,10 +33,15 @@ Route::group(['middleware' => ['Cors']], function () {
 
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
     Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
+
+    //Gestión de alumnos asignados a una empresa.
     Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
+
+    //Login
+    Route::post('/login', [ControladorGenerico::class, 'login']);
 
 
     Route::any('/addJornada', [ControladorAlumno::class, 'addJornada']);
@@ -48,6 +54,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
     Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
 });
+
 
 
 //Crud Anexos
