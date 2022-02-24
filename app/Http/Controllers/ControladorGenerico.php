@@ -13,6 +13,16 @@ use App\Models\Usuario;
 class ControladorGenerico extends Controller
 {
 
+    /**
+     * Extrae de una vista los datos del usuario que ha introducido el correo y contraseña,
+     * comprueba que ese email existe en la base de datos y después compara que la contraseña
+     * que ha introducido el usuario coincida con la contraseña asociada a ese email.
+     * Si todo eso es correcto llama a la función de obtener sus datos y creal el token,
+     * si no, devuelve un error.
+     *
+     * @param int $usuario array con los datos del usuario
+     * @author alvaro <alvarosantosmartin6@gmail.com>
+     */
     public function login(Request $request)
     {
         //Extraigo los campos
