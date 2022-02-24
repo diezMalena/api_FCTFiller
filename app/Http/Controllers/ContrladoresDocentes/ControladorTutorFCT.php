@@ -893,6 +893,10 @@ class ControladorTutorFCT extends Controller
         }*/
     }
 
+    /**
+     * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
+     * @author Malena.
+     */
     public function descargarAnexo0(Request $req){
         $ruta_anexo = $req->get('ruta_anexo');
         // error_log($ruta_anexo);
