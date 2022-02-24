@@ -16,12 +16,6 @@ use Illuminate\Database\Eloquent\Model;
 class Matricula extends Model
 {
     use HasFactory;
-    /**
-     * $table->string('cod_centro');
-     * $table->string('dni_alumno');
-     * $table->string('cod_grupo');
-     *$table->string('curso_academico');
-     */
     protected $fillable = ['cod', 'cod_centro', 'dni_alumno', 'cod_grupo','curso_academico'];
     protected $table = 'matricula';
     protected $primaryKey = 'cod';
