@@ -608,8 +608,7 @@ class ControladorTutorFCT extends Controller
         $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
         // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
         $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . 'Anexo0'));
-        $rutaDestino =  public_path($dniTutor . DIRECTORY_SEPARATOR . 'Anexo0') . DIRECTORY_SEPARATOR . $nombrePlantilla . '-' . $codConvenioAux . '.docx';
-
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $nombrePlantilla . '-' . $codConvenioAux . '.docx';
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
@@ -619,10 +618,7 @@ class ControladorTutorFCT extends Controller
         /*************************IMPORTANTE HACER ESTO**************************/
         /************************************************************************/
         //Y guardo la ruta en la base de datos
-        //dd(Convenio::find($codConvenio));
-        //$convenio = Convenio::find($codConvenio);
-        // $convenio->ruta_anexo = $rutaDestino;
-        // $convenio->save();
+        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
 
         return $rutaDestino;
         /************************************************************************/
