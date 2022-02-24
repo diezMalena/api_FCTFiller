@@ -313,7 +313,8 @@ class ControladorTutorFCT extends Controller
 
                 $rutaCarpeta = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1');
                 $this->existeCarpeta($rutaCarpeta);
-
+                $rutaCarpeta = public_path('tmp' . DIRECTORY_SEPARATOR . 'anexos');
+                $this->existeCarpeta($rutaCarpeta);
 
                 $template->setValues($datos);
                 $template->setComplexBlock('{table}', $table);
