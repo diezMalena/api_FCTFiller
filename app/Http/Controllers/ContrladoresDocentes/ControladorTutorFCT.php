@@ -864,7 +864,7 @@ class ControladorTutorFCT extends Controller
             'dni' => $representante->dni,
             'id_rol' => 1,
         ]);
-        $convenio = $this->addConvenio($req->dni, $empresa->id);
+        $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
         $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
         return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
         /*}catch(Exception $ex){
@@ -908,14 +908,15 @@ class ControladorTutorFCT extends Controller
      * @author Malena
      * @param string $dniTutor, el dni del tutor que se encuentra logueado.
      * @param int $id_empresa, el id de la empresa que se registra.
+     * @param boolean $privada true --> empresa privada; false --> empresa pública
      * @return Convenio convenio entre la empresa y el centro de estudios.
      */
-    public function addConvenio(string $dniTutor, int $id_empresa)
+    public function addConvenio(string $dniTutor, int $id_empresa, bool $privada)
     {
         //Consigo el centro de estudios a partir del Dni del tutor:
         $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, 'C');
+        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada? 'C' : 'A');
         $convenio = Convenio::create([
             'cod_convenio' => $codConvenio,
             'cod_centro' => $centroEstudios->cod,
