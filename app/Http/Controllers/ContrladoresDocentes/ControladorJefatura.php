@@ -324,7 +324,6 @@ class ControladorJefatura extends Controller
                                 'cod_grupo' => $codGrupo,
                                 'curso_academico' => $cursoAcademico
                             ]);
-
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
@@ -461,7 +460,7 @@ class ControladorJefatura extends Controller
                             //$codGrupo = Grupo::where('lower(nombre_ciclo)', $estudio)->get()[0]->cod;
                             $codGrupo = DB::select('select cod from grupo
                             where lower(nombre_ciclo) = ' . "'" . strtolower($estudio[1]) . "'
-                            and cod_nivel = '". $estudio[0]."'")[0]->cod;
+                            and cod_nivel = '" . $estudio[0] . "'")[0]->cod;
 
 
                             OfertaGrupo::create([
@@ -597,32 +596,124 @@ class ControladorJefatura extends Controller
      * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
      * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
      * @return Response Respuesta con el array de alumnos
+     * @author David Sánchez Barragán
      */
-    public function listarAlumnos ($dni_logueado) {
-        // select a.*
-        // from profesor p
-        // join centro_estudios c on c.cod = p.cod_centro_estudios
-        // join matricula m on m.cod_centro = c.cod
-        // join alumno a on a.dni = m.dni_alumno
-        // where p.dni = '20a'
-        
-        return response()->json(['mensaje' => 'OK'], 200);
+    public function listarAlumnos($dni_logueado)
+    {
+        try {
+            $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+                ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+                ->where('profesor.dni', '=', $dni_logueado)
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->get();
+
+            return response()->json($listado, 200);
+        } catch (Exception $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
+        }
     }
 
-    public function verAlumno ($cod_alumno) {
+    /**
+     * Obtiene los detalles de un alumno en función de su código de alumno
+     * @param String $dni_alumno DNI del alumno del que queremos obtener el detalle
+     * @return Response Respusta con el objeto Alumno solicitado
+     * @author David Sánchez Barragán
+     */
+    public function verAlumno($dni_alumno)
+    {
+        try {
+            $alumno = Alumno::where('dni', '=', $dni_alumno)
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->get()->first();
 
+            if ($alumno) {
+                //Pongo a cadena vacía la contraseña por seguridad,
+                //para que no viaje por la red
+                $alumno->password = '';
+                return response()->json($alumno, 200);
+            } else {
+                return response()->json(['mensaje' => 'No existe el alumno consultado'], 400);
+            }
+        } catch (Exception $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
+        }
     }
 
-    public function addAlumno () {
+    /**
+     * Añade el alumno al centro de estudios al que pertenece la persona que ha iniciado sesión en la aplicación
+     * @param Request $r Petición con los datos del alumno del formulario de registro
+     * @return Response OK o mensaje de error
+     * @author David Sánchez Barragán
+     */
+    public function addAlumno(Request $r)
+    {
+        try {
+            Alumno::create([
+                'dni' => $r->dni,
+                'cod_alumno' => $r->cod_alumno,
+                'email' => $r->email,
+                'password' => $r->password,
+                'nombre' => $r->nombre,
+                'apellidos' => $r->apellidos,
+                'provincia' => $r->provincia,
+                'localidad' => $r->localidad,
+                'va_a_fct' => $r->va_a_fct,
+            ]);
 
+            return response()->json(['message' => 'Alumno creado correctamente'], 200);
+        } catch (Exception $ex) {
+            if (str_contains($ex->getMessage(), 'Integrity')) {
+                return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
+            } else {
+                return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+            }
+        }
     }
 
-    public function modificarAlumno ($cod_alumno) {
+    /**
+     * Modifica los datos del alumno
+     * @param Request $r Petición con los datos del alumno del formulario de edición
+     * @return Response OK o mensaje de error
+     * @author David Sánchez Barragán
+     */
+    public function modificarAlumno(Request $r)
+    {
+        try {
+            Alumno::where('dni', '=', $r->dni)->update([
+                'dni' => $r->dni,
+                'cod_alumno' => $r->cod_alumno,
+                'email' => $r->email,
+                'password' => $r->password,
+                'nombre' => $r->nombre,
+                'apellidos' => $r->apellidos,
+                'provincia' => $r->provincia,
+                'localidad' => $r->localidad,
+                'va_a_fct' => $r->va_a_fct,
+            ]);
 
+            return response()->json(['message' => 'Alumno actualizado'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
     }
 
-    public function eliminarAlumno ($cod_alumno) {
+    /**
+     * Elimina de la aplicación el alumno
+     * @param String $dni_alumno
+     * @return Response OK o mensaje de error
+     * @author David Sánchez Barragán
+     */
+    public function eliminarAlumno($dni_alumno)
+    {
+        try {
+            Alumno::where('dni', '=', $dni_alumno)->delete();
 
+            //Aquí va la eliminación de los anexos asociados al alumno, cuando los tengamos
+
+            return response()->json(['mensaje' => 'Alumno borrado correctamente'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
     }
-
 }
