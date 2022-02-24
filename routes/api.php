@@ -73,4 +73,11 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
     //por favor, cambiar a post
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
+
+    //CRUD Alumnos
+    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
+    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
+    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
+    Route::post('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
+    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
 });
