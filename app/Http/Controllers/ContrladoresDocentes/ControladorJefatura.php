@@ -591,4 +591,38 @@ class ControladorJefatura extends Controller
 
         return true;
     }
+
+
+    /**
+     * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
+     * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
+     * @return Response Respuesta con el array de alumnos
+     */
+    public function listarAlumnos ($dni_logueado) {
+        // select a.*
+        // from profesor p
+        // join centro_estudios c on c.cod = p.cod_centro_estudios
+        // join matricula m on m.cod_centro = c.cod
+        // join alumno a on a.dni = m.dni_alumno
+        // where p.dni = '20a'
+        
+        return response()->json(['mensaje' => 'OK'], 200);
+    }
+
+    public function verAlumno ($cod_alumno) {
+
+    }
+
+    public function addAlumno () {
+
+    }
+
+    public function modificarAlumno ($cod_alumno) {
+
+    }
+
+    public function eliminarAlumno ($cod_alumno) {
+
+    }
+
 }
