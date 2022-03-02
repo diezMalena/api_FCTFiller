@@ -224,7 +224,7 @@ class ControladorTutorFCT extends Controller
                 //ARCHIVO
                 $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo1';
                 $convenioAux = str_replace('/', '-', $num_convenio[0]->cod_convenio);
-                $AuxNombre = '_' . $id->id_empresa . '_' . $convenioAux . '_' . $cod_ciclo[0]->cod  . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_';
+                $AuxNombre = '_' . $id->id_empresa . '_' . $convenioAux . '_' . $cod_ciclo[0]->cod . '_' . $fecha->year . '_';
                 $rutaDestino = $dni_tutor  . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . 'Anexo1' . $AuxNombre;
                 $template = new TemplateProcessor($rutaOriginal . '.docx');
 
@@ -329,7 +329,7 @@ class ControladorTutorFCT extends Controller
             return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
             return response()->json([
-                'message' => 'Error de ficheros: '. $e
+                'message' => 'Error de ficheros: ' . $e
             ], 500);
         }
     }
@@ -454,33 +454,31 @@ class ControladorTutorFCT extends Controller
                     //Dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
-                    if (strcmp($datosAux[0], "Anexo1") == 0) {
-                        if ($datosAux[6] == $fecha->year) {
+                    if ($datosAux[4] == $fecha->year) {
 
-                            $convenioAux = str_replace('-', '/', $datosAux[2]);
-                            $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
-                            $cod_centro = Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
-                            $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                                ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
-                                ->select('fct.dni_alumno')
-                                ->where('fct.id_empresa', '=', $datosAux[1])
-                                ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
-                                ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
-                                ->first();
+                        $convenioAux = str_replace('-', '/', $datosAux[2]);
+                        $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
+                        $cod_centro = Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
+                        $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                            ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
+                            ->select('fct.dni_alumno')
+                            ->where('fct.id_empresa', '=', $datosAux[1])
+                            ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
+                            ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
+                            ->first();
 
-                            $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                            $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[1])->get();
+                        $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                        $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
+                        $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[1])->get();
 
-                            //meter ese nombre en un array asociativo
-                            $datos[] = [
-                                'nombre' => $datosAux[0],
-                                'codigo' => $file,
-                                'empresa' => $empresa_nombre[0]->nombre,
-                                'firma_empresa' => $firma_empresa[0]->firmado_empresa,
-                                'firma_centro' => $firma_centro[0]->firmado_director
-                            ];
-                        }
+                        //meter ese nombre en un array asociativo
+                        $datos[] = [
+                            'nombre' => $datosAux[0],
+                            'codigo' => $file,
+                            'empresa' => $empresa_nombre[0]->nombre,
+                            'firma_empresa' => $firma_empresa[0]->firmado_empresa,
+                            'firma_centro' => $firma_centro[0]->firmado_director
+                        ];
                     }
                 }
             }
@@ -542,7 +540,7 @@ class ControladorTutorFCT extends Controller
 
             //////////////////////ANEXO1////////////////////////////////
             if (strcmp($tipoAnexo, "Anexo1") == 0) {
-                if ($AnexoDesglosado[6] == $fecha->year) {
+                if ($AnexoDesglosado[4] == $fecha->year) {
 
                     $alumno = Fct::select('dni_alumno')->where('ruta_anexo', '=', $r)->first();
                     $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $AnexoDesglosado[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
@@ -616,12 +614,13 @@ class ControladorTutorFCT extends Controller
 
         if ($esDirector) {
             $rutaOriginal = public_path($cod_anexo);
-            $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+            error_log($rutaOriginal);
+            $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
         } else {
 
             if ($codAux[0] == 'Anexo1') {
                 $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-                $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+                $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
             }
         }
 
@@ -650,13 +649,12 @@ class ControladorTutorFCT extends Controller
 
 
         if ($esDirector) {
-            $cod_anexo=str_replace('*', DIRECTORY_SEPARATOR, $cod_anexo);
+            $cod_anexo = str_replace('*', DIRECTORY_SEPARATOR, $cod_anexo);
             unlink(public_path($cod_anexo));
         } else {
             if ($codAux[0] == 'Anexo1') {
                 //Eliminar un fichero
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-
             }
         }
 
@@ -723,18 +721,13 @@ class ControladorTutorFCT extends Controller
                 $nombreDesglosado = explode("_", $nombreAux);
 
                 //saco el año  del fichero con un substring
-                $fechaArchivo = $nombreDesglosado[6];
-
-                //saco el tipo de anexo con un substring
-                $anexo = $nombreDesglosado[0];
+                $fechaArchivo = $nombreDesglosado[4];
 
 
                 //////////////////////ANEXO1//////////////////////////////////////////
-                if (strcmp($anexo, "Anexo1") == 0) {
-                    if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
-                        $relativeNameZipFile = basename($value);
-                        $zip->addFile($value, $relativeNameZipFile);
-                    }
+                if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
+                    $relativeNameZipFile = basename($value);
+                    $zip->addFile($value, $relativeNameZipFile);
                 }
             }
             //////////////////////ANEXO0//////////////////////////////////////////
@@ -787,18 +780,12 @@ class ControladorTutorFCT extends Controller
                         $nombreDesglosado = explode("_", $nombreAux);
 
                         //saco el año  del fichero con un substring
-                        $fechaArchivo = $nombreDesglosado[6];
-
-                        //saco el tipo de anexo con un substring
-                        $anexo = $nombreDesglosado[0];
+                        $fechaArchivo = $nombreDesglosado[4];
 
 
-                        //////////////////////ANEXO1//////////////////////////////////////////
-                        if (strcmp($anexo, "Anexo1") == 0) {
-                            if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
-                                $relativeNameZipFile = basename($value);
-                                $zip->addFile($value, $relativeNameZipFile);
-                            }
+                        if (strcmp($fechaArchivo, $fechaActual->year) == 0) {
+                            $relativeNameZipFile = basename($value);
+                            $zip->addFile($value, $relativeNameZipFile);
                         }
                     }
                     //////////////////////ANEXO0//////////////////////////////////////////
@@ -1150,7 +1137,8 @@ class ControladorTutorFCT extends Controller
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
      */
-    public function descargarAnexo0(Request $req){
+    public function descargarAnexo0(Request $req)
+    {
         $ruta_anexo = $req->get('ruta_anexo');
         // error_log($ruta_anexo);
         return response()->download($ruta_anexo);
@@ -1169,7 +1157,7 @@ class ControladorTutorFCT extends Controller
         //Consigo el centro de estudios a partir del Dni del tutor:
         $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada? 'C' : 'A');
+        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada ? 'C' : 'A');
         $convenio = Convenio::create([
             'cod_convenio' => $codConvenio,
             'cod_centro' => $centroEstudios->cod,
