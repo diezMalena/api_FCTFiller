@@ -14,17 +14,8 @@ class NivelEstudiosSeeder extends Seeder
      */
     public function run()
     {
-        NivelEstudios::create([
-            'cod' => 'CFGS',
-            'descripcion' => 'Ciclo formativo de Grado Superior'
-        ]);
-        NivelEstudios::create([
-            'cod' => 'CFGM',
-            'descripcion' => 'Ciclo formativo de Grado Medio'
-        ]);
-        NivelEstudios::create([
-            'cod' => 'CFGB',
-            'descripcion' => 'Ciclo formativo de Grado Básico'
-        ]);
+        NivelEstudios::create(['cod' => 'CFGS', 'descripcion' => 'Ciclo Formativo Grado Superior']);
+        NivelEstudios::create(['cod' => 'CFGM', 'descripcion' => 'Ciclo Formativo Grado Medio']);
+        NivelEstudios::create(['cod' => 'CFGB', 'descripcion' => 'Ciclo Formativo Grado Básico']);
     }
 }

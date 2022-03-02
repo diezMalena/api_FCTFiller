@@ -231,21 +231,21 @@ class ControladorAlumno extends Controller
         //error_log($dni_alumno);
 
         //Primero, vamos a sacar el centro donde está el alumno:
-        $centro = $this->centroDelAlumno($dni_alumno)[0];
+        $centro = $this->centroDelAlumno($dni_alumno);
         //Sacamos el nombre del alumno:
-        $alumno = $this->getNombreAlumno($dni_alumno)[0];
+        $alumno = $this->getNombreAlumno($dni_alumno);
         //Sacamos el nombre del tutor del alumno:
-        $tutor = $this->getNombreTutor($dni_alumno)[0];
+        $tutor = $this->getNombreTutor($dni_alumno);
         //Sacamos la familia profesional que le corresponde al alumno:
-        $familia_profesional = $this->getFamiliaProfesional($dni_alumno)[0];
+        $familia_profesional = $this->getFamiliaProfesional($dni_alumno);
         //Sacamos el nombre del ciclo en el que esta matriculado el alumno:
-        $ciclo = $this->getCicloFormativo($dni_alumno)[0];
+        $ciclo = $this->getCicloFormativo($dni_alumno);
         //Sacamos el nombre de la empresa en la que esta el alumno haciendo las practicas:
-        $empresa = $this->getNombreEmpresa($dni_alumno)[0];
+        $empresa = $this->getNombreEmpresa($dni_alumno);
         //Sacamos el nombre del tutor de la empresa al que esta asignado el alumno:
-        $tutor_empresa = $this->getNombreTutorEmpresa($dni_alumno)[0];
+        $tutor_empresa = $this->getNombreTutorEmpresa($dni_alumno);
         //Sacamos los registros que necesitamos de la tabla FCT:
-        $fct = $this->getDatosFct($dni_alumno)[0];
+        $fct = $this->getDatosFct($dni_alumno);
         //Cogemos las ultimas 5 jornadas, para ponerlas en el documento:
         $jornadas = $this->las5UltimasJornadas($dni_alumno);
 
@@ -269,16 +269,16 @@ class ControladorAlumno extends Controller
         //Establezco la fecha para ponerlo en el nombre del documento:
         $fecha = Carbon::now();
         $fecha_doc = $fecha->day . '_' . AuxiliarParametros::MESES[$fecha->month] . '_' . $fecha->year % 100;
-
         //De momento, formare el nombre del documento con el dni del alumno + fecha.
-        $rutaDestino = 'anexos/rellenos/anexo3/' . $nombrePlantilla . '-' . $dni_alumno . '-' . $fecha_doc . '.docx';
+        $nombre = $nombrePlantilla . '-' . $dni_alumno . '-' . $fecha_doc .'.docx';
+        $rutaDestino = 'anexos'.DIRECTORY_SEPARATOR.'rellenos'.DIRECTORY_SEPARATOR.'anexo3'.DIRECTORY_SEPARATOR . $nombre;
 
         //Creo la plantilla y la relleno con los valores establecidos anteriormente.
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
-        return response()->json(['message'=>'Se ha generado el documento.'],200);
+        return response()->download(public_path($rutaDestino));
     }
 
 
@@ -291,7 +291,7 @@ class ControladorAlumno extends Controller
         $centro = CentroEstudios::join('matricula', 'centro_estudios.cod','=','matricula.cod_centro')
         ->select('centro_estudios.cif AS cif', 'centro_estudios.nombre AS nombre')
         ->where('matricula.dni_alumno','=',$dni_alumno)
-        ->get();
+        ->first();
 
         return $centro;
     }
@@ -306,7 +306,7 @@ class ControladorAlumno extends Controller
     public function getNombreAlumno(string $dni_alumno){
         $nombre = Alumno::select('nombre')
         ->where('dni','=',$dni_alumno)
-        ->get();
+        ->first();
 
         return $nombre;
     }
@@ -324,7 +324,7 @@ class ControladorAlumno extends Controller
         ->join('matricula','matricula.cod_grupo','=','grupo.cod')
         ->where('matricula.dni_alumno','=',$dni_alumno)
         ->select('profesor.nombre AS nombre')
-        ->get();
+        ->first();
 
         return $tutor;
     }
@@ -336,11 +336,12 @@ class ControladorAlumno extends Controller
      * @author Malena
      */
     public function getFamiliaProfesional(string $dni_alumno){
-        $familia_profesional = FamiliaProfesional::join('grupo','familia_profesional.id','=','grupo.cod_familia_profesional')
+        $familia_profesional = FamiliaProfesional::join('grupo_familia','familia_profesional.id','=','grupo_familia.id_familia')
+        ->join('grupo','grupo_familia.cod_grupo','=','grupo.cod')
         ->join('matricula','matricula.cod_grupo','=','grupo.cod')
         ->where('matricula.dni_alumno','=',$dni_alumno)
         ->select('familia_profesional.descripcion AS descripcion')
-        ->get();
+        ->first();
 
         return $familia_profesional;
     }
@@ -356,7 +357,7 @@ class ControladorAlumno extends Controller
         ->join('matricula','matricula.cod_grupo','=','grupo.cod')
         ->where('matricula.dni_alumno','=',$dni_alumno)
         ->select('nivel_estudios.cod AS cod_nivel','grupo.nombre_largo AS nombre')
-        ->get();
+        ->first();
 
         return $ciclo_formativo;
     }
@@ -373,7 +374,7 @@ class ControladorAlumno extends Controller
         ->join('matricula','matricula.cod_grupo','=','grupo.cod')
         ->where('matricula.dni_alumno','=',$dni_alumno)
         ->select('empresa.nombre AS nombre')
-        ->get();
+        ->first();
 
         return $nombre_empresa;
     }
@@ -388,7 +389,7 @@ class ControladorAlumno extends Controller
         $tutor_empresa = Trabajador::join('fct','trabajador.dni','=','fct.dni_tutor_empresa')
         ->where('fct.dni_alumno','=',$dni_alumno)
         ->select('trabajador.nombre AS nombre')
-        ->get();
+        ->first();
 
         return $tutor_empresa;
     }
@@ -402,7 +403,7 @@ class ControladorAlumno extends Controller
     public function getDatosFct(string $dni_alumno){
         $fct = FCT::where('fct.dni_alumno','=',$dni_alumno)
         ->select('fecha_ini AS fecha_ini','fecha_fin AS fecha_fin','departamento AS departamento','num_horas AS horas')
-        ->get();
+        ->first();
 
         return $fct;
     }
