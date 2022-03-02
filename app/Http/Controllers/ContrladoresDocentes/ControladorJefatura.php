@@ -91,7 +91,6 @@ class ControladorJefatura extends Controller
         }
     }
 
-
     /**
      * Función intermedia que guarda los ficheros CSV en la base de datos
      *
@@ -133,7 +132,6 @@ class ControladorJefatura extends Controller
 
         return $resultado;
     }
-
 
     /**
      * Obtiene la ruta donde se alojan los ficheros temporales CSV
@@ -201,8 +199,6 @@ class ControladorJefatura extends Controller
         unlink($path);
     }
 
-
-
     /**
      * Método que procesa el fichero de Alumnos.csv e inserta su contenido en BBDD (tabla Alumno)
      *
@@ -263,12 +259,6 @@ class ControladorJefatura extends Controller
             return 0;
         }
     }
-
-    // private function procesarFicheroABBDDMaterias($nombreCaja)
-    // {
-    //     return 0;
-    // }
-
 
     /**
      * Método que procesa el fichero de Matriculas.csv e inserta su contenido en BBDD (tabla ??)
@@ -347,11 +337,6 @@ class ControladorJefatura extends Controller
             return 0;
         }
     }
-
-    // private function procesarFicheroABBDDNotas($nombreCaja)
-    // {
-    //     return 0;
-    // }
 
     /**
      * Método que procesa el fichero de Profesores.csv e inserta su contenido en BBDD (tabla Profesor)
@@ -516,8 +501,6 @@ class ControladorJefatura extends Controller
         }
     }
 
-
-
     /**
      * Función intermedia que lanza todas las comprobaciones
      * @param string $nombreCaja Nombre de la caja a la que el usuario arrastra el fichero CSV para que se suba
@@ -590,28 +573,6 @@ class ControladorJefatura extends Controller
         }
 
         return true;
-    }
-
-    /**
-     * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
-     * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
-     * @return Response Respuesta con el array de alumnos
-     * @author David Sánchez Barragán
-     */
-    public function listarAlumnos($dni_logueado)
-    {
-        try {
-            $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
-                ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
-                ->where('profesor.dni', '=', $dni_logueado)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
-                ->get();
-
-            return response()->json($listado, 200);
-        } catch (Exception $th) {
-            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
-        }
     }
 
     /**
@@ -692,63 +653,6 @@ class ControladorJefatura extends Controller
     }
 
     /**
-     * Obtiene los detalles de un alumno en función de su código de alumno
-     * @param String $dni_alumno DNI del alumno del que queremos obtener el detalle
-     * @return Response Respusta con el objeto Alumno solicitado
-     * @author David Sánchez Barragán
-     */
-    public function verAlumno($dni_alumno)
-    {
-        try {
-            $alumno = Alumno::where('dni', '=', $dni_alumno)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
-                ->get()->first();
-
-            if ($alumno) {
-                //Pongo a cadena vacía la contraseña por seguridad,
-                //para que no viaje por la red
-                $alumno->password = '';
-                return response()->json($alumno, 200);
-            } else {
-                return response()->json(['mensaje' => 'No existe el alumno consultado'], 400);
-            }
-        } catch (Exception $th) {
-            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Añade el alumno al centro de estudios al que pertenece la persona que ha iniciado sesión en la aplicación
-     * @param Request $r Petición con los datos del alumno del formulario de registro
-     * @return Response OK o mensaje de error
-     * @author David Sánchez Barragán
-     */
-    public function addAlumno(Request $r)
-    {
-        try {
-            Alumno::create([
-                'dni' => $r->dni,
-                'cod_alumno' => $r->cod_alumno,
-                'email' => $r->email,
-                'password' => $r->password,
-                'nombre' => $r->nombre,
-                'apellidos' => $r->apellidos,
-                'provincia' => $r->provincia,
-                'localidad' => $r->localidad,
-                'va_a_fct' => $r->va_a_fct,
-            ]);
-
-            return response()->json(['message' => 'Alumno creado correctamente'], 200);
-        } catch (Exception $ex) {
-            if (str_contains($ex->getMessage(), 'Integrity')) {
-                return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
-            } else {
-                return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
-            }
-        }
-    }
-
-    /**
      * Esta funcion elimina un profesor y su respectiva carpeta
      *
      * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd y eliminarlo
@@ -764,6 +668,7 @@ class ControladorJefatura extends Controller
             'message' => 'Profesor Eliminado con exito'
         ], 201);
     }
+
     /**
      * @author Laura <lauramorenoramos@gmail.com>
      * Esta funcion elimina de manera recursiva una carpeta y su contenido
@@ -830,6 +735,169 @@ class ControladorJefatura extends Controller
     }
 
     /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion permite modificar un profesor
+     * Para conseguir que se modifique su rol, este es borrado de la tabla donde lo tiene asignado
+     * y añadido de nuevo.
+     *
+     * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona antes de ser modificada, para poder
+     * buscar su informacion
+     * @return response
+     */
+    public function modificarProfesor(Request $val)
+    {
+
+        $dni = $val->get('dni');
+        $email = $val->get('email');
+        $nombre = $val->get('nombre');
+        $apellidos = $val->get('apellidos');
+        $password1 = $val->get('password1');
+        $password2 = $val->get('password2');
+        $roles = $val->get('roles');
+        $dniPersonaAnt = $val->get('personaAux');
+
+        if (strcmp($password1, $password2) == 0) {
+
+            Profesor::where('dni', $dniPersonaAnt)
+                ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
+
+            RolProfesorAsignado::where('dni', '=', $dni)->delete();
+            foreach ($roles as $r) {
+                RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
+            }
+            return response()->json([
+                'message' => 'Perfil Modificado'
+            ], 201);
+        } else {
+            return response()->json([
+                'message' => 'Las contraseñas son distintas'
+            ], 401);
+        }
+    }
+
+    /**
+     * @author Laura <lauramorenoramos@gmail.com>
+     * Esta funcion nos permite ver un profesor que va a ser editado posteriormente
+     * y devuelve unos parametros especificos: dni, email, nombre, apellidos, password1, password2, roles
+     * y el dni antiguo del profesor a editar , por si este se editara, poder editarlo a través
+     * de este.
+     *
+     * @param [type] $dni_profesor
+     * @return void
+     */
+    public function verProfesorEditar($dni_profesor)
+    {
+        $datos = array();
+        $roles = array();
+
+        foreach (Profesor::where('dni', '=', $dni_profesor)->get() as $p) {
+            foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
+                $roles[] = $rol->id_rol;
+            }
+
+            $datos[] = [
+                'dni' => $p->dni,
+                'email' => $p->email,
+                'nombre' => $p->nombre,
+                'apellidos' => $p->apellidos,
+                'password1' => $p->password,
+                'password2' => $p->password,
+                'roles' => $roles,
+                'personaAux' => $p->dni
+            ];
+            unset($roles);
+            $roles = array();
+        }
+
+        if ($datos) {
+            return response()->json($datos, 200);
+        } else {
+            return response()->json([
+                'message' => 'Error al recuperar el profesor'
+            ], 401);
+        }
+    }
+
+    /**
+     * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
+     * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
+     * @return Response Respuesta con el array de alumnos
+     * @author David Sánchez Barragán
+     */
+    public function listarAlumnos($dni_logueado)
+    {
+        try {
+            $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+                ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+                ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+                ->where('profesor.dni', '=', $dni_logueado)
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->get();
+
+            return response()->json($listado, 200);
+        } catch (Exception $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Obtiene los detalles de un alumno en función de su código de alumno
+     * @param String $dni_alumno DNI del alumno del que queremos obtener el detalle
+     * @return Response Respusta con el objeto Alumno solicitado
+     * @author David Sánchez Barragán
+     */
+    public function verAlumno($dni_alumno)
+    {
+        try {
+            $alumno = Alumno::where('dni', '=', $dni_alumno)
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->get()->first();
+
+            if ($alumno) {
+                //Pongo a cadena vacía la contraseña por seguridad,
+                //para que no viaje por la red
+                $alumno->password = '';
+                return response()->json($alumno, 200);
+            } else {
+                return response()->json(['mensaje' => 'No existe el alumno consultado'], 400);
+            }
+        } catch (Exception $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Añade el alumno al centro de estudios al que pertenece la persona que ha iniciado sesión en la aplicación
+     * @param Request $r Petición con los datos del alumno del formulario de registro
+     * @return Response OK o mensaje de error
+     * @author David Sánchez Barragán
+     */
+    public function addAlumno(Request $r)
+    {
+        try {
+            Alumno::create([
+                'dni' => $r->dni,
+                'cod_alumno' => $r->cod_alumno,
+                'email' => $r->email,
+                'password' => $r->password,
+                'nombre' => $r->nombre,
+                'apellidos' => $r->apellidos,
+                'provincia' => $r->provincia,
+                'localidad' => $r->localidad,
+                'va_a_fct' => $r->va_a_fct,
+            ]);
+
+            return response()->json(['message' => 'Alumno creado correctamente'], 200);
+        } catch (Exception $ex) {
+            if (str_contains($ex->getMessage(), 'Integrity')) {
+                return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
+            } else {
+                return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+            }
+        }
+    }
+
+    /**
      * Modifica los datos del alumno
      * @param Request $r Petición con los datos del alumno del formulario de edición
      * @return Response OK o mensaje de error
@@ -872,90 +940,6 @@ class ControladorJefatura extends Controller
             return response()->json(['mensaje' => 'Alumno borrado correctamente'], 200);
         } catch (Exception $ex) {
             return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
-        }
-    }
-    /**
-     * @author Laura <lauramorenoramos@gmail.com>
-     * Esta funcion permite modificar un profesor
-     * Para conseguir que se modifique su rol, este es borrado de la tabla donde lo tiene asignado
-     * y añadido de nuevo.
-     *
-     * @param Request $val, recoge el dni,email,nombre,apellidos,password1, password2, roles y el dni de la persona antes de ser modificada, para poder
-     * buscar su informacion
-     * @return response
-     */
-    public function modificarProfesor(Request $val)
-    {
-
-        $dni = $val->get('dni');
-        $email = $val->get('email');
-        $nombre = $val->get('nombre');
-        $apellidos = $val->get('apellidos');
-        $password1 = $val->get('password1');
-        $password2 = $val->get('password2');
-        $roles = $val->get('roles');
-        $dniPersonaAnt = $val->get('personaAux');
-
-        if (strcmp($password1, $password2) == 0) {
-
-            Profesor::where('dni', $dniPersonaAnt)
-                ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
-
-            RolProfesorAsignado::where('dni', '=', $dni)->delete();
-            foreach ($roles as $r) {
-                RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
-            }
-            return response()->json([
-                'message' => 'Perfil Modificado'
-            ], 201);
-        } else {
-            return response()->json([
-                'message' => 'Las contraseñas son distintas'
-            ], 401);
-        }
-    }
-
-
-    /**
-     * @author Laura <lauramorenoramos@gmail.com>
-     * Esta funcion nos permite ver un profesor que va a ser editado posteriormente
-     * y devuelve unos parametros especificos: dni, email, nombre, apellidos, password1, password2, roles
-     * y el dni antiguo del profesor a editar , por si este se editara, poder editarlo a través
-     * de este.
-     *
-     * @param [type] $dni_profesor
-     * @return void
-     */
-    public function verProfesorEditar($dni_profesor)
-    {
-        $datos = array();
-        $roles = array();
-
-        foreach (Profesor::where('dni', '=', $dni_profesor)->get() as $p) {
-            foreach (RolProfesorAsignado::select('id_rol')->where('dni', '=', $p->dni)->get() as $rol) {
-                $roles[] = $rol->id_rol;
-            }
-
-            $datos[] = [
-                'dni' => $p->dni,
-                'email' => $p->email,
-                'nombre' => $p->nombre,
-                'apellidos' => $p->apellidos,
-                'password1' => $p->password,
-                'password2' => $p->password,
-                'roles' => $roles,
-                'personaAux' => $p->dni
-            ];
-            unset($roles);
-            $roles = array();
-        }
-
-        if ($datos) {
-            return response()->json($datos, 200);
-        } else {
-            return response()->json([
-                'message' => 'Error al recuperar el profesor'
-            ], 401);
         }
     }
 }
