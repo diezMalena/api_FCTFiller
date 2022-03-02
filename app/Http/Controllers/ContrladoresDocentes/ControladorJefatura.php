@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ContrladoresDocentes;
 use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Hash;
 use App\Models\RolProfesorAsignado;
 use App\Models\Alumno;
 use App\Models\CentroEstudios;
@@ -653,6 +654,7 @@ class ControladorJefatura extends Controller
     }
 
     /**
+     * @author Laura <lauramorenoramos@gmail.com>
      * Esta funcion elimina un profesor y su respectiva carpeta
      *
      * @param [string] $dni_profesor, es el dni del profesor, el cual nos ayudara a buscarlo en la bbdd y eliminarlo
@@ -717,7 +719,7 @@ class ControladorJefatura extends Controller
                     'message' => 'Este profesor ya existe'
                 ], 401);
             } else {
-                Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1, 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
+                Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => Hash::make($password1), 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
 
                 foreach ($roles as $r) {
                     error_log($r);
