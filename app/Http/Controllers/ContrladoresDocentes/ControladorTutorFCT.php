@@ -328,7 +328,7 @@ class ControladorTutorFCT extends Controller
             return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
             return response()->json([
-                'message' => 'Error de ficheros: '. $e
+                'message' => 'Error de ficheros: ' . $e
             ], 500);
         }
     }
@@ -615,12 +615,12 @@ class ControladorTutorFCT extends Controller
 
         if ($esDirector) {
             $rutaOriginal = public_path($cod_anexo);
-            $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+            $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
         } else {
 
             if ($codAux[0] == 'Anexo1') {
                 $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-                $rutaOriginal  =str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal );
+                $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
             }
         }
 
@@ -649,13 +649,12 @@ class ControladorTutorFCT extends Controller
 
 
         if ($esDirector) {
-            $cod_anexo=str_replace('*', DIRECTORY_SEPARATOR, $cod_anexo);
+            $cod_anexo = str_replace('*', DIRECTORY_SEPARATOR, $cod_anexo);
             unlink(public_path($cod_anexo));
         } else {
             if ($codAux[0] == 'Anexo1') {
                 //Eliminar un fichero
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-
             }
         }
 
@@ -852,12 +851,12 @@ class ControladorTutorFCT extends Controller
 
         //Ahora genero el Word y el PDF en sí
         //Establezco las variables que necesito
-        $nombrePlantilla = 'anexo0';
+        $nombrePlantilla = 'Anexo0';
         // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
-        $rutaOrigen = 'anexos/plantillas/' . $nombrePlantilla . '.docx';
+        $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
         // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
         $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . 'Anexo0'));
-        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $nombrePlantilla . '-' . $codConvenioAux . '.docx';
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
@@ -1149,7 +1148,8 @@ class ControladorTutorFCT extends Controller
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
      */
-    public function descargarAnexo0(Request $req){
+    public function descargarAnexo0(Request $req)
+    {
         $ruta_anexo = $req->get('ruta_anexo');
         // error_log($ruta_anexo);
         return response()->download($ruta_anexo);
@@ -1168,7 +1168,7 @@ class ControladorTutorFCT extends Controller
         //Consigo el centro de estudios a partir del Dni del tutor:
         $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
         //Fabrico el codigo del convenio:
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada? 'C' : 'A');
+        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada ? 'C' : 'A');
         $convenio = Convenio::create([
             'cod_convenio' => $codConvenio,
             'cod_centro' => $centroEstudios->cod,
