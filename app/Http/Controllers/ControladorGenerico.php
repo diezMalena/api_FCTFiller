@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Usuario;
+use Illuminate\Support\Facades\File;
 
 class ControladorGenerico extends Controller
 {
@@ -55,10 +56,33 @@ class ControladorGenerico extends Controller
      */
     public function firmarAnexo(Request $req)
     {
-        $img64 = $req->contenido;
+        // Creamos la imagen y guardamos su ruta temporal
+        $ruta = $this->decodificarImagen($req->contenido);
+
+        // La ponemos en el documento
+
+
+        // Eliminamos el archivo temporal
+
+
+        // Devolvemos la response al cliente
+
+    }
+
+    private function decodificarImagen(string $img64)
+    {
+        //Primero decodificamos la imagen
         $img64 = str_replace('data:image/png;base64,', '', $img64);
         $img64 = str_replace(' ', '+', $img64);
         $img = base64_decode($img64);
-        dd($img);
+
+        //Construimos una ruta temporal para la firma
+        $rutaFirma = 'tmp' . DIRECTORY_SEPARATOR . 'firmas';
+        Auxiliar::existeCarpeta($rutaFirma);
+        $rutaFirma .= DIRECTORY_SEPARATOR . 'firma.png';
+
+        //Creamos el archivo y devolvemos la ruta
+        File::put($rutaFirma, $img);
+        return $rutaFirma;
     }
 }
