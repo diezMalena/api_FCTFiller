@@ -47,9 +47,18 @@ class ControladorGenerico extends Controller
         } else {
             return response()->json(['mensaje' => 'Datos de inicio de sesión incorrectos'], 403);
         }
-
     }
 
-
-
+    /**
+     * Esta función pone una firma en un anexo
+     * @param Request $req contiene el anexo que se firma, la parte que firma y la firma en sí, en forma de string en base 64
+     */
+    public function firmarAnexo(Request $req)
+    {
+        $img64 = $req->contenido;
+        $img64 = str_replace('data:image/png;base64,', '', $img64);
+        $img64 = str_replace(' ', '+', $img64);
+        $img = base64_decode($img64);
+        dd($img);
+    }
 }
