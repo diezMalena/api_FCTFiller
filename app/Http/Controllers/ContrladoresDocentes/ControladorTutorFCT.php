@@ -455,6 +455,7 @@ class ControladorTutorFCT extends Controller
 
                     //Dividir un nombre por su separador
                     $datosAux = explode("_", $file);
+
                     $datosAuxFechaAnexo0 =  explode(".", $datosAux[1]);
                     $convenioAux = $datosAuxFechaAnexo0[0];
                     $datosAuxFechaAnexo0 =  explode("-", $datosAuxFechaAnexo0[0]);
@@ -463,7 +464,6 @@ class ControladorTutorFCT extends Controller
 
                     //Mientras la fecha de creacion de este anexo sea igual al año actual o sea menor o igual a 4 años después
                     if ($fechaAux  == substr($fecha->year, -2) || $fechaAux <= substr($fecha->year, -2) + 4) {
-
                         $convenioAux = str_replace('-', '/', $convenioAux);
                         $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $convenioAux)->get();
                         $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $convenioAux)->get();
@@ -764,6 +764,7 @@ class ControladorTutorFCT extends Controller
 
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             foreach ($files as $value) {
+
                 ///////////////ANEXO1//////////////////////////
                 $nombreAux = basename($value);
                 $nombreDesglosado = explode("_", $nombreAux);
@@ -797,7 +798,6 @@ class ControladorTutorFCT extends Controller
                     $zip->addFile($value, $relativeNameZipFile);
                 }
             }
-
             $zip->close();
         }
         return $nombreZip;
