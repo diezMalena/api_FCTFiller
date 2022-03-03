@@ -159,7 +159,7 @@ class ControladorTutorFCT extends Controller
                     Fct::create([
                         'id_empresa' => $empresa['id'],
                         'dni_alumno' => $alumno['dni'],
-                        'dni_tutor_empresa' => '',
+                        'dni_tutor_empresa' => $empresa['dni_responsable'],
                         'curso_academico' => $cursoAcademico,
                         'horario' => $alumno['horario'],
                         'num_horas' => '400',
