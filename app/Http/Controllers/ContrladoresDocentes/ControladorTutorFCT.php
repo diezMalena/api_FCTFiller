@@ -209,7 +209,7 @@ class ControladorTutorFCT extends Controller
                     ->where('fct.id_empresa', '=', $id->id_empresa)
                     ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                     ->get();
-
+               if(count($alumnos) > 0){
                 //Codigo del centro
                 $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
                 //Numero de Convenio
@@ -325,7 +325,7 @@ class ControladorTutorFCT extends Controller
 
             //Convertir en Zip
             $nombreZip = $this->montarZip($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1', $zip, $nombreZip);
-
+        }
             return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
             return response()->json([
@@ -500,6 +500,7 @@ class ControladorTutorFCT extends Controller
                         $convenioAux = str_replace('-', '/', $datosAux[2]);
                         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
                         $cod_centro = Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
+
                         $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
                             ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
                             ->select('fct.dni_alumno')
@@ -507,6 +508,7 @@ class ControladorTutorFCT extends Controller
                             ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
                             ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                             ->first();
+
 
                         $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
                         $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
