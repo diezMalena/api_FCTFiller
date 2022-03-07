@@ -30,6 +30,7 @@ class CreateEmpresa extends Migration
             $table->string('provincia');
             $table->string('direccion');
             $table->string('cp');
+            $table->integer('es_privada');
             $table->timestamps();
         });
     }
