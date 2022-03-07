@@ -141,6 +141,8 @@ class ControladorTutorFCT extends Controller
             $cursoAcademico = Auxiliar::obtenerCursoAcademico();
             $alumnos_solos = $request->get('alumnos_solos');
             $empresas = $request->get('empresas');
+            $dni_tutor = $request->get('dni_tutor');
+            $this->borrarAnexosTablaFCT($dni_tutor);
             // error_log(print_r($alumnos_solos, true));
             //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
             foreach ($alumnos_solos as $alumno) {
