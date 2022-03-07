@@ -187,7 +187,6 @@ class ControladorTutorFCT extends Controller
      */
     public function rellenarAnexo1(Request $val)
     {
-
         $dni_tutor = $val->get('dni_tutor');
         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
         $empresas_id = EmpresaGrupo::select('id_empresa')->where('cod_grupo', $grupo[0]->cod_grupo)->get();
@@ -334,6 +333,19 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * A esta funcion le pasas el dni del tutor, con esa dni, busca las rutas de sus anexos en la tabla FCT
+     * y borra esos anexos
+     */
+public function borrarAnexosTablaFCT($dni_tutor){
+            //buscar los anexos del tutor filtrando
+            $anexosCreados = FCT::select()->where('ruta_anexo','like',"$dni_tutor%")->get();
+
+        foreach($anexosCreados as $a){
+            unlink(public_path($a->ruta_anexo));
+        }
+}
     /**
      * Este metodo sirve para comprimir varios archivos del Anexo1 en un zip
      * @author Laura <lauramorenoramos97@gmail.com>
