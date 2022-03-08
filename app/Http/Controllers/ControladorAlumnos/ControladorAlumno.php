@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Exception;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
+use App\Models\AuxCursoAcademico;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -281,7 +282,7 @@ class ControladorAlumno extends Controller
         $fecha_doc = $fecha->day . '-' . AuxiliarParametros::MESES[$fecha->month] . '-' . $fecha->year % 100;
         //De momento, formare el nombre del documento con el dni del alumno + fecha.
         $nombre = $nombrePlantilla . '_' . $dni_alumno . '_' . $fecha_doc . '.docx';
-        $this->existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3'));
+        Auxiliar::existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3'));
         $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . $nombre;
 
         //Creo la plantilla y la relleno con los valores establecidos anteriormente.
@@ -386,15 +387,19 @@ class ControladorAlumno extends Controller
      */
     public function getNombreEmpresa(string $dni_alumno)
     {
-        $nombre_empresa = Empresa::join('empresa_grupo', 'empresa.id', '=', 'empresa_grupo.id_empresa')
-            ->join('grupo', 'grupo.cod', '=', 'empresa_grupo.cod_grupo')
-            ->join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
-            ->where('matricula.dni_alumno', '=', $dni_alumno)
+        //Primero saco el curso academico:
+        $curso = Auxiliar::obtenerCursoAcademico();
+
+        //En la select incluyo al curso academico como otra select:
+        $nombre_empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
+            ->where('fct.curso_academico','=', $curso)
+            ->where('fct.dni_alumno', '=', $dni_alumno)
             ->select('empresa.nombre AS nombre')
             ->first();
-
         return $nombre_empresa;
     }
+
+
 
 
     /**

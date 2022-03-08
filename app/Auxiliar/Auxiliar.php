@@ -140,4 +140,16 @@ class Auxiliar
         $usuario->tipo = $usuario_view->perfil;
         return $usuario;
     }
+
+    /**
+     * Esta funcion comprueba si una carpeta existe o no, y si no, la crea.
+     *@author Laura
+     * @param $ruta
+     * @return void
+     */
+    public static function existeCarpeta($ruta){
+        if (!is_dir($ruta)) {
+            mkdir($ruta, 0777, true);
+        }
+    }
 }

@@ -187,13 +187,13 @@ class ControladorTutorFCT extends Controller
      */
     public function borrarAnexosTablaFCT($dni_tutor)
     {
-        $anexosArr= array();
+        $anexosArr = array();
 
         //buscar los anexos del tutor filtrando
         $anexosCreados = FCT::select('ruta_anexo')->where('ruta_anexo', 'like', "$dni_tutor%")->get();
 
-        foreach($anexosCreados as $a){
-            $anexosArr[]=$a->ruta_anexo.'.docx';
+        foreach ($anexosCreados as $a) {
+            $anexosArr[] = $a->ruta_anexo . '.docx';
         }
 
         $anexosArr = array_unique($anexosArr);
@@ -560,15 +560,15 @@ class ControladorTutorFCT extends Controller
         $codAux = explode("_", $cod_anexo);
         $rutaOriginal = '';
 
-            if ($codAux[0] == 'Anexo1') {
-                $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+        if ($codAux[0] == 'Anexo1') {
+            $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+            $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
+        } else {
+            if ($codAux[0] == 'Anexo0') {
+                $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
                 $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
-            } else {
-                if ($codAux[0] == 'Anexo0') {
-                    $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
-                    $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
-                }
             }
+        }
 
         return response()->download($rutaOriginal);
     }
@@ -584,14 +584,14 @@ class ControladorTutorFCT extends Controller
     {
         $codAux = explode("_", $cod_anexo);
 
-            if ($codAux[0] == 'Anexo1') {
-                //Eliminar un fichero
-                unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-            } else {
-                if ($codAux[0] == 'Anexo0') {
-                    unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
-                }
+        if ($codAux[0] == 'Anexo1') {
+            //Eliminar un fichero
+            unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
+        } else {
+            if ($codAux[0] == 'Anexo0') {
+                unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
             }
+        }
 
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }
@@ -948,7 +948,7 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Elimina una empresa de la base de datos
+     * Elimina una empresa de la base de datos y sus trabajadores asociados
      * @param int $idEmpresa el ID de la empresa a eliminar
      * @return response JSON con la respuesta del servidor: 200 -> OK, 400 -> error
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
@@ -956,8 +956,15 @@ class ControladorTutorFCT extends Controller
     public function deleteEmpresa(int $idEmpresa)
     {
         $nombreEmpresa = Empresa::find($idEmpresa)->nombre;
-        Empresa::destroy($idEmpresa);
-        return response()->json(['message' => 'Empresa eliminada: ' . $nombreEmpresa], 200);
+        try {
+            // Primero eliminamos a los trabajadores de la empresa
+            Trabajador::where('id_empresa', $idEmpresa)->delete();
+            // Ahora eliminamos la empresa en sí
+            Empresa::destroy($idEmpresa);
+            return response()->json(['message' => 'Empresa eliminada: ' . $nombreEmpresa], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error: no se ha podido eliminar la empresa' . $nombreEmpresa], 400);
+        }
     }
 
     /**
@@ -1050,9 +1057,10 @@ class ControladorTutorFCT extends Controller
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del
      * centro para devolverlos y poder ver sus anexos en otra funcion.
      */
-    public function verGrupos($dni){
-        $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni','=',$dni)->get();
-        $grupos = Tutoria::select('cod_grupo','dni_profesor')->where('cod_centro','=',$centroEstudios[0]->cod_centro_estudios)->get();
+    public function verGrupos($dni)
+    {
+        $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
+        $grupos = Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get();
         return response()->json($grupos, 200);
     }
 }
