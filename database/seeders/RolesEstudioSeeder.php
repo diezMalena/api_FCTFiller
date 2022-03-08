@@ -17,5 +17,6 @@ class RolesEstudioSeeder extends Seeder
         RolProfesor::create(['descripcion' => 'Director']);
         RolProfesor::create(['descripcion' => 'Jefatura']);
         RolProfesor::create(['descripcion' => 'Tutor']);
+        RolProfesor::create(['descripcion' => 'Profesor']);
     }
 }
