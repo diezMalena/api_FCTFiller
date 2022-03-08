@@ -464,7 +464,7 @@ class ControladorTutorFCT extends Controller
                         $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
                         $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
-
+                        error_log($id_empresa);
                         //meter ese nombre en un array asociativo
                         $datos[] = [
                             'nombre' => $datosAux[0],
@@ -583,16 +583,23 @@ class ControladorTutorFCT extends Controller
     public function eliminarAnexo($dni_tutor, $cod_anexo)
     {
         $codAux = explode("_", $cod_anexo);
-
         if ($codAux[0] == 'Anexo1') {
             //Eliminar un fichero
             unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-        } else {
+            $cod_anexo=substr($cod_anexo,0,-5);
+            FCT::where('ruta_anexo', 'like',"%$cod_anexo")->update([
+                'ruta_anexo' => '',
+            ]);
+
+          } else {
             if ($codAux[0] == 'Anexo0') {
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
+                $cod_anexo=substr($cod_anexo,0,-5);
+                Convenio::where('ruta_anexo', 'like',"%$cod_anexo")->update([
+                    'ruta_anexo' => '',
+                ]);
             }
         }
-
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }
 
