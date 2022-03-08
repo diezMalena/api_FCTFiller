@@ -22,9 +22,11 @@ class CreateTutoriaTable extends Migration
             $table->string('dni_profesor');
             $table->string('cod_grupo');
             $table->string('curso_academico');
-            $table->primary(['dni_profesor', 'cod_grupo','curso_academico']);
+            $table->string('cod_centro');
+            $table->primary(['dni_profesor', 'cod_grupo','cod_centro']);
             $table->foreign('dni_profesor')->references('dni')->on('profesor')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('cod_grupo')->references('cod')->on('grupo')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('cod_centro')->references('cod')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });
     }

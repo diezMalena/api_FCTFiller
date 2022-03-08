@@ -8,6 +8,11 @@ class Parametros {
     public const RESPONSABLE_CENTRO = 2;
     public const TUTOR_EMPRESA = 3;
 
+    public const DIRECTOR = 1;
+    public const JEFE_ESTUDIOS = 2;
+    public const TUTOR = 3;
+
+
     public const MESES = [
         1 => 'enero',
         2 => 'febrero',
@@ -22,4 +27,6 @@ class Parametros {
         11 => 'noviembre',
         12 => 'diciembre'
     ];
+
+    public const NUEVA_LINEA = '\r\n';
 }

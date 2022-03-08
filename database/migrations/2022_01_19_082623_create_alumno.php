@@ -21,6 +21,7 @@ class CreateAlumno extends Migration
     {
         Schema::create('alumno', function (Blueprint $table) {
             $table->string('dni')->primary();
+            $table->integer('cod_alumno')->unique();
             $table->string('email')->unique();
             $table->string('password');
             $table->string('nombre');
