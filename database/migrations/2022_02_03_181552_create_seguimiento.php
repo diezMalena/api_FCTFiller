@@ -26,6 +26,7 @@ class CreateSeguimiento extends Migration
             $table->string('actividades');
             $table->string('observaciones');
             $table->integer('tiempo_empleado');
+            $table->foreign('id_fct')->references('id')->on('fct')->cascadeOnDelete()->cascadeOnUpdate();
             $table->timestamps();
         });
     }
