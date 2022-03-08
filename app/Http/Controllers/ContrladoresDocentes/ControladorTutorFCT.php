@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Database\Factories\RolProfesorAsignadoFactory;
+use Illuminate\Support\Facades\Hash;
 use PhpParser\Node\Expr\Cast\Array_;
 
 class ControladorTutorFCT extends Controller
@@ -974,21 +975,22 @@ class ControladorTutorFCT extends Controller
      */
     public function addDatosEmpresa(Request $req)
     {
-        //try{
-        $empresa = Empresa::create($req->empresa);
-        $repre_aux = $req->representante;
-        $repre_aux["id_empresa"] = $empresa->id;
-        $representante = Trabajador::create($repre_aux);
-        RolTrabajadorAsignado::create([
-            'dni' => $representante->dni,
-            'id_rol' => 1,
-        ]);
-        $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
-        $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
-        return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
-        /*}catch(Exception $ex){
-            return response()->json(['message'=>'Registro fallido'],400);
-        }*/
+        try {
+            $empresa = Empresa::create($req->empresa);
+            $repre_aux = $req->representante;
+            $repre_aux["id_empresa"] = $empresa->id;
+            $repre_aux["password"] = Hash::make($repre_aux["password"]);
+            $representante = Trabajador::create($repre_aux);
+            RolTrabajadorAsignado::create([
+                'dni' => $representante->dni,
+                'id_rol' => 1,
+            ]);
+            $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
+            $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
+            return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Registro fallido'], 400);
+        }
 
 
 
