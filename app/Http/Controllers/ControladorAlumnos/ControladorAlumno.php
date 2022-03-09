@@ -318,7 +318,7 @@ class ControladorAlumno extends Controller
      */
     public function getNombreAlumno(string $dni_alumno)
     {
-        $nombre = Alumno::select('nombre')
+        $nombre = Alumno::select('nombre','apellidos')
             ->where('dni', '=', $dni_alumno)
             ->first();
 
@@ -338,7 +338,7 @@ class ControladorAlumno extends Controller
             ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->where('matricula.dni_alumno', '=', $dni_alumno)
-            ->select('profesor.nombre AS nombre')
+            ->select('profesor.nombre AS nombre','profesor.apellidos AS apellidos')
             ->first();
 
         return $tutor;
