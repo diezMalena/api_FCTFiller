@@ -453,4 +453,94 @@ class ControladorAlumno extends Controller
 
         return $jornadas;
     }
+
+
+    /**
+     * Método para sacar el dni del tutor que tiene asignado el alumno.
+     * @return tutor_empresa
+     * @author Malena
+     */
+    public function sacarDniTutor(string $dni_alumno){
+        $tutor_empresa = Fct::where('dni_alumno','=',$dni_alumno)
+            ->select('dni_tutor_empresa')
+            ->first();
+        return $tutor_empresa;
+    }
+
+
+    /**
+     * Método que envia al cliente los datos del tutor al que está asociado el alumno
+     * para poder mostrarlo en la interfaz, ademas de mandarle también el id_empresa
+     * al que el alumno está asociado.
+     * @author Malena
+     */
+    public function recogerTutorEmpresa(Request $req){
+        $dni_alumno = $req->get('dni');
+        $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
+        try{
+            $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+            ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+            ->where('trabajador.dni','=',$dni_tutor)
+            ->select('trabajador.dni AS dni_tutor','trabajador.nombre AS nombre_tutor')
+            ->first();
+            //Recojo el id_empresa:
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+            return response()->json([$datos_tutor,$id_empresa],200);
+        }catch(Exception $e){
+            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
+        }
+    }
+
+
+    /**
+     * Método que devuelve el id_empresa a la que el alumno está asociado.
+     * @return id_empresa
+     * @author Malena
+     */
+    public function empresaAsignadaAlumno(string $dni_alumno){
+        /*Necesitamos también el id_empresa para luego poder mostrar en el desplegable todos
+        los tutores y responsables de dicha empresa.*/
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+        return $id_empresa;
+    }
+
+    /**
+     * Método que recoge todos los tutores y responsables de una empresa, para que el alumno pueda
+     * elegir un tutor nuevo.
+     * @author Malena
+     */
+    public function getTutoresResponsables(string $id_empresa){
+        try{
+            $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.id_empresa','=',$id_empresa)
+                ->select('trabajador.dni AS dni','trabajador.nombre AS nombre')
+                ->get();
+            return response()->json($arrayTutores,200);
+        }catch(Exception $e){
+            return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que actualiza en la BBDD el tutor que el alumno ha elegido.
+     * @author Malena
+     */
+    public function actualizarTutorEmpresa(Request $req){
+        error_log($req->get('dni_tutor_nuevo'));
+        try{
+            $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
+            $dni_alumno = $req->get('dni_alumno');
+            Fct::where('dni_alumno', $dni_alumno)->update([
+                'dni_tutor_empresa' => $dni_tutor_nuevo,
+            ]);
+            return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
+        }catch(Exception $e){
+            // error_log($e);
+            return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
+        }
+    }
+
+
 }
