@@ -587,16 +587,15 @@ class ControladorTutorFCT extends Controller
         if ($codAux[0] == 'Anexo1') {
             //Eliminar un fichero
             unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-            $cod_anexo=substr($cod_anexo,0,-5);
-            FCT::where('ruta_anexo', 'like',"%$cod_anexo")->update([
+            $cod_anexo = substr($cod_anexo, 0, -5);
+            FCT::where('ruta_anexo', 'like', "%$cod_anexo")->update([
                 'ruta_anexo' => '',
             ]);
-
-          } else {
+        } else {
             if ($codAux[0] == 'Anexo0') {
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
-                $cod_anexo=substr($cod_anexo,0,-5);
-                Convenio::where('ruta_anexo', 'like',"%$cod_anexo")->update([
+                $cod_anexo = substr($cod_anexo, 0, -5);
+                Convenio::where('ruta_anexo', 'like', "%$cod_anexo")->update([
                     'ruta_anexo' => '',
                 ]);
             }
@@ -886,17 +885,22 @@ class ControladorTutorFCT extends Controller
      */
     public function updateEmpresa(Request $req)
     {
-        Empresa::where('id', $req->id)->update([
-            'cif' => $req->cif,
-            'nombre' => $req->nombre,
-            'email' => $req->email,
-            'telefono' => $req->telefono,
-            'localidad' => $req->localidad,
-            'provincia' => $req->provincia,
-            'direccion' => $req->direccion,
-            'cp' => $req->cp
-        ]);
-        return response()->json(['message' => 'Empresa actualizada'], 200);
+        $nombreEmpresa = Empresa::find($req->id)->nombre;
+        try {
+            Empresa::where('id', $req->id)->update([
+                'cif' => $req->cif,
+                'nombre' => $req->nombre,
+                'email' => $req->email,
+                'telefono' => $req->telefono,
+                'localidad' => $req->localidad,
+                'provincia' => $req->provincia,
+                'direccion' => $req->direccion,
+                'cp' => $req->cp
+            ]);
+            return response()->json(['title' => 'Empresa actualizada', 'message' => 'Se han actualizado los datos de ' . $nombreEmpresa], 200);
+        } catch (Exception $e) {
+            return response()->json(['title' => 'Error de actualización', 'message' => 'No se han podido actualizar los datos de ' . $nombreEmpresa], 400);
+        }
     }
 
     /**
@@ -906,14 +910,28 @@ class ControladorTutorFCT extends Controller
      * @return response JSON con la respuesta del servidor: 200 -> todo OK, 400 -> error
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
      */
-    public function updateRepresentante(Request $req)
+    public function updateTrabajador(Request $req)
     {
-        Trabajador::where('dni', $req->dni)->update([
-            'nombre' => $req->nombre,
-            'apellidos' => $req->apellidos,
-            'email' => $req->email
-        ]);
-        return response()->json(['message' => 'Representante actualizado'], 200);
+        $title = ''; $message = ''; $code = 0;
+        try {
+            Trabajador::where('dni', $req->dni)->update([
+                'nombre' => $req->nombre,
+                'apellidos' => $req->apellidos,
+                'email' => $req->email
+            ]);
+            $title = 'Representante actualizado';
+            $message = 'Se han actualizado los datos de ';
+            $code = 200;
+        } catch (Exception $e) {
+            $title = 'Error de actualización';
+            $message = 'No se han podido actualizar los datos de ';
+            $code = 400;
+        } finally {
+            $trabajador = Trabajador::find($req->dni);
+            $message .= $trabajador->nombre . ' ' . $trabajador->apellidos;
+            return response()->json(['title' => $title, 'message' => $message], $code);
+        }
+
     }
 
     /**
@@ -930,9 +948,9 @@ class ControladorTutorFCT extends Controller
             Trabajador::where('id_empresa', $idEmpresa)->delete();
             // Ahora eliminamos la empresa en sí
             Empresa::destroy($idEmpresa);
-            return response()->json(['message' => 'Empresa eliminada: ' . $nombreEmpresa], 200);
+            return response()->json(['title' => 'Empresa eliminada', 'message' => 'Se ha eliminado con éxito la empresa ' . $nombreEmpresa], 200);
         } catch (Exception $e) {
-            return response()->json(['message' => 'Error: no se ha podido eliminar la empresa' . $nombreEmpresa], 400);
+            return response()->json(['title' => 'Error de eliminación', 'message' => 'No se ha podido eliminar la empresa ' . $nombreEmpresa], 400);
         }
     }
 

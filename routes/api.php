@@ -28,7 +28,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
     Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
-    Route::put('update_representante', [ControladorTutorFCT::class, 'updateRepresentante']);
+    Route::put('update_trabajador', [ControladorTutorFCT::class, 'updateTrabajador']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
 
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
