@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
+use App\Models\Ciudad;
 use App\Models\Usuario_view;
 use Error;
 use Illuminate\Http\Request;
@@ -48,6 +49,25 @@ class ControladorGenerico extends Controller
             return response()->json(['mensaje' => 'Datos de inicio de sesión incorrectos'], 403);
         }
 
+    }
+
+
+    /**
+     * Obtiene un listado de provincias
+     * @return Response objeto JSON con el listado de provincias
+     */
+    public function listarProvincias() {
+        $listado = Ciudad::distinct()->get('provincia')->pluck('provincia');
+        return response()->json($listado, 200);
+    }
+
+     /**
+     * Obtiene un listado de ciudades
+     * @return Response objeto JSON con el listado de ciudades
+     */
+    public function listarCiudades($provincia) {
+        $listado = Ciudad::where('provincia', $provincia)->distinct()->get(['ciudad'])->pluck('ciudad');
+        return response()->json($listado, 200);
     }
 
 
