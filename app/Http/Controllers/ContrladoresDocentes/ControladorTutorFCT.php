@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Database\Factories\RolProfesorAsignadoFactory;
+use Illuminate\Support\Facades\Hash;
 use PhpParser\Node\Expr\Cast\Array_;
 
 class ControladorTutorFCT extends Controller
@@ -719,67 +720,21 @@ class ControladorTutorFCT extends Controller
 
         //Ahora genero el Word y el PDF en sí
         //Establezco las variables que necesito
-        $nombrePlantilla = 'Anexo0';
+        $nombrePlantilla = $empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A';
         // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
         $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
         // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . 'Anexo0'));
-        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
+        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
-        /************************************************************************/
-        /*************************IMPORTANTE HACER ESTO**************************/
-        /************************************************************************/
-        //Y guardo la ruta en la base de datos
+        // Guardo la ruta del archivo en la base de datos
         Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
-
+        // Y la devuelvo
         return $rutaDestino;
-        /************************************************************************/
-        /************************************************************************/
-        /************************************************************************/
-
-        //Convierto el documento a PDF
-        //Pendiente de revisar: no convierte las cabeceras. Se queda en Word de momento
-        // $this->convertirWordPDF0($rutaTemporal, $rutaDestino);
-    }
-
-    /**
-     * Esta función convierte un archivo word en pdf
-     * @param string $rutaArchivo la ruta del archivo .docx
-     * @param string $rutaDestino la ruta de destino del .pdf
-     * @return void
-     *
-     * @author @DaniJCoello
-     */
-    private function convertirWordPDF0(string $rutaArchivo, string $rutaDestino)
-    {
-        /* Set the PDF Engine Renderer Path */
-        $domPdfPath = base_path('vendor/dompdf/dompdf');
-        \PhpOffice\PhpWord\Settings::setPdfRendererPath($domPdfPath);
-        \PhpOffice\PhpWord\Settings::setPdfRendererName('DomPDF');
-
-        // Load temporarily create word file
-        $Content = \PhpOffice\PhpWord\IOFactory::load($rutaArchivo);
-
-        //Save it into PDF
-        $savePdfPath = public_path($rutaDestino);
-
-        /*@ If already PDF exists then delete it */
-        if (file_exists($savePdfPath)) {
-            unlink($savePdfPath);
-        }
-
-        //Save it into PDF
-        $PDFWriter = \PhpOffice\PhpWord\IOFactory::createWriter($Content, 'PDF');
-        $PDFWriter->save($savePdfPath);
-
-        /*@ Remove temporarily created word file */
-        if (file_exists($rutaArchivo)) {
-            unlink($rutaArchivo);
-        }
     }
 
     /**
@@ -923,7 +878,7 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Actualiza la información de una empresa y su representante legal en la base de datos
+     * Actualiza la información de una empresa
      *
      * @param Request $req contiene los datos de la empresa
      * @return response JSON con la respuesta del servidor: 200 -> todo OK, 400 -> error
@@ -944,6 +899,13 @@ class ControladorTutorFCT extends Controller
         return response()->json(['message' => 'Empresa actualizada'], 200);
     }
 
+    /**
+     * Actualiza la información de un trabajador de la empresa
+     *
+     * @param Request $req contiene los datos del trabajador
+     * @return response JSON con la respuesta del servidor: 200 -> todo OK, 400 -> error
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     */
     public function updateRepresentante(Request $req)
     {
         Trabajador::where('dni', $req->dni)->update([
@@ -981,42 +943,22 @@ class ControladorTutorFCT extends Controller
      */
     public function addDatosEmpresa(Request $req)
     {
-        //try{
-        $empresa = Empresa::create($req->empresa);
-        $repre_aux = $req->representante;
-        $repre_aux["id_empresa"] = $empresa->id;
-        $representante = Trabajador::create($repre_aux);
-        RolTrabajadorAsignado::create([
-            'dni' => $representante->dni,
-            'id_rol' => 1,
-        ]);
-        $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
-        $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
-        return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
-        /*}catch(Exception $ex){
-            return response()->json(['message'=>'Registro fallido'],400);
-        }*/
-
-
-
-        //----------------------------------COMPROBACIONES FUTURAS---------------------------------------
-        //Si la empresa no está registrada:
-        /*if(!isset($empresa)){
+        try {
             $empresa = Empresa::create($req->empresa);
-            return response()->json(['message'=>'Empresa insertada: '.$empresa],201);
-        }else{
-            return response()->json(['message'=>'La empresa no se ha insertado: '.$empresa],400);
+            $repre_aux = $req->representante;
+            $repre_aux["id_empresa"] = $empresa->id;
+            $repre_aux["password"] = Hash::make($repre_aux["password"]);
+            $representante = Trabajador::create($repre_aux);
+            RolTrabajadorAsignado::create([
+                'dni' => $representante->dni,
+                'id_rol' => 1,
+            ]);
+            $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
+            $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
+            return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Registro fallido'], 400);
         }
-
-        $representante = Trabajador::find($req->representante->dni);
-        //Si el representante no está registrado:
-        if(!isset($representante)){
-            $representante = Trabajador::create($req->representante);
-
-            return response()->json(['message'=>'Representante insertado: '.$representante],201);
-        }else{
-            return response()->json(['message'=>'El representante no se ha insertado: '.$representante],400);
-        }*/
     }
 
     /**
