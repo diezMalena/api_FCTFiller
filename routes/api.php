@@ -28,7 +28,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
     Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
-    Route::put('update_representante', [ControladorTutorFCT::class, 'updateRepresentante']);
+    Route::put('update_trabajador', [ControladorTutorFCT::class, 'updateTrabajador']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
 
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
@@ -77,7 +77,9 @@ Route::delete('/eliminarProfesor/{dni_profesor}', [ControladorJefatura::class, '
 Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
 Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
 
-
+//Obtener provincias y ciudades
+Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
+Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     //Por si se me olvida a posteriorri: está puesto como un get para pruebas,
@@ -88,6 +90,8 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
     Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
     Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
-    Route::post('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
+    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
     Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
+
+
 });

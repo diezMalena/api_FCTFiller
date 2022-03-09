@@ -833,7 +833,7 @@ class ControladorJefatura extends Controller
                 ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
                 ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
                 ->where('profesor.dni', '=', $dni_logueado)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
                 ->get();
 
             return response()->json($listado, 200);
@@ -852,8 +852,10 @@ class ControladorJefatura extends Controller
     {
         try {
             $alumno = Alumno::where('dni', '=', $dni_alumno)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
                 ->get()->first();
+
+            $alumno->password = '';
 
             if ($alumno) {
                 //Pongo a cadena vacía la contraseña por seguridad,
@@ -912,13 +914,16 @@ class ControladorJefatura extends Controller
                 'dni' => $r->dni,
                 'cod_alumno' => $r->cod_alumno,
                 'email' => $r->email,
-                'password' => $r->password,
                 'nombre' => $r->nombre,
                 'apellidos' => $r->apellidos,
                 'provincia' => $r->provincia,
                 'localidad' => $r->localidad,
-                'va_a_fct' => $r->va_a_fct,
             ]);
+        if($r->password) {
+            Alumno::where('dni', '=', $r->dni)->update([
+                'password' => $r->password
+            ]);
+        }
 
             return response()->json(['message' => 'Alumno actualizado'], 200);
         } catch (Exception $ex) {
