@@ -685,16 +685,23 @@ class ControladorTutorFCT extends Controller
      */
     public function montarZipCrud(String $dni_tutor, ZipArchive $zip, String $nombreZip)
     {
-        $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         $fechaArchivo = '';
         $fechaActual = Carbon::now();
 
+        $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
        ///////////////////////////////ANEXO1//////////////////////////////////////////
             foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
                 $nombreAux = basename($value);
-                $nombreDesglosado = explode("_", $nombreAux);
+                $nombreAuxParaSacarDeBBDD=substr($nombreAux,0,-5);
+                $buscarSiAnexoExiste=FCT::select('ruta_anexo')->where('ruta_anexo','like',"%$nombreAuxParaSacarDeBBDD")->get();
 
+                //Si hay anexos en la carpeta, que ya no existen en la bbdd, o sea, que estan anticuados y son
+                //para el historico, no se sacan
+
+                if(count($buscarSiAnexoExiste) > 0){
+                $nombreDesglosado = explode("_", $nombreAux);
                 //saco el año  del fichero con un substring
                 $fechaArchivo = $nombreDesglosado[4];
 
@@ -703,10 +710,14 @@ class ControladorTutorFCT extends Controller
                     $zip->addFile($value, $relativeNameZipFile);
                 }
             }
+            }
             //////////////////////ANEXO0//////////////////////////////////////////
             $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0'));
             foreach ($files as $value) {
                 $nombreAux = basename($value);
+                $buscarSiAnexoExiste=Convenio::select('ruta_anexo')->where('ruta_anexo','like',"%$nombreAux")->get();
+
+                if(count($buscarSiAnexoExiste) > 0){
                 //Separamos Anexo0_ del numeroDeConvenio.docx
                 $nombreDesglosado = explode("_", $nombreAux);
                 //Separamos el convenio del .docx
@@ -722,10 +733,14 @@ class ControladorTutorFCT extends Controller
                     $zip->addFile($value, $relativeNameZipFile);
                 }
             }
+            }
             //////////////////////ANEXO0A//////////////////////////////////////////
             $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
             foreach ($files as $value) {
                 $nombreAux = basename($value);
+                $buscarSiAnexoExiste=Convenio::select('ruta_anexo')->where('ruta_anexo','like',"%$nombreAux")->get();
+
+                if(count($buscarSiAnexoExiste) > 0){
                 //Separamos Anexo0_ del numeroDeConvenio.docx
                 $nombreDesglosado = explode("_", $nombreAux);
                 //Separamos el convenio del .docx
@@ -740,6 +755,7 @@ class ControladorTutorFCT extends Controller
                     $relativeNameZipFile = basename($value);
                     $zip->addFile($value, $relativeNameZipFile);
                 }
+            }
             }
             $zip->close();
         }
