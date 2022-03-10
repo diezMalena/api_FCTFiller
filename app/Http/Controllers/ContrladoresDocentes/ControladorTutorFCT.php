@@ -6,6 +6,7 @@ use App\Auxiliar\Auxiliar;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -570,7 +571,7 @@ class ControladorTutorFCT extends Controller
             }
             closedir($handler);
         }
-        return $datos;
+        return response()->json($datos, 200);
     }
 
 
@@ -619,7 +620,8 @@ class ControladorTutorFCT extends Controller
             }
         }
 
-        return response()->download($rutaOriginal);
+        return Response::download($rutaOriginal);
+       // return response()->download($rutaOriginal);
     }
 
 
@@ -642,7 +644,6 @@ class ControladorTutorFCT extends Controller
         } else {
             if ($codAux[0] == 'Anexo0') {
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0' . DIRECTORY_SEPARATOR . $cod_anexo);
-                $cod_anexo = substr($cod_anexo, 0, -5);
                 Convenio::where('ruta_anexo', 'like', "%$cod_anexo")->update([
                     'ruta_anexo' => '',
                 ]);
