@@ -377,7 +377,7 @@ class ControladorJefatura extends Controller
                             Profesor::create([
                                 'dni' => $dni,
                                 'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
-                                'password' => md5('12345'),
+                                'password' => Hash::make('12345'),
                                 'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'cod_centro_estudios' => $codCentroEstudios
@@ -899,7 +899,7 @@ class ControladorJefatura extends Controller
                 'dni' => $r->dni,
                 'cod_alumno' => $r->cod_alumno,
                 'email' => $r->email,
-                'password' => $r->password,
+                'password' => Hash::make($r->password),
                 'nombre' => $r->nombre,
                 'apellidos' => $r->apellidos,
                 'provincia' => $r->provincia,
@@ -945,10 +945,11 @@ class ControladorJefatura extends Controller
                     'apellidos' => $r->apellidos,
                     'provincia' => $r->provincia,
                     'localidad' => $r->localidad,
+                    'va_a_fct' => $r->va_a_fct
                 ]);
                 if ($r->password) {
                     Alumno::where('dni', '=', $r->dni)->update([
-                        'password' => $r->password
+                        'password' => Hash::make($r->password)
                     ]);
                 }
 
