@@ -18,6 +18,8 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+use function PHPUnit\Framework\throwException;
+
 class ControladorJefatura extends Controller
 {
     const CABECERA_ALUMNOS = ["ALUMNO", "APELLIDOS", "NOMBRE", "SEXO", "DNI", "NIE", "FECHA_NACIMIENTO", "LOCALIDAD_NACIMIENTO", "PROVINCIA_NACIMIENTO", "NOMBRE_CORRESPONDENCIA", "DOMICILIO", "LOCALIDAD", "PROVINCIA", "TELEFONO", "MOVIL", "CODIGO_POSTAL", "TUTOR1", "DNI_TUTOR1", "TUTOR2", "DNI_TUTOR2", "PAIS", "NACIONALIDAD", "EMAIL_ALUMNO", "EMAIL_TUTOR2", "EMAIL_TUTOR1", "TELEFONOTUTOR1", "TELEFONOTUTOR2", "MOVILTUTOR1", "MOVILTUTOR2", "APELLIDO1", "APELLIDO2", "TIPODOM", "NTUTOR1", "NTUTOR2", "NSS"];
@@ -230,7 +232,7 @@ class ControladorJefatura extends Controller
                                 //está vacío, se genera uno con el DNI
                                 'email' => trim($vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] != '' ? $vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
                                 //Se debería crear una contraseña por defecto para todos los usuarios dados de alta automáticamente
-                                'password' => md5('12345'),
+                                'password' => Hash::make('superman'),
                                 'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'provincia' => trim($vec[array_search('PROVINCIA', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
@@ -375,7 +377,7 @@ class ControladorJefatura extends Controller
                             Profesor::create([
                                 'dni' => $dni,
                                 'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
-                                'password' => md5('12345'),
+                                'password' => Hash::make('12345'),
                                 'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'cod_centro_estudios' => $codCentroEstudios
@@ -832,8 +834,16 @@ class ControladorJefatura extends Controller
             $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
                 ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
                 ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
-                ->where('profesor.dni', '=', $dni_logueado)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->where([
+                    ['profesor.dni', '=', $dni_logueado],
+                    ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])
+                ->select([
+                    'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
+                    'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
+                    'alumno.localidad', 'alumno.va_a_fct',
+                    'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo', 'matricula.cod_centro as matricula_cod_centro',
+                ])
                 ->get();
 
             return response()->json($listado, 200);
@@ -852,8 +862,16 @@ class ControladorJefatura extends Controller
     {
         try {
             $alumno = Alumno::where('dni', '=', $dni_alumno)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
                 ->get()->first();
+
+            $alumno->password = '';
+
+            //Incorporación del ciclo formativo al que pertenece
+            $alumno->ciclo = Matricula::where([
+                ['dni_alumno', '=', $dni_alumno],
+                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])->select(['cod_grupo'])->get()->first()->cod_grupo;
 
             if ($alumno) {
                 //Pongo a cadena vacía la contraseña por seguridad,
@@ -881,7 +899,7 @@ class ControladorJefatura extends Controller
                 'dni' => $r->dni,
                 'cod_alumno' => $r->cod_alumno,
                 'email' => $r->email,
-                'password' => $r->password,
+                'password' => Hash::make($r->password),
                 'nombre' => $r->nombre,
                 'apellidos' => $r->apellidos,
                 'provincia' => $r->provincia,
@@ -889,8 +907,17 @@ class ControladorJefatura extends Controller
                 'va_a_fct' => $r->va_a_fct,
             ]);
 
+            Matricula::create([
+                'cod' => $r->matricula_cod,
+                'cod_centro' => $r->matricula_cod_centro,
+                'dni_alumno' => $r->dni,
+                'cod_grupo' => $r->matricula_cod_grupo,
+                'curso_academico' => Auxiliar::obtenerCursoAcademico()
+            ]);
+
             return response()->json(['message' => 'Alumno creado correctamente'], 200);
         } catch (Exception $ex) {
+            error_log($ex->getMessage());
             if (str_contains($ex->getMessage(), 'Integrity')) {
                 return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
             } else {
@@ -908,17 +935,37 @@ class ControladorJefatura extends Controller
     public function modificarAlumno(Request $r)
     {
         try {
-            Alumno::where('dni', '=', $r->dni)->update([
-                'dni' => $r->dni,
-                'cod_alumno' => $r->cod_alumno,
-                'email' => $r->email,
-                'password' => $r->password,
-                'nombre' => $r->nombre,
-                'apellidos' => $r->apellidos,
-                'provincia' => $r->provincia,
-                'localidad' => $r->localidad,
-                'va_a_fct' => $r->va_a_fct,
-            ]);
+            //return response()->json(strlen($r->dni_antiguo), 200);
+            if (strlen($r->dni_antiguo) != 0) {
+                Alumno::where('dni', '=', $r->dni_antiguo)->update([
+                    'dni' => $r->dni,
+                    'cod_alumno' => $r->cod_alumno,
+                    'email' => $r->email,
+                    'nombre' => $r->nombre,
+                    'apellidos' => $r->apellidos,
+                    'provincia' => $r->provincia,
+                    'localidad' => $r->localidad,
+                    'va_a_fct' => $r->va_a_fct
+                ]);
+                if ($r->password) {
+                    Alumno::where('dni', '=', $r->dni)->update([
+                        'password' => Hash::make($r->password)
+                    ]);
+                }
+
+                Matricula::where([
+                    ['dni_alumno', '=', $r->dni],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                    ])->update([
+                    'cod' => $r->matricula_cod,
+                    'cod_centro' => $r->matricula_cod_centro,
+                    'dni_alumno' => $r->dni,
+                    'cod_grupo' => $r->matricula_cod_grupo,
+                    'curso_academico' => Auxiliar::obtenerCursoAcademico()
+                ]);
+            } else {
+                throw new Exception('El usuario no puede estar vacío');
+            }
 
             return response()->json(['message' => 'Alumno actualizado'], 200);
         } catch (Exception $ex) {
@@ -937,11 +984,22 @@ class ControladorJefatura extends Controller
         try {
             Alumno::where('dni', '=', $dni_alumno)->delete();
 
-            //Aquí va la eliminación de los anexos asociados al alumno, cuando los tengamos
-
             return response()->json(['mensaje' => 'Alumno borrado correctamente'], 200);
         } catch (Exception $ex) {
             return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
         }
+    }
+
+
+
+    /**
+     * Obtiene un listado de grupos
+     * @return Response JSON con grupos
+     * @author David Sánchez Barragán
+     */
+    public function listarGrupos()
+    {
+        $listaGrupos = Grupo::select(['cod', 'nombre_ciclo'])->get();
+        return response()->json($listaGrupos, 200);
     }
 }
