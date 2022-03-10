@@ -4,11 +4,13 @@ namespace App\Auxiliar;
 
 use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
+use App\Models\CentroEstudios;
 use App\Models\Profesor;
 use App\Models\RolEmpresa;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -106,6 +108,19 @@ class Auxiliar
     public static function obtenerCursoAcademicoPorAnio($anio){
         //Select realizada "a pelo" para utilizar la función YEAR() de MySQL
         return DB::select("select cod_curso from aux_curso_academico where year(fecha_inicio) = '" . $anio . "'")[0]->cod_curso ;
+    }
+
+    /**
+     * Obtiene el centro de estudios asociado al profesor, según el DNI
+     * @param string $dni DNI del profesor
+     * @return string Código del centro de estudios
+     */
+    public static function obtenerCentroPorDNIProfesor($dni){
+        try {
+            return CentroEstudios::where('cod', (Profesor::where('dni', $dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+        } catch (Exception $ex) {
+            return null;
+        }
     }
 
     /**

@@ -92,6 +92,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
     Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
     Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
+    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
 
 
 });
