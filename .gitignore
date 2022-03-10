@@ -5,8 +5,8 @@
 /vendor
 /tmp
 /public/*
-!public/tmp/csv
-!public/anexos
+!/public/tmp/csv
+!/public/anexos
 .env.backup
 .phpunit.result.cache
 docker-compose.override.yml
