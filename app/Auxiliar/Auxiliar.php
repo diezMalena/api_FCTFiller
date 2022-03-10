@@ -4,11 +4,13 @@ namespace App\Auxiliar;
 
 use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
+use App\Models\CentroEstudios;
 use App\Models\Profesor;
 use App\Models\RolEmpresa;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -109,6 +111,19 @@ class Auxiliar
     }
 
     /**
+     * Obtiene el centro de estudios asociado al profesor, según el DNI
+     * @param string $dni DNI del profesor
+     * @return string Código del centro de estudios
+     */
+    public static function obtenerCentroPorDNIProfesor($dni){
+        try {
+            return CentroEstudios::where('cod', (Profesor::where('dni', $dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
+        } catch (Exception $ex) {
+            return null;
+        }
+    }
+
+    /**
      * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email, según qué tipo de usuario sea.
      *
      * @param int $usuario array con los datos del usuario
@@ -139,5 +154,17 @@ class Auxiliar
         }
         $usuario->tipo = $usuario_view->perfil;
         return $usuario;
+    }
+
+    /**
+     * Esta funcion comprueba si una carpeta existe o no, y si no, la crea.
+     *@author Laura
+     * @param $ruta
+     * @return void
+     */
+    public static function existeCarpeta($ruta){
+        if (!is_dir($ruta)) {
+            mkdir($ruta, 0777, true);
+        }
     }
 }
