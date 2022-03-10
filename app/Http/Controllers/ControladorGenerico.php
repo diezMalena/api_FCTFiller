@@ -40,6 +40,8 @@ class ControladorGenerico extends Controller
             if ($ckPass) {
 
                 $usuario = Auxiliar::getDatosUsuario($usuario_view);
+                //DSB Cambio 10-03-2022: Añadido codigo de centro de estudios
+                $usuario->cod_centro = Auxiliar::obtenerCentroPorDNIProfesor($usuario->dni);
                 // $usuario->token = auth()->user()->createToken('authToken')->accessToken;
                 return response()->json($usuario, 200);
             } else {
@@ -55,18 +57,20 @@ class ControladorGenerico extends Controller
     /**
      * Obtiene un listado de provincias
      * @return Response objeto JSON con el listado de provincias
+     * @author David Sánchez Barragán
      */
     public function listarProvincias() {
-        $listado = Ciudad::distinct()->get('provincia')->pluck('provincia');
+        $listado = Ciudad::distinct()->orderBy('provincia', 'asc')->get('provincia')->pluck('provincia');
         return response()->json($listado, 200);
     }
 
      /**
      * Obtiene un listado de ciudades
      * @return Response objeto JSON con el listado de ciudades
+     * @author David Sánchez Barragán
      */
     public function listarCiudades($provincia) {
-        $listado = Ciudad::where('provincia', $provincia)->distinct()->get(['ciudad'])->pluck('ciudad');
+        $listado = Ciudad::where('provincia', $provincia)->distinct()->orderBy('ciudad', 'asc')->get(['ciudad'])->pluck('ciudad');
         return response()->json($listado, 200);
     }
 
