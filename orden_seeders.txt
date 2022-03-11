@@ -1,0 +1,17 @@
+//Tablas de roles
+php artisan db:seed --class=RolesEstudioSeeder
+php artisan db:seed --class=RolesEmpresaSeeder
+
+//Tablas de grupos, familias profesionales, y niveles de estudios
+php artisan db:seed --class=NivelEstudiosSeeder
+php artisan db:seed --class=FamiliaProfesionalSeeder
+php artisan db:seed --class=GrupoSeeder
+php artisan db:seed --class=GrupoFamiliaSeeder
+
+//Tablas de centro de estudios y empresas
+php artisan db:seed --class=CentroEstudiosSeeder
+php artisan db:seed --class=EmpresaSeeder
+
+
+
+
