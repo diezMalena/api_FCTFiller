@@ -15,6 +15,7 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
 use App\Models\Fct;
 use App\Auxiliar\Parametros;
+use App\Models\Anexo;
 use App\Models\AuxConvenio;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
@@ -206,6 +207,12 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    public function borrarAnexosTablaAnexos($tipoAnexo,$dni_tutor){
+
+        //borrar los anexos del tutor filtrando y tipo de Anexo
+        Anexo::where('ruta_anexo', 'like', "$dni_tutor%")->where('tipo_anexo','=',$tipoAnexo)->where('habilitado','=',1)->delete();
+    }
+
     /**
      * Esta funcion nos permite rellenar el Anexo 1
      *@author LauraM <lauramorenoramos97@gmail.com>
@@ -215,6 +222,8 @@ class ControladorTutorFCT extends Controller
     public function rellenarAnexo1(Request $val)
     {
         $dni_tutor = $val->get('dni_tutor');
+        //Borro todos los anexos de la tabla Anexos que sean inservibles
+        $this->borrarAnexosTablaAnexos('Anexo1',$dni_tutor);
         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
         $empresas_id = EmpresaGrupo::select('id_empresa')->where('cod_grupo', $grupo[0]->cod_grupo)->get();
         $fecha = Carbon::now();
@@ -256,8 +265,11 @@ class ControladorTutorFCT extends Controller
 
 
                     //Almacenamos las rutas de los anexos en la bbdd
+
                     foreach ($alumnos as $a) {
-                        Fct::where('id_empresa', '=', $id->id_empresa)->where('dni_alumno', '=', $a->dni)->update(['ruta_anexo' => $rutaDestino]);
+                        Fct::where('id_empresa', '=', $id->id_empresa)->where('dni_alumno', '=', $a->dni)->update(['ruta_anexo' => $rutaDestino.'.docx']);
+                        Anexo::create(['tipo_anexo' => 'Anexo1', 'ruta_anexo' => $rutaDestino.'.docx']);
+
                     }
 
                     //Nombre de la empresa
@@ -426,7 +438,7 @@ class ControladorTutorFCT extends Controller
 
 
     /**
-     * Esta funcion devuelve los anexos de un tutor menos el anexo3
+     * Esta funcion devuelve los anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
      *
      * @param Request $val
      * @return void
@@ -434,148 +446,64 @@ class ControladorTutorFCT extends Controller
     public function verAnexos($dni_tutor)
     {
         //$dni_tutor = $val->get('dni_tutor');
-        $directorios = array();
         $datos = array();
-        $datosAux = array();
-        $datosAuxFechaAnexo0 = array();
-        $fecha = Carbon::now();
-        $fechaAux = '';
+        $habilitado=1;
 
-        ///////////////////////////////ANEXO 0//////////////////////////////////////
-        $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0';
-        if ($handler = opendir($thefolder)) {
-            while (false !== ($file = readdir($handler))) {
+        ///////////////////////////////ANEXO 0  Y 0A//////////////////////////////////////
+        $Anexos0=Anexo::select('tipo_anexo','firmado_empresa','firmado_director','ruta_anexo')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo0')->orWhere('tipo_anexo', '=', 'Anexo0A')->where('ruta_anexo','like',"$dni_tutor%")->get();
 
-                //Comparar string en php
-                if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
-                    $directorios[] = $file;
+                    foreach($Anexos0 as $a){
+                        //Esto sirve para poner las barras segun el so que se este usando
+                        $rutaAux=str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                        $rutaAux=explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-                    //Dividir un nombre por su separador
-                    $datosAux = explode("_", $file);
+                        $convenioAux = $rutaAux[2];
+                        $convenioAux = explode('_', $convenioAux);
+                        $convenioAux = explode('.', $convenioAux[1]);
+                        $convenioAux=str_replace('-', DIRECTORY_SEPARATOR, $convenioAux[0]);
 
-                    $datosAuxFechaAnexo0 =  explode(".", $datosAux[1]);
-                    $convenioAux = $datosAuxFechaAnexo0[0];
-                    $datosAuxFechaAnexo0 =  explode("-", $datosAuxFechaAnexo0[0]);
-                    $fechaAux = $datosAuxFechaAnexo0[2];
-
-
-                    //Mientras la fecha de creacion de este anexo sea igual al año actual o sea menor o igual a 4 años después
-                    if ($fechaAux  == substr($fecha->year, -2) || $fechaAux <= substr($fecha->year, -2) + 4) {
-                        $convenioAux = str_replace('-', '/', $convenioAux);
-                        $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $convenioAux)->get();
-                        if(count($firma_empresa) > 0){
-                        $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $convenioAux)->get();
                         $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
                         $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
-                        //meter ese nombre en un array asociativo
                         $datos[] = [
-                            'nombre' => $datosAux[0],
-                            'codigo' => $file,
+                            'nombre' => $rutaAux[1],
+                            'codigo' => $rutaAux[2],
                             'empresa' => $empresa_nombre[0]->nombre,
-                            'firma_empresa' => $firma_empresa[0]->firmado_empresa,
-                            'firma_centro' => $firma_centro[0]->firmado_director
+                            'firma_empresa' => $a->firmado_empresa,
+                            'firma_centro' => $a->firmado_director
                         ];
+
                     }
-                    }
-                }
-            }
-            closedir($handler);
-        }
-        ///////////////////////////////ANEXO 0A//////////////////////////////////////
-        $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A';
-        if ($handler = opendir($thefolder)) {
-            while (false !== ($file = readdir($handler))) {
 
-                //Comparar string en php
-                if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
-                    $directorios[] = $file;
-
-                    //Dividir un nombre por su separador
-                    $datosAux = explode("_", $file);
-
-                    $datosAuxFechaAnexo0 =  explode(".", $datosAux[1]);
-                    $convenioAux = $datosAuxFechaAnexo0[0];
-                    $datosAuxFechaAnexo0 =  explode("-", $datosAuxFechaAnexo0[0]);
-                    $fechaAux = $datosAuxFechaAnexo0[2];
-
-
-                    //Mientras la fecha de creacion de este anexo sea igual al año actual o sea menor o igual a 4 años después
-                    if ($fechaAux  == substr($fecha->year, -2) || $fechaAux <= substr($fecha->year, -2) + 4) {
-                        $convenioAux = str_replace('-', '/', $convenioAux);
-                        $firma_empresa = Convenio::select('firmado_empresa')->where('cod_convenio', '=', $convenioAux)->get();
-                        if(count($firma_empresa) > 0){
-                        $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $convenioAux)->get();
-                        $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
-                        $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
-
-
-                        //meter ese nombre en un array asociativo
-                        $datos[] = [
-                            'nombre' => $datosAux[0],
-                            'codigo' => $file,
-                            'empresa' => $empresa_nombre[0]->nombre,
-                            'firma_empresa' => $firma_empresa[0]->firmado_empresa,
-                            'firma_centro' => $firma_centro[0]->firmado_director
-                        ];
-                    }
-                    }
-                }
-            }
-            closedir($handler);
-        }
         ///////////////////////////////ANEXO 1//////////////////////////////////////
-        $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1';
-        if ($handler = opendir($thefolder)) {
-            while (false !== ($file = readdir($handler))) {
+         $Anexos1=Anexo::select('tipo_anexo','firmado_empresa','firmado_director','ruta_anexo')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo','like',"$dni_tutor%")->distinct()->get();
 
-                //Comparar string en php
-                if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
-                    $directorios[] = $file;
-                    //Dividir un nombre por su separador
-                    $datosAux = explode("_", $file);
+         foreach($Anexos1 as $a){
 
-                    if ($datosAux[4] == $fecha->year) {
+                  //Esto sirve para poner las barras segun el so que se este usando
+                    $rutaAux=str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                    $rutaAux=explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-                        $convenioAux = str_replace('-', '/', $datosAux[2]);
-                        $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
-                        $cod_centro = Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
+                    $nombreArchivo = $rutaAux[2];
 
-                        //Si este campo esta a nulo, quiere decir que este centro no tiene ningun convenio
-                        //con esta empresa y por lo tanto el anexo almacenado es un historico
-                        if(count($cod_centro ) > 0){
-                        $alumno = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                            ->join('fct', 'fct.dni_alumno', '=', 'matricula.dni_alumno')
-                            ->select('fct.dni_alumno')
-                            ->where('fct.id_empresa', '=', $datosAux[1])
-                            ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
-                            ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
-                            ->first();
+                    //Para sacar el id de la empresa
+                    $id_empresa=explode('_', $rutaAux[2]);
+                    $id_empresa=$id_empresa[1];
 
-
-                        $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                        $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
-                        $empresa_nombre = Empresa::select('nombre')->where('id', '=', $datosAux[1])->get();
+                    $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
                         //meter ese nombre en un array asociativo
                         $datos[] = [
-                            'nombre' => $datosAux[0],
-                            'codigo' => $file,
+                            'nombre' => 'Anexo1',
+                            'codigo' => $nombreArchivo,
                             'empresa' => $empresa_nombre[0]->nombre,
-                            'firma_empresa' => $firma_empresa[0]->firmado_empresa,
-                            'firma_centro' => $firma_centro[0]->firmado_director
+                            'firma_empresa' =>  $a->firmado_empresa,
+                            'firma_centro' => $a->firmado_director
                         ];
+
                     }
-                    }
-                }
-            }
-            closedir($handler);
-        }
         return response()->json($datos, 200);
     }
-
-
-
     /**
      * @author Laura <lauramorenoramos97@gmail.com>
      * A esta funcion le llegan un array de rutas y las modifica para que tengan el formato a favor del sistema
@@ -813,6 +741,8 @@ class ControladorTutorFCT extends Controller
 
         // Guardo la ruta del archivo en la base de datos
         Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
+        Anexo::create(['tipo_anexo' => 'Anexo0', 'ruta_anexo' => $rutaDestino]);
+
         // Y la devuelvo
         return $rutaDestino;
     }

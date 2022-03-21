@@ -103,3 +103,4 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
 
 
 });
+Route::post('prueba', [ControladorTutorFCT::class, 'prueba']);

@@ -12,6 +12,7 @@ use App\Models\NivelEstudios;
 use App\Models\Profesor;
 use App\Models\Seguimiento;
 use App\Models\Trabajador;
+use App\Models\Anexo;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
@@ -284,7 +285,7 @@ class ControladorAlumno extends Controller
         $nombre = $nombrePlantilla . '_' . $dni_alumno . '_' . $fecha_doc . '.docx';
         Auxiliar::existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3'));
         $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . $nombre;
-
+        //Anexo::create(['tipo_anexo' => 'Anexo3', 'ruta_anexo' => $rutaDestino]);
         //Creo la plantilla y la relleno con los valores establecidos anteriormente.
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
