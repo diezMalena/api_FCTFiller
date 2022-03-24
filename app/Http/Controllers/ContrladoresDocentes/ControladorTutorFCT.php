@@ -37,9 +37,11 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Database\Factories\RolProfesorAsignadoFactory;
+use Faker\Core\Number;
 use Illuminate\Support\Facades\Hash;
 use Mockery\Undefined;
 use PhpParser\Node\Expr\Cast\Array_;
+use Ramsey\Uuid\Type\Integer;
 
 class ControladorTutorFCT extends Controller
 {
@@ -450,7 +452,7 @@ class ControladorTutorFCT extends Controller
         $habilitado = 1;
 
         ///////////////////////////////ANEXO 0  Y 0A//////////////////////////////////////
-        $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
+        $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
         //dd($Anexos0);
         foreach ($Anexos0 as $a) {
             //Esto sirve para poner las barras segun el so que se este usando
@@ -465,17 +467,22 @@ class ControladorTutorFCT extends Controller
             $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
             $datos[] = [
                 'nombre' => $rutaAux[1],
                 'codigo' => $rutaAux[2],
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director
+                'firma_centro' => $a->firmado_director,
+                'created_at' => $fechaAux[0]
             ];
         }
 
         ///////////////////////////////ANEXO 1//////////////////////////////////////
-        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
+        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
 
         foreach ($Anexos1 as $a) {
 
@@ -491,13 +498,18 @@ class ControladorTutorFCT extends Controller
 
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
             //meter ese nombre en un array asociativo
             $datos[] = [
                 'nombre' => 'Anexo1',
                 'codigo' => $nombreArchivo,
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director
+                'firma_centro' => $a->firmado_director,
+                'created_at' => $fechaAux[0]
             ];
         }
         return response()->json($datos, 200);
@@ -591,11 +603,11 @@ class ControladorTutorFCT extends Controller
         $zip = new ZipArchive;
         $AuxNombre = Str::random(7);
         $dni = $val->get('dni_tutor');
-
+        $habilitado =  $val->get('habilitado');
 
         $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
 
-        $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip);
+        $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip,$habilitado);
 
 
         return response()->download(public_path($nombreZip));
@@ -603,26 +615,24 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos
-     * Miramos los anexos de la carpeta de anexos del tutor, buscamos ese anexo habilitado en el crud de anexos y comprobamos
-     * si este existe, en tal caso se añade al zip
+     * Miramos los anexos de la carpeta de anexos del tutor, buscamos ese anexo habilitado o no habilitado, segun si
+     * la consulta se hace desde el crud de anexos o desde el historial  y comprobamos
+     * si este existe en el directorio, en tal caso se añade al zip
      *@author Laura <lauramorenoramos97@gmail.com>
      * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
      * @param ZipArchive $zip , el zip donde se almacenaran los archivos
      * @param String $nombreZip, el nombre que tendrá el zip
      * @return void
      */
-    public function montarZipCrud(String $dni_tutor, ZipArchive $zip, String $nombreZip)
+    public function montarZipCrud(String $dni_tutor, ZipArchive $zip, String $nombreZip, $habilitado)
     {
-        $fechaArchivo = '';
-        $fechaActual = Carbon::now();
-
         $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
             ///////////////////////////////ANEXO1//////////////////////////////////////////
             foreach ($files as $value) {
                 //El nombreAux es el nombre del anexo completo
                 $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', 1)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
 
 
                 if (count($existeAnexo) > 0) {
@@ -634,7 +644,7 @@ class ControladorTutorFCT extends Controller
             foreach ($files as $value) {
 
                 $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0')->where('habilitado', '=', 1)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
 
 
                 if (count($existeAnexo) > 0) {
@@ -646,7 +656,7 @@ class ControladorTutorFCT extends Controller
             foreach ($files as $value) {
 
                 $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0A')->where('habilitado', '=', 1)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0A')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
 
 
                 if (count($existeAnexo) > 0) {
@@ -999,7 +1009,7 @@ class ControladorTutorFCT extends Controller
     /**
      *@author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
-     * al que pertenecen, con ese dato, recogemos los grupos de un centro deestudios desde la tabla
+     * al que pertenecen, con ese dato, recogemos los grupos de un centro de estudios desde la tabla
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del
      * centro para devolverlos y poder ver sus anexos en otra funcion.
      */
@@ -1017,7 +1027,7 @@ class ControladorTutorFCT extends Controller
         $habilitado = 0;
 
         ///////////////////////////////ANEXO 0  Y 0A//////////////////////////////////////
-        $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
+        $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
 
         foreach ($Anexos0 as $a) {
             //Esto sirve para poner las barras segun el so que se este usando
@@ -1032,18 +1042,23 @@ class ControladorTutorFCT extends Controller
             $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
             $datos[] = [
                 'nombre' => $rutaAux[1],
                 'codigo' => $rutaAux[2],
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director
+                'firma_centro' => $a->firmado_director,
+                'created_at' => $fechaAux[0]
             ];
         }
 
 
         ///////////////////////////////ANEXO 1//////////////////////////////////////
-        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
+        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
 
         foreach ($Anexos1 as $a) {
 
@@ -1059,15 +1074,23 @@ class ControladorTutorFCT extends Controller
 
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
             //meter ese nombre en un array asociativo
             $datos[] = [
                 'nombre' => 'Anexo1',
                 'codigo' => $nombreArchivo,
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director
+                'firma_centro' => $a->firmado_director,
+                'created_at' => $fechaAux[0]
             ];
         }
         return response()->json($datos, 200);
     }
 }
+
+
+
