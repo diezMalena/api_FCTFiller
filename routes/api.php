@@ -75,6 +75,9 @@ Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
 Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
+//Historial Anexos
+Route::get('/listarHistorial/{dni}', [ControladorTutorFCT::class, 'verHistorialAnexos']);
+
 
 //Crud Profesores
 Route::get('/listarProfesores/{dni_profesor}', [ControladorJefatura::class, 'verProfesores']);
