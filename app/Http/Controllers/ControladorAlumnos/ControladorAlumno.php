@@ -29,6 +29,13 @@ class ControladorAlumno extends Controller
     //
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
+    /*
+    |--------------------------------------------------------------------------
+    | Hojas de seguimiento - Anexo III
+    |--------------------------------------------------------------------------
+    */
+
+    /************************Seguimiento - auxiliares************************/
 
     /**
      * Método que recoge el id y el id_empresa de la tabla FCT correspondiente al dni_alumno
@@ -43,6 +50,38 @@ class ControladorAlumno extends Controller
             ->get();
         return $datosFct;
     }
+
+    /**
+     * Este método me devuelve el valor más alto del campo orden, para
+     * ordenar los resultados por id_fct, y mostrarlos en la tabla de las
+     * jornadas rellenadas por el alumno en orden descendente.
+     * @author Malena.
+     */
+    public function encontrarUltimoOrden(int $id_fct)
+    {
+        $ultimoOrden = Seguimiento::select(DB::raw('MAX(orden_jornada) AS orden_jornada'))
+            ->where('id_fct', '=', $id_fct)
+            ->get();
+        return $ultimoOrden;
+    }
+
+    /**
+     * Método que devuelve el id_empresa a la que el alumno está asociado.
+     * @return id_empresa
+     * @author Malena
+     */
+    public function empresaAsignadaAlumno(string $dni_alumno)
+    {
+        /*Necesitamos también el id_empresa para luego poder mostrar en el desplegable todos
+        los tutores y responsables de dicha empresa.*/
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+        return $id_empresa;
+    }
+
+    /************************************************************************/
+
+    /**************************Gestión de jornadas**************************/
 
     /**
      * Método que recibe un objeto Jornada y el dni_alumno del alumno que ha iniciado sesión en la aplicación,
@@ -68,21 +107,6 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     * Este método me devuelve el valor más alto del campo orden, para
-     * ordenar los resultados por id_fct, y mostrarlos en la tabla de las
-     * jornadas rellenadas por el alumno en orden descendente.
-     * @author Malena.
-     */
-    public function encontrarUltimoOrden(int $id_fct)
-    {
-        $ultimoOrden = Seguimiento::select(DB::raw('MAX(orden_jornada) AS orden_jornada'))
-            ->where('id_fct', '=', $id_fct)
-            ->get();
-        //error_log($ultimoOrden);
-        return $ultimoOrden;
-    }
-
-    /**
      * Metodo que se encarga de seleccionar las jornadas que le corresponden al alumno
      * con su empresa asignada.
      * @param $dni_alumno del alumno que inicia sesion, $id_empresa de la que tiene asignada dicho alumno.
@@ -103,11 +127,74 @@ class ControladorAlumno extends Controller
             ->orderBy('seguimiento.orden_jornada', 'DESC')
             ->get();
 
-        //error_log($jornadas);
-
         return response()->json($jornadas, 200);
     }
 
+    /**
+     * Método que recibe una jornada editada y la actualiza en la BBDD.
+     * @author Malena
+     */
+    public function updateJornada(Request $req)
+    {
+        $dni_alumno = $req->get('dni_alumno');
+        $jornada = $req->get('jornada');
+
+        try {
+            $jornadaUpdate = Seguimiento::where('id', '=', $jornada['id_jornada'])
+                ->update([
+                    'orden_jornada' => $jornada['orden_jornada'],
+                    'fecha_jornada' => $jornada['fecha_jornada'],
+                    'actividades' => $jornada['actividades'],
+                    'observaciones' => $jornada['observaciones'],
+                    'tiempo_empleado' => $jornada['tiempo_empleado']
+                ]);
+
+            return response()->json($jornadaUpdate, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, la jornada no se ha actualizado.'], 450);
+        }
+    }
+
+    /***********************************************************************/
+
+    /************Cabeceras - departamento, alumno, horas y tutor************/
+
+    /**
+     * Método que recoge el departamento del alumno que inicia sesión, y se encarga
+     * de mandarlo a la parte de cliente, donde se gestiona qué hacer dependiendo de si el Departamento
+     * tiene o no tiene valor.
+     * @author Malena.
+     */
+    public function gestionarDepartamento(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        try {
+            $departamento = FCT::select('departamento')
+                ->where('fct.dni_alumno', '=', $dni_alumno)
+                ->get();
+            return response()->json($departamento, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, el departamento no se ha enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que se encarga de recoger el valor del Departamento para añadirlo
+     * a su campo correspondiente en la tabla FCT.
+     * @author Malena.
+     */
+    public function addDepartamento(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        $departamento = $req->get('departamento');
+        try {
+            $departamento = FCT::where('dni_alumno', $dni_alumno)
+                ->update(['departamento' => $departamento]);
+            return response()->json(['message' => 'El departamento se ha insertado correctamente.'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, el departamento no se ha insertado en la BBDD.'], 450);
+        }
+    }
 
     /**
      * Método que selecciona de la BBDD el nombre, los apellidos y la empresa asignada del alumno
@@ -127,47 +214,6 @@ class ControladorAlumno extends Controller
             return response()->json($datosAlumno, 200);
         } catch (Exception $ex) {
             return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que recoge el departamento del alumno que inicia sesión, y se encarga
-     * de mandarlo a la parte de cliente, donde se gestiona qué hacer dependiendo de si el Departamento
-     * tiene o no tiene valor.
-     * @author Malena.
-     */
-    public function gestionarDepartamento(Request $req)
-    {
-        $dni_alumno = $req->get('dni');
-        //error_log($dni_alumno);
-        try {
-            $departamento = FCT::select('departamento')
-                ->where('fct.dni_alumno', '=', $dni_alumno)
-                ->get();
-            //error_log($departamento[0]); //Resultado = {"departamento":""}
-            return response()->json($departamento, 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, el departamento no se ha enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que se encarga de recoger el valor del Departamento para añadirlo
-     * a su campo correspondiente en la tabla FCT.
-     * @author Malena.
-     */
-    public function addDepartamento(Request $req)
-    {
-        $dni_alumno = $req->get('dni');
-        $departamento = $req->get('departamento');
-        //error_log($dni_alumno);
-        //error_log($departamento);
-        try {
-            $departamento = FCT::where('dni_alumno', $dni_alumno)
-                ->update(['departamento' => $departamento]);
-            return response()->json(['message' => 'El departamento se ha insertado correctamente.'], 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, el departamento no se ha insertado en la BBDD.'], 450);
         }
     }
 
@@ -206,31 +252,72 @@ class ControladorAlumno extends Controller
         }
     }
 
-
     /**
-     * Método que recibe una jornada editada y la actualiza en la BBDD.
+     * Método que envia al cliente los datos del tutor al que está asociado el alumno
+     * para poder mostrarlo en la interfaz, ademas de mandarle también el id_empresa
+     * al que el alumno está asociado.
      * @author Malena
      */
-    public function updateJornada(Request $req)
+    public function recogerTutorEmpresa(Request $req)
     {
-        $dni_alumno = $req->get('dni_alumno');
-        $jornada = $req->get('jornada');
-
+        $dni_alumno = $req->get('dni');
+        $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
         try {
-            $jornadaUpdate = Seguimiento::where('id', '=', $jornada['id_jornada'])
-                ->update([
-                    'orden_jornada' => $jornada['orden_jornada'],
-                    'fecha_jornada' => $jornada['fecha_jornada'],
-                    'actividades' => $jornada['actividades'],
-                    'observaciones' => $jornada['observaciones'],
-                    'tiempo_empleado' => $jornada['tiempo_empleado']
-                ]);
-
-            return response()->json($jornadaUpdate, 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, la jornada no se ha actualizado.'], 450);
+            $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.dni', '=', $dni_tutor)
+                ->select('trabajador.dni AS dni_tutor', 'trabajador.nombre AS nombre_tutor')
+                ->first();
+            //Recojo el id_empresa:
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+            return response()->json([$datos_tutor, $id_empresa], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
         }
     }
+
+    /**
+     * Método que recoge todos los tutores y responsables de una empresa, para que el alumno pueda
+     * elegir un tutor nuevo.
+     * @author Malena
+     */
+    public function getTutoresResponsables(string $id_empresa)
+    {
+        try {
+            $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.id_empresa', '=', $id_empresa)
+                ->select('trabajador.dni AS dni', 'trabajador.nombre AS nombre')
+                ->get();
+            return response()->json($arrayTutores, 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que actualiza en la BBDD el tutor que el alumno ha elegido.
+     * @author Malena
+     */
+    public function actualizarTutorEmpresa(Request $req)
+    {
+        error_log($req->get('dni_tutor_nuevo'));
+        try {
+            $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
+            $dni_alumno = $req->get('dni_alumno');
+            Fct::where('dni_alumno', $dni_alumno)->update([
+                'dni_tutor_empresa' => $dni_tutor_nuevo,
+            ]);
+            return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
+        } catch (Exception $e) {
+            // error_log($e);
+            return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
+        }
+    }
+
+    /***********************************************************************/
+
+    /*******************************Anexo III*******************************/
 
     /**
      * Mètodo que genera el Anexo III con los datos necesarios extraídos de la BBDD.
@@ -293,7 +380,6 @@ class ControladorAlumno extends Controller
         return response()->download(public_path($rutaDestino));
     }
 
-
     /**
      * Método que recoge los campos necesarios del centro de estudios de la BBDD.
      * @return $centro.
@@ -309,7 +395,6 @@ class ControladorAlumno extends Controller
         return $centro;
     }
 
-
     /**
      * Método que recoge el nombre del alumno.
      * Para futuro cambio, concatenar el nombre + apellidos.
@@ -318,13 +403,12 @@ class ControladorAlumno extends Controller
      */
     public function getNombreAlumno(string $dni_alumno)
     {
-        $nombre = Alumno::select('nombre','apellidos')
+        $nombre = Alumno::select('nombre', 'apellidos')
             ->where('dni', '=', $dni_alumno)
             ->first();
 
         return $nombre;
     }
-
 
     /**
      * Método que recoge el nombre del tutor del centro estudios que le corresponde al alumno.
@@ -338,12 +422,11 @@ class ControladorAlumno extends Controller
             ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->where('matricula.dni_alumno', '=', $dni_alumno)
-            ->select('profesor.nombre AS nombre','profesor.apellidos AS apellidos')
+            ->select('profesor.nombre AS nombre', 'profesor.apellidos AS apellidos')
             ->first();
 
         return $tutor;
     }
-
 
     /**
      * Método que recoge la familia profesional del ciclo en el que está matriculado el alumno.
@@ -362,7 +445,6 @@ class ControladorAlumno extends Controller
         return $familia_profesional;
     }
 
-
     /**
      * Método que recoge el ciclo formativo en el que está matriculado el alumno.
      * @return $ciclo_formativo
@@ -379,7 +461,6 @@ class ControladorAlumno extends Controller
         return $ciclo_formativo;
     }
 
-
     /**
      * Método que recoge el nombre de la empresa en la que está asociado el alumno.
      * @return $nombre_empresa
@@ -392,15 +473,12 @@ class ControladorAlumno extends Controller
 
         //En la select incluyo al curso academico como otra select:
         $nombre_empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
-            ->where('fct.curso_academico','=', $curso)
+            ->where('fct.curso_academico', '=', $curso)
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->select('empresa.nombre AS nombre')
             ->first();
         return $nombre_empresa;
     }
-
-
-
 
     /**
      * Método que recoge de la BBDD el nombre del tutor que tiene asignado el alumno en la empresa.
@@ -417,7 +495,6 @@ class ControladorAlumno extends Controller
         return $tutor_empresa;
     }
 
-
     /**
      * Método que recoge los datos necesarios correspondientes a la tabla FCT.
      * @return $fct
@@ -431,7 +508,6 @@ class ControladorAlumno extends Controller
 
         return $fct;
     }
-
 
     /**
      * Método que recoge las últimas 5 jornadas para insertarlas en la tabla del Anexo III.
@@ -454,93 +530,24 @@ class ControladorAlumno extends Controller
         return $jornadas;
     }
 
-
     /**
      * Método para sacar el dni del tutor que tiene asignado el alumno.
      * @return tutor_empresa
      * @author Malena
      */
-    public function sacarDniTutor(string $dni_alumno){
-        $tutor_empresa = Fct::where('dni_alumno','=',$dni_alumno)
+    public function sacarDniTutor(string $dni_alumno)
+    {
+        $tutor_empresa = Fct::where('dni_alumno', '=', $dni_alumno)
             ->select('dni_tutor_empresa')
             ->first();
         return $tutor_empresa;
     }
 
+    /***********************************************************************/
 
-    /**
-     * Método que envia al cliente los datos del tutor al que está asociado el alumno
-     * para poder mostrarlo en la interfaz, ademas de mandarle también el id_empresa
-     * al que el alumno está asociado.
-     * @author Malena
-     */
-    public function recogerTutorEmpresa(Request $req){
-        $dni_alumno = $req->get('dni');
-        $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
-        try{
-            $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-            ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-            ->where('trabajador.dni','=',$dni_tutor)
-            ->select('trabajador.dni AS dni_tutor','trabajador.nombre AS nombre_tutor')
-            ->first();
-            //Recojo el id_empresa:
-            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
-            return response()->json([$datos_tutor,$id_empresa],200);
-        }catch(Exception $e){
-            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
-        }
-    }
-
-
-    /**
-     * Método que devuelve el id_empresa a la que el alumno está asociado.
-     * @return id_empresa
-     * @author Malena
-     */
-    public function empresaAsignadaAlumno(string $dni_alumno){
-        /*Necesitamos también el id_empresa para luego poder mostrar en el desplegable todos
-        los tutores y responsables de dicha empresa.*/
-        $fct = $this->buscarId_fct($dni_alumno);
-        $id_empresa = $fct[0]->id_empresa;
-        return $id_empresa;
-    }
-
-    /**
-     * Método que recoge todos los tutores y responsables de una empresa, para que el alumno pueda
-     * elegir un tutor nuevo.
-     * @author Malena
-     */
-    public function getTutoresResponsables(string $id_empresa){
-        try{
-            $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-                ->where('trabajador.id_empresa','=',$id_empresa)
-                ->select('trabajador.dni AS dni','trabajador.nombre AS nombre')
-                ->get();
-            return response()->json($arrayTutores,200);
-        }catch(Exception $e){
-            return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que actualiza en la BBDD el tutor que el alumno ha elegido.
-     * @author Malena
-     */
-    public function actualizarTutorEmpresa(Request $req){
-        error_log($req->get('dni_tutor_nuevo'));
-        try{
-            $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
-            $dni_alumno = $req->get('dni_alumno');
-            Fct::where('dni_alumno', $dni_alumno)->update([
-                'dni_tutor_empresa' => $dni_tutor_nuevo,
-            ]);
-            return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
-        }catch(Exception $e){
-            // error_log($e);
-            return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
-        }
-    }
-
-
+    /*
+    |--------------------------------------------------------------------------
+    | Acuerdo de confidencialidad - Anexo XV
+    |--------------------------------------------------------------------------
+    */
 }

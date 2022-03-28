@@ -4,15 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
-use App\Models\Usuario_view;
-use Error;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Usuario;
 
 class ControladorGenerico extends Controller
 {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Autenticación
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Extrae de una vista los datos del usuario que ha introducido el correo y contraseña,
@@ -38,7 +41,6 @@ class ControladorGenerico extends Controller
             $usuario_view = $usuario_view[0];
             $ckPass = Hash::check($pass, $usuario_view->password);
             if ($ckPass) {
-
                 $usuario = Auxiliar::getDatosUsuario($usuario_view);
                 //DSB Cambio 10-03-2022: Añadido codigo de centro de estudios
                 $usuario->cod_centro = Auxiliar::obtenerCentroPorDNIProfesor($usuario->dni);
@@ -50,30 +52,35 @@ class ControladorGenerico extends Controller
         } else {
             return response()->json(['mensaje' => 'Datos de inicio de sesión incorrectos'], 403);
         }
-
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Selects genéricas
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Obtiene un listado de provincias
      * @return Response objeto JSON con el listado de provincias
      * @author David Sánchez Barragán
      */
-    public function listarProvincias() {
+    public function listarProvincias()
+    {
         $listado = Ciudad::distinct()->orderBy('provincia', 'asc')->get('provincia')->pluck('provincia');
         return response()->json($listado, 200);
     }
 
-     /**
+    /**
      * Obtiene un listado de ciudades
+     * @param string $provincia provincia con la que se filtra la búsqueda
      * @return Response objeto JSON con el listado de ciudades
      * @author David Sánchez Barragán
      */
-    public function listarCiudades($provincia) {
+    public function listarCiudades($provincia)
+    {
         $listado = Ciudad::where('provincia', $provincia)->distinct()->orderBy('ciudad', 'asc')->get(['ciudad'])->pluck('ciudad');
         return response()->json($listado, 200);
     }
-
-
-
 }

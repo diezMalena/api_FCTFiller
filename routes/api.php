@@ -1,20 +1,26 @@
 <?php
 
-use App\Http\Controllers\ContrladoresDocentes\ControladorGenericoDocente;
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Http\Controllers\ControladorGenerico;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+
+/*
+|--------------------------------------------------------------------------
+| Rutas de autenticación
+|--------------------------------------------------------------------------
+*/
+Route::group(['middleware' => ['Cors']], function () {
+    Route::post('/login', [ControladorGenerico::class, 'login']);
+});
 
 /*
 |--------------------------------------------------------------------------
 | Rutas genéricas
 |--------------------------------------------------------------------------
 */
-
 Route::group(['middleware' => ['Cors']], function () {
     /*********************Obtener provincias y ciudades*********************/
     Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
@@ -37,19 +43,15 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
     Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
+    Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     /***********************************************************************/
 
-    //Gestión de alumnos asignados a una empresa.
+    /***********************ASIGNACIÓN ALUMNO-EMPRESA***********************/
     Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
     /***********************************************************************/
-
-    //Login
-    Route::post('/login', [ControladorGenerico::class, 'login']);
-
-    Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
 
     /******************************CRUD ANEXOS******************************/
     Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
@@ -78,7 +80,9 @@ Route::group(['middleware' => ['Cors']], function () {
 });
 
 Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
+    /*******************************SUBIDA CSV*******************************/
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
+    /************************************************************************/
 
     /******************************CRUD ALUMNOS******************************/
     Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
@@ -106,11 +110,10 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
     Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
-    /***********************************************************************/
-
-    //Recoger tutor empresa del alumno:
+    //----Gestión del tutor de la empresa
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::get('getTutoresResponsables/id={id_empresa}', [ControladorAlumno::class, 'getTutoresResponsables']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
-    /***********************************************************************/
+    //-----------------------------------
+    /************************************************************************/
 });
