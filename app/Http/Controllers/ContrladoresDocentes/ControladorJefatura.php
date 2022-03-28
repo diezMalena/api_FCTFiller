@@ -20,11 +20,19 @@ use Illuminate\Support\Facades\DB;
 
 class ControladorJefatura extends Controller
 {
+
+    /***********************************************************************/
+    #region Declaración de constantes
     const CABECERA_ALUMNOS = ["ALUMNO", "APELLIDOS", "NOMBRE", "SEXO", "DNI", "NIE", "FECHA_NACIMIENTO", "LOCALIDAD_NACIMIENTO", "PROVINCIA_NACIMIENTO", "NOMBRE_CORRESPONDENCIA", "DOMICILIO", "LOCALIDAD", "PROVINCIA", "TELEFONO", "MOVIL", "CODIGO_POSTAL", "TUTOR1", "DNI_TUTOR1", "TUTOR2", "DNI_TUTOR2", "PAIS", "NACIONALIDAD", "EMAIL_ALUMNO", "EMAIL_TUTOR2", "EMAIL_TUTOR1", "TELEFONOTUTOR1", "TELEFONOTUTOR2", "MOVILTUTOR1", "MOVILTUTOR2", "APELLIDO1", "APELLIDO2", "TIPODOM", "NTUTOR1", "NTUTOR2", "NSS"];
     const CABECERA_MATRICULAS = ["ALUMNO", "APELLIDOS", "NOMBRE", "MATRICULA", "ETAPA", "ANNO", "TIPO", "ESTUDIOS", "GRUPO", "REPETIDOR", "FECHAMATRICULA", "CENTRO", "PROCEDENCIA", "ESTADOMATRICULA", "FECHARESMATRICULA", "NUM_EXP_CENTRO", "PROGRAMA_2"];
     const CABECERA_PROFESORES = ["CODIGO", "APELLIDOS", "NOMBRE", "NRP", "DNI", "ABREVIATURA", "FECHA_NACIMIENTO", "SEXO", "TITULO", "DOMICILIO", "LOCALIDAD", "CODIGO_POSTAL", "PROVINCIA", "TELEFONO_RP", "ESPECIALIDAD", "CUERPO", "DEPARTAMENTO", "FECHA_ALTA_CENTRO", "FECHA_BAJA_CENTRO", "EMAIL", "TELEFONO"];
     const CABECERA_UNIDADES = ["ANNO", "GRUPO", "ESTUDIO", "CURSO", "TUTOR"];
     const ORDEN_PROCESAMIENTO = ['profesores', 'alumnos', 'unidades', 'matriculas'];
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Subida masiva de datos - Procesamiento de CSV
 
     /**
      * Función que recibe el fichero CSV y lo guarda en la ruta temporal
@@ -408,7 +416,6 @@ class ControladorJefatura extends Controller
                                 'dni' => $dni,
                                 'id_rol' => Parametros::PROFESOR
                             ]);
-
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
@@ -617,9 +624,15 @@ class ControladorJefatura extends Controller
         return true;
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD de profesores
+
     /**
      * @author Laura <lauramorenoramos@gmail.com>
-     *Esta funcion te devuelve todos los profesores de la base de datos
+     * Esta funcion te devuelve todos los profesores de la base de datos
      * @return void
      */
     public function verProfesores($dni_profesor)
@@ -861,6 +874,12 @@ class ControladorJefatura extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD de alumnos
+
     /**
      * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
      * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
@@ -1041,4 +1060,7 @@ class ControladorJefatura extends Controller
         $listaGrupos = Grupo::select(['cod', 'nombre_ciclo'])->get();
         return response()->json($listaGrupos, 200);
     }
+
+    #endregion
+    /***********************************************************************/
 }

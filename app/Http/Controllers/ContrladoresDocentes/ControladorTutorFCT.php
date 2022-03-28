@@ -35,23 +35,25 @@ use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
-use Database\Factories\RolProfesorAsignadoFactory;
 use Illuminate\Support\Facades\Hash;
-use Mockery\Undefined;
-use PhpParser\Node\Expr\Cast\Array_;
 
 class ControladorTutorFCT extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    //
+    /***********************************************************************/
+    #region Asignación de alumnos a empresas - Anexo I
+
+    /***********************************************************************/
+    #region Asignación de alumnos a empresas
+
     /**
-     *  Esta función se encarga de coger los datos dni y nombre de los
-     *  alumnos que no están asociados a ninguna empresa
-     *  asignados al dni del tutor que recibimos como parámetro.
+     * Esta función se encarga de coger los datos dni y nombre de los
+     * alumnos que no están asociados a ninguna empresa
+     * asignados al dni del tutor que recibimos como parámetro.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
-     *  @param $dni es el dni del tutor
+     * @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
+     * @param $dni es el dni del tutor
      */
     public function solicitarAlumnosSinEmpresa(string $dni)
     {
@@ -73,24 +75,26 @@ class ControladorTutorFCT extends Controller
             ->get();
         return response()->json($alumnosSinEmpresa, 200);
     }
+
     /**
-     *  Esta función se encarga de coger el nombre del ciclo a partir del dni del tutor.
+     * Esta función se encarga de coger el nombre del ciclo a partir del dni del tutor.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
-     *  @param $dni es el dni del tutor
+     * @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
+     * @param $dni es el dni del tutor
      */
     public function solicitarNombreCiclo(string $dni)
     {
         $nombre = Tutoria::where('dni_profesor', '=', $dni)->get()[0]->cod_grupo;
         return response()->json($nombre, 200);
     }
+
     /**
-     *  Esta función se encarga de coger las empresas que solicitan el curso que está tutorizando
-     *  el profesor del que recibimos el dni, y dentro de esas empresas hay un array de alumnos que están
-     *  ya asociados a una empresa.
+     * Esta función se encarga de coger las empresas que solicitan el curso que está tutorizando
+     * el profesor del que recibimos el dni, y dentro de esas empresas hay un array de alumnos que están
+     * ya asociados a una empresa.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
-     *  @param $dni es el dni del tutor
+     * @author alvaro <alvarosantosmartin6@gmail.com> david <davidsanchezbarragan@gmail.com>
+     * @param $dni es el dni del tutor
      */
     public function solicitarEmpresasConAlumnos(string $dni)
     {
@@ -130,13 +134,13 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     *  Esta función se encarga de actualizar la empresa a la que están asignados
-     *  los alumnos.
+     * Esta función se encarga de actualizar la empresa a la que están asignados
+     * los alumnos.
      *
-     *  @author alvaro <alvarosantosmartin6@gmail.com>
-     *  @param $request tiene las empresas con los datos del id, el responsable, y un array con sus alumnos asiganados
-     *  que estos tienen dentro si van a fct, su dni, fecha de inicio de las prácticas y de finalización, el horario.
-     *  También tiene el array de alumnos sin empresa.
+     * @author alvaro <alvarosantosmartin6@gmail.com>
+     * @param $request tiene las empresas con los datos del id, el responsable, y un array con sus alumnos asiganados
+     * que estos tienen dentro si van a fct, su dni, fecha de inicio de las prácticas y de finalización, el horario.
+     * También tiene el array de alumnos sin empresa.
      */
     public function actualizarEmpresaAsignadaAlumno(Request $request)
     {
@@ -183,6 +187,12 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Anexo I - Generación y gestión
+
     /**
      * @author LauraM <lauramorenoramos97@gmail.com>
      * A esta funcion le pasas el dni del tutor, con esa dni, busca las rutas de sus anexos en la tabla FCT
@@ -208,7 +218,7 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Esta funcion nos permite rellenar el Anexo 1
-     *@author LauraM <lauramorenoramos97@gmail.com>
+     * @author LauraM <lauramorenoramos97@gmail.com>
      * @param Request $val->get(dni_tutor) es el dni del tutor
      * @return void
      */
@@ -345,8 +355,6 @@ class ControladorTutorFCT extends Controller
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
                     $template->saveAs($rutaDestino . '.docx');
-
-                    // $this->convertirWordPDF($rutaDestino);
                 }
 
                 //Convertir en Zip
@@ -359,7 +367,6 @@ class ControladorTutorFCT extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Este metodo sirve para comprimir varios archivos del Anexo1 en un zip
@@ -386,7 +393,7 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Esta funcion crea una carpeta si esta no existe
-     *@author Laura <lauramorenoramos97@gmail.com>
+     * @author Laura <lauramorenoramos97@gmail.com>
      * @param [string] $ruta
      * @return void
      */
@@ -397,33 +404,14 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
 
-    /**
-     * Esta funcion nos permite convertir un word en un pdf
-     *@author @DaniJCoello
-     * @param String $rutaArchivo
-     * @return void
-     */
-    public function convertirWordPDF(String $rutaArchivo)
-    {
+    #endregion
+    /***********************************************************************/
 
-        $domPdfPath = base_path('vendor/dompdf/dompdf');
-        \PhpOffice\PhpWord\Settings::setPdfRendererPath($domPdfPath);
-        \PhpOffice\PhpWord\Settings::setPdfRendererName('DomPDF');
-
-
-        $Content = \PhpOffice\PhpWord\IOFactory::load($rutaArchivo . '.docx');
-
-        $savePdfPath = public_path($rutaArchivo . '.pdf');
-
-        $PDFWriter = \PhpOffice\PhpWord\IOFactory::createWriter($Content, 'PDF');
-        $PDFWriter->save($savePdfPath);
-
-        if (file_exists($rutaArchivo . '.docx')) {
-            unlink($rutaArchivo . '.docx');
-        }
-    }
-
+    /***********************************************************************/
+    #region CRUD de anexos
 
     /**
      * Esta funcion devuelve los anexos de un tutor menos el anexo3
@@ -574,8 +562,6 @@ class ControladorTutorFCT extends Controller
         return response()->json($datos, 200);
     }
 
-
-
     /**
      * @author Laura <lauramorenoramos97@gmail.com>
      * A esta funcion le llegan un array de rutas y las modifica para que tengan el formato a favor del sistema
@@ -586,7 +572,6 @@ class ControladorTutorFCT extends Controller
      */
     public function transformarRutasSO($rutas)
     {
-
         $rutasAux = array();
         foreach ($rutas as $r) {
             str_replace($r, '/', DIRECTORY_SEPARATOR);
@@ -598,7 +583,7 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Esta funcion nos permite descargar un anexo en concreto
-     *@author Laura <lauramorenoramos97@gmail.com>
+     * @author Laura <lauramorenoramos97@gmail.com>
      * @param Request $val
      * @return void
      */
@@ -624,10 +609,9 @@ class ControladorTutorFCT extends Controller
         // return response()->download($rutaOriginal);
     }
 
-
     /**
      * Esta funcion te permite eliminar un fichero de una carpeta
-     *@author Laura <lauramorenoramos97@gmail.com>
+     * @author Laura <lauramorenoramos97@gmail.com>
      * @param Request $val
      * @return void
      */
@@ -652,9 +636,6 @@ class ControladorTutorFCT extends Controller
         return response()->json(['message' => 'Archivo eliminado'], 200);
     }
 
-
-
-
     /**
      * Esta funcion permite descargar todos los anexos del crud de anexos del tutor, menos el 3
      *
@@ -667,11 +648,9 @@ class ControladorTutorFCT extends Controller
         $AuxNombre = Str::random(7);
         $dni = $val->get('dni_tutor');
 
-
         $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
 
         $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip);
-
 
         return response()->download(public_path($nombreZip));
     }
@@ -763,6 +742,11 @@ class ControladorTutorFCT extends Controller
         return $nombreZip;
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de convenios y acuerdos - Anexoa 0 y 0A
 
     /**
      * Genera el Anexo 0, convenio entre una empresa y un centro
@@ -865,21 +849,7 @@ class ControladorTutorFCT extends Controller
      */
     public function getDirectorCentroEstudios(string $codCentroEstudios)
     {
-        // SELECT * FROM profesor
-        // WHERE profesor.cod_centro_estudios = 24101
-        // AND profesor.dni IN (
-        //     SELECT rol_profesor_asignado.dni
-        //     FROM rol_profesor_asignado
-        //     WHERE rol_profesor_asignado.id_rol = 1
-        // );
         return Profesor::whereIn('dni', RolProfesorAsignado::where('id_rol', 1)->get('dni'))->where('cod_centro_estudios', $codCentroEstudios)->first();
-
-        // SELECT profesor.*
-        // FROM profesor JOIN rol_profesor_asignado
-        // ON profesor.dni = rol_profesor_asignado.dni
-        // WHERE profesor.cod_centro_estudios = 24101
-        // AND rol_profesor_asignado.id_rol = 1;
-
     }
 
     /**
@@ -1099,8 +1069,11 @@ class ControladorTutorFCT extends Controller
         return $convenio;
     }
 
+    #endregion
+    /***********************************************************************/
+
     /**
-     *@author Laura <lauramorenoramos97@gmail.com>
+     * @author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
      * al que pertenecen, con ese dato, recogemos los grupos de un centro deestudios desde la tabla
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del

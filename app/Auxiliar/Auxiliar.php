@@ -18,11 +18,8 @@ use Illuminate\Support\Facades\DB;
 class Auxiliar
 {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Model to array - conversión de variables para rellenar words
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Model to array - Conversión de variables para rellenar word
 
     /**
      * Transforma un modelo en un vector asociativo y añade el prefijo a los índices
@@ -84,12 +81,11 @@ class Auxiliar
         }
     }
 
+    #endregion
+    /***********************************************************************/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Curso académico
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Curso académico
 
     /**
      *  Esta función devuelve el curso academico actual, y si aún no está en la base de datos, devuelve
@@ -125,12 +121,11 @@ class Auxiliar
         return DB::select("select cod_curso from aux_curso_academico where year(fecha_inicio) = '" . $anio . "'")[0]->cod_curso;
     }
 
+    #endregion
+    /***********************************************************************/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Rutas de autenticación
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Rutas de autenticación
 
     /**
      * Obtiene el centro de estudios asociado al profesor, según el DNI
@@ -179,12 +174,11 @@ class Auxiliar
         return $usuario;
     }
 
+    #endregion
+    /***********************************************************************/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Estructura de carpetas
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Estructura de carpetas y archivos
 
     /**
      * Esta funcion comprueba si una carpeta existe o no, y si no, la crea.
@@ -198,4 +192,7 @@ class Auxiliar
             mkdir($ruta, 0777, true);
         }
     }
+
+    #endregion
+    /***********************************************************************/
 }

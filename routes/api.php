@@ -28,7 +28,6 @@ Route::group(['middleware' => ['Cors']], function () {
     /***********************************************************************/
 });
 
-
 /*
 |--------------------------------------------------------------------------
 | Rutas para los perfiles del tutor y el docente genérico
@@ -100,7 +99,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
 |--------------------------------------------------------------------------
 */
 Route::group(['middleware' => ['Cors']], function () {
-    /******************************SEGUIMIENTO******************************/
+    /************************SEGUIMIENTO - ANEXO III************************/
     Route::any('/addJornada', [ControladorAlumno::class, 'addJornada']);
     Route::any('/devolverDatosAlumno', [ControladorAlumno::class, 'devolverDatosAlumno']);
     Route::any('/gestionarDepartamento', [ControladorAlumno::class, 'gestionarDepartamento']);
@@ -114,6 +113,6 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::get('getTutoresResponsables/id={id_empresa}', [ControladorAlumno::class, 'getTutoresResponsables']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
-    //-----------------------------------
     /************************************************************************/
+
 });

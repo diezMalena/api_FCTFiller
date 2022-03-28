@@ -11,11 +11,8 @@ use Illuminate\Support\Facades\Hash;
 class ControladorGenerico extends Controller
 {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Autenticación
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Autenticación
 
     /**
      * Extrae de una vista los datos del usuario que ha introducido el correo y contraseña,
@@ -54,12 +51,11 @@ class ControladorGenerico extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Selects genéricas
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Selects genéricas
 
     /**
      * Obtiene un listado de provincias
@@ -83,4 +79,7 @@ class ControladorGenerico extends Controller
         $listado = Ciudad::where('provincia', $provincia)->distinct()->orderBy('ciudad', 'asc')->get(['ciudad'])->pluck('ciudad');
         return response()->json($listado, 200);
     }
+
+    #endregion
+    /***********************************************************************/
 }

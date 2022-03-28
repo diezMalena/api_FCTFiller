@@ -29,13 +29,11 @@ class ControladorAlumno extends Controller
     //
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Hojas de seguimiento - Anexo III
-    |--------------------------------------------------------------------------
-    */
+    /***********************************************************************/
+    #region Hojas de seguimiento - Anexo III
 
-    /************************Seguimiento - auxiliares************************/
+    /***********************************************************************/
+    #region Funciones auxiliares generales
 
     /**
      * Método que recoge el id y el id_empresa de la tabla FCT correspondiente al dni_alumno
@@ -79,9 +77,11 @@ class ControladorAlumno extends Controller
         return $id_empresa;
     }
 
-    /************************************************************************/
+    #endregion
+    /***********************************************************************/
 
-    /**************************Gestión de jornadas**************************/
+    /***********************************************************************/
+    #region Gestión de jornadas
 
     /**
      * Método que recibe un objeto Jornada y el dni_alumno del alumno que ha iniciado sesión en la aplicación,
@@ -155,9 +155,11 @@ class ControladorAlumno extends Controller
         }
     }
 
+    #endregion
     /***********************************************************************/
 
-    /************Cabeceras - departamento, alumno, horas y tutor************/
+    /***********************************************************************/
+    #region Cabeceras: departamento, alumno, horas y tutor
 
     /**
      * Método que recoge el departamento del alumno que inicia sesión, y se encarga
@@ -229,7 +231,6 @@ class ControladorAlumno extends Controller
 
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
-        //error_log($id_fct);
 
         try {
             $horasTotales = Seguimiento::join('fct', 'seguimiento.id_fct', '=', 'fct.id')
@@ -238,8 +239,6 @@ class ControladorAlumno extends Controller
                 ->where('seguimiento.id_fct', '=', $id_fct)
                 ->groupBy('fct.dni_alumno')
                 ->get();
-
-            //error_log($horasTotales[0]->horasSumadas);
 
             /*Me saltaba un error al no encontrar jornadas en un alumno, y horasSumadas ser null,
             con este control de errores lo soluciono.*/
@@ -310,14 +309,15 @@ class ControladorAlumno extends Controller
             ]);
             return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
         } catch (Exception $e) {
-            // error_log($e);
             return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
         }
     }
 
+    #endregion
     /***********************************************************************/
 
-    /*******************************Anexo III*******************************/
+    /***********************************************************************/
+    #region Generación y descarga del Anexo III
 
     /**
      * Mètodo que genera el Anexo III con los datos necesarios extraídos de la BBDD.
@@ -326,7 +326,6 @@ class ControladorAlumno extends Controller
     public function generarAnexo3(Request $req)
     {
         $dni_alumno = $req->get('dni');
-        //error_log($dni_alumno);
 
         //Primero, vamos a sacar el centro donde está el alumno:
         $centro = $this->centroDelAlumno($dni_alumno);
@@ -380,6 +379,8 @@ class ControladorAlumno extends Controller
         return response()->download(public_path($rutaDestino));
     }
 
+    /***********************************************************************/
+    #region Funciones auxiliares para la generación del Anexo III
     /**
      * Método que recoge los campos necesarios del centro de estudios de la BBDD.
      * @return $centro.
@@ -543,11 +544,20 @@ class ControladorAlumno extends Controller
         return $tutor_empresa;
     }
 
+    #endregion
     /***********************************************************************/
 
-    /*
-    |--------------------------------------------------------------------------
-    | Acuerdo de confidencialidad - Anexo XV
-    |--------------------------------------------------------------------------
-    */
+    #endregion
+    /***********************************************************************/
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Acuerdo de confidencialidad - Anexo XV
+
+
+
+    #endregion
+    /***********************************************************************/
 }
