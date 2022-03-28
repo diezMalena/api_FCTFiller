@@ -746,170 +746,7 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
 
     /***********************************************************************/
-    #region Gestión de convenios y acuerdos - Anexoa 0 y 0A
-
-    /**
-     * Genera el Anexo 0, convenio entre una empresa y un centro
-     * @param string $codConvenio el código del convenio entre la empresa y el centro
-     * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
-     * @return string la ruta en la que se guarda el anexo
-     *
-     * @author @DaniJCoello
-     */
-    public function generarAnexo0(string $codConvenio, string $dniTutor)
-    {
-
-        //Primero consigo los datos del centro de estudios asociado al tutor y su director
-        $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
-
-        //Ahora hago lo propio con la empresa en cuestión
-        $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $representante = $this->getRepresentanteLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
-
-        //Construyo el array con todos los datos
-        $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
-        $auxDatos = [$director, $centroEstudios, $representante, $empresa];
-        $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
-
-        //Ahora extraigo los datos de fecha
-        $fecha = Carbon::now();
-        $datos['dia'] = $fecha->day;
-        $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
-        $datos['anio'] = $fecha->year % 100;
-        $datos['cod_convenio'] = $codConvenio;
-
-        //Esta variable se usa sólo para el nombre del archivo
-        $codConvenioAux = str_replace('/', '-', $codConvenio);
-
-        //Ahora genero el Word y el PDF en sí
-        //Establezco las variables que necesito
-        $nombrePlantilla = $empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A';
-        // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
-        $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
-        // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
-        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
-        //Creo la plantilla y la relleno
-        $template = new TemplateProcessor($rutaOrigen);
-        $template->setValues($datos);
-        $template->saveAs($rutaDestino);
-
-        // Guardo la ruta del archivo en la base de datos
-        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
-        // Y la devuelvo
-        return $rutaDestino;
-    }
-
-    /**
-     * Genera el código de un convenio a partir del código del centro, un autoincremental y la fecha
-     * @param string $codCentroConvenio el código del centro para generar los convenios
-     * @param string $tipo 'C' -> Convenio; 'A' -> Acuerdo
-     * @return string el código del convenio
-     *
-     * @author @DaniJCoello
-     */
-    public function generarCodigoConvenio(string $codCentroConvenio, string $tipo)
-    {
-        $numConvenio = AuxConvenio::create()->id;
-        $codConvenio = $codCentroConvenio . '/' . $tipo . $numConvenio . '/' . Carbon::now()->year % 100;
-        return $codConvenio;
-    }
-
-    /**
-     * Devuelve el centro de estudios asociado a un determinado profesor
-     * @param string $dniProfesor el DNI del profesor asociado al centro de estudios
-     * @return CentroEstudios una colección con la información del centro de estudios
-     *
-     * @author @DaniJCoello
-     */
-    public function getCentroEstudiosFromProfesor(string $dniProfesor)
-    {
-        return CentroEstudios::find(Profesor::find($dniProfesor)->cod_centro_estudios);
-    }
-
-    /**
-     * Devuelve el centro de estudios asociado a un determinado código de convenio
-     * @param string $codConvenio el código de convenio
-     * @return CentroEstudios una colección con la información del centro de estudios
-     *
-     * @author @DaniJCoello
-     */
-    public function getCentroEstudiosFromConvenio(string $codConvenio)
-    {
-        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
-    }
-
-    /**
-     * Devuelve el director de un centro de estudios
-     * @param string $codCentroEstudios el código irrepetible del centro de estudios
-     * @return Profesor una colección con la información del director
-     *
-     * @author @DaniJCoello
-     */
-    public function getDirectorCentroEstudios(string $codCentroEstudios)
-    {
-        return Profesor::whereIn('dni', RolProfesorAsignado::where('id_rol', 1)->get('dni'))->where('cod_centro_estudios', $codCentroEstudios)->first();
-    }
-
-    /**
-     * Devuelve la empresa asociada a un CIF
-     * @param string $cif el CIF de la empresa
-     * @return Empresa una colección con la información de la empresa
-     *
-     * @author @DaniJCoello
-     */
-    public function getEmpresaFromCIF(string $cif)
-    {
-        return Empresa::where('cif', $cif)->first();
-    }
-
-    /**
-     * Devuelve la empresa asociada a una ID de la base de datos
-     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
-     * @return Empresa una colección con la información de la empresa
-     *
-     * @author @DaniJCoello
-     */
-    public function getEmpresaFromID(int $id)
-    {
-        return Empresa::find($id);
-    }
-
-    /**
-     * Devuelve la empresa asociada a un código de convenio
-     * @param string $codConvenio el código del convenio
-     * @return Empresa una colección con la información de la empresa
-     *
-     * @author @DaniJCoello
-     */
-    public function getEmpresaFromConvenio(string $codConvenio)
-    {
-        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
-    }
-
-    /**
-     * Devuelve el representante legal de una empresa
-     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
-     * @return Empresa una colección con la información de la empresa
-     *
-     * @author @DaniJCoello
-     */
-    public function getRepresentanteLegal(int $id)
-    {
-        return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
-    }
-
-    /**
-     * Devuelve una response JSON con los datos del representante legal de una empresa
-     * @param int $id La ID de la empresa
-     * @return response JSON con los datos del representante legal
-     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
-     */
-    public function getRepresentanteLegalResponse(int $id)
-    {
-        return response()->json($this->getRepresentanteLegal($id), 200);
-    }
+    #region CRUD de empresas
 
     /**
      * Devuelve las empresas asociadas a un profesor mediante los convenios con su centro de estudios
@@ -1031,6 +868,65 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de convenios y acuerdos - Anexoa 0 y 0A
+
+    /***********************************************************************/
+    #region Anexo 0 y 0A
+
+    /**
+     * Genera el Anexo 0, convenio entre una empresa y un centro
+     * @param string $codConvenio el código del convenio entre la empresa y el centro
+     * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
+     * @return string la ruta en la que se guarda el anexo
+     *
+     * @author @DaniJCoello
+     */
+    public function generarAnexo0(string $codConvenio, string $dniTutor)
+    {
+        // Primero consigo los datos del centro de estudios asociado al tutor y su director
+        $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
+        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
+
+        // Ahora hago lo propio con la empresa en cuestión
+        $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
+        $representante = $this->getRepresentanteLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
+
+        // Construyo el array con todos los datos
+        $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
+        $auxDatos = [$director, $centroEstudios, $representante, $empresa];
+        $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+        // Ahora extraigo los datos de fecha
+        $fecha = Carbon::now();
+        $datos['dia'] = $fecha->day;
+        $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
+        $datos['anio'] = $fecha->year % 100;
+        $datos['cod_convenio'] = $codConvenio;
+
+        // Esta variable se usa sólo para el nombre del archivo
+        $codConvenioAux = str_replace('/', '-', $codConvenio);
+
+        // Ahora genero el Word en sí
+        // Establezco las variables que necesito
+        $nombrePlantilla = $empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A';
+        $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
+        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
+        // Creo la plantilla y la relleno
+        $template = new TemplateProcessor($rutaOrigen);
+        $template->setValues($datos);
+        $template->saveAs($rutaDestino);
+
+        // Guardo la ruta del archivo en la base de datos
+        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
+        // Y la devuelvo
+        return $rutaDestino;
+    }
+
     /**
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
@@ -1038,8 +934,28 @@ class ControladorTutorFCT extends Controller
     public function descargarAnexo0(Request $req)
     {
         $ruta_anexo = $req->get('ruta_anexo');
-        // error_log($ruta_anexo);
         return response()->download($ruta_anexo);
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de convenios y acuerdos
+
+    /**
+     * Genera el código de un convenio a partir del código del centro, un autoincremental y la fecha
+     * @param string $codCentroConvenio el código del centro para generar los convenios
+     * @param string $tipo 'C' -> Convenio; 'A' -> Acuerdo
+     * @return string el código del convenio
+     *
+     * @author @DaniJCoello
+     */
+    public function generarCodigoConvenio(string $codCentroConvenio, string $tipo)
+    {
+        $numConvenio = AuxConvenio::create()->id;
+        $codConvenio = $codCentroConvenio . '/' . $tipo . $numConvenio . '/' . Carbon::now()->year % 100;
+        return $codConvenio;
     }
 
     /**
@@ -1072,6 +988,96 @@ class ControladorTutorFCT extends Controller
     #endregion
     /***********************************************************************/
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Funciones auxiliares - sin response
+
+    /**
+     * Devuelve el centro de estudios asociado a un determinado profesor
+     * @param string $dniProfesor el DNI del profesor asociado al centro de estudios
+     * @return CentroEstudios una colección con la información del centro de estudios
+     *
+     * @author @DaniJCoello
+     */
+    public function getCentroEstudiosFromProfesor(string $dniProfesor)
+    {
+        return CentroEstudios::find(Profesor::find($dniProfesor)->cod_centro_estudios);
+    }
+
+    /**
+     * Devuelve el centro de estudios asociado a un determinado código de convenio
+     * @param string $codConvenio el código de convenio
+     * @return CentroEstudios una colección con la información del centro de estudios
+     *
+     * @author @DaniJCoello
+     */
+    public function getCentroEstudiosFromConvenio(string $codConvenio)
+    {
+        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
+    }
+
+    /**
+     * Devuelve el director de un centro de estudios
+     * @param string $codCentroEstudios el código irrepetible del centro de estudios
+     * @return Profesor una colección con la información del director
+     *
+     * @author @DaniJCoello
+     */
+    public function getDirectorCentroEstudios(string $codCentroEstudios)
+    {
+        return Profesor::whereIn('dni', RolProfesorAsignado::where('id_rol', 1)->get('dni'))->where('cod_centro_estudios', $codCentroEstudios)->first();
+    }
+
+    /**
+     * Devuelve la empresa asociada a un CIF
+     * @param string $cif el CIF de la empresa
+     * @return Empresa una colección con la información de la empresa
+     *
+     * @author @DaniJCoello
+     */
+    public function getEmpresaFromCIF(string $cif)
+    {
+        return Empresa::where('cif', $cif)->first();
+    }
+
+    /**
+     * Devuelve la empresa asociada a una ID de la base de datos
+     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
+     * @return Empresa una colección con la información de la empresa
+     *
+     * @author @DaniJCoello
+     */
+    public function getEmpresaFromID(int $id)
+    {
+        return Empresa::find($id);
+    }
+
+    /**
+     * Devuelve la empresa asociada a un código de convenio
+     * @param string $codConvenio el código del convenio
+     * @return Empresa una colección con la información de la empresa
+     *
+     * @author @DaniJCoello
+     */
+    public function getEmpresaFromConvenio(string $codConvenio)
+    {
+        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
+    }
+
+    /**
+     * Devuelve el representante legal de una empresa
+     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
+     * @return Empresa una colección con la información de la empresa
+     *
+     * @author @DaniJCoello
+     */
+    public function getRepresentanteLegal(int $id)
+    {
+        return Trabajador::whereIn('dni', RolTrabajadorAsignado::where('id_rol', 1)->get('dni'))->where('id_empresa', $id)->first();
+    }
+
     /**
      * @author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
@@ -1085,4 +1091,24 @@ class ControladorTutorFCT extends Controller
         $grupos = Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get();
         return response()->json($grupos, 200);
     }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Funciones auxiliares - response
+
+    /**
+     * Devuelve una response JSON con los datos del representante legal de una empresa
+     * @param int $id La ID de la empresa
+     * @return response JSON con los datos del representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     */
+    public function getRepresentanteLegalResponse(int $id)
+    {
+        return response()->json($this->getRepresentanteLegal($id), 200);
+    }
+
+    #endregion
+    /***********************************************************************/
 }
