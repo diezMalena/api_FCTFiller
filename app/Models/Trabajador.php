@@ -28,6 +28,4 @@ class Trabajador extends Model
     protected $primaryKey = 'dni';
     public $incrementing = false;
     protected $keyType = 'string';
-
-
 }
