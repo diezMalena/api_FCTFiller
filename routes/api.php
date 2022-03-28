@@ -73,6 +73,15 @@ Route::get('/listarAnexos/{dni}', [ControladorTutorFCT::class, 'verAnexos']);
 Route::get('/listarGrupos/{dni}', [ControladorTutorFCT::class, 'verGrupos']);
 Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
 Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
+Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
+Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
+
+
+//Historial Anexos
+Route::get('/listarHistorial/{dni}', [ControladorTutorFCT::class, 'verHistorialAnexos']);
+
+//AnexoXV
+Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
 Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
 
 
@@ -103,3 +112,4 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
 
 
 });
+Route::post('prueba', [ControladorTutorFCT::class, 'prueba']);
