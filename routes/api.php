@@ -78,6 +78,10 @@ Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::cl
 //Historial Anexos
 Route::get('/listarHistorial/{dni}', [ControladorTutorFCT::class, 'verHistorialAnexos']);
 
+//AnexoXV
+Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+
+
 //Crud Profesores
 Route::get('/listarProfesores/{dni_profesor}', [ControladorJefatura::class, 'verProfesores']);
 Route::get('/listarProfesor/{dni_profesor}', [ControladorJefatura::class, 'verProfesor']);

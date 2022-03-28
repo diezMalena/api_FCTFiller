@@ -1021,6 +1021,13 @@ class ControladorTutorFCT extends Controller
     }
 
 
+
+    /**
+     * Esta funcion devuelve el historial de anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
+     *
+     * @param Request $val
+     * @return void
+     */
     public function verHistorialAnexos($dni_tutor)
     {
         $datos = array();
@@ -1091,6 +1098,8 @@ class ControladorTutorFCT extends Controller
         return response()->json($datos, 200);
     }
 }
+
+
 
 
 
