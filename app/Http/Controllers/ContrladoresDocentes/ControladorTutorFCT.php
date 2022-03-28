@@ -352,9 +352,9 @@ class ControladorTutorFCT extends Controller
                     ];
 
                     $rutaCarpeta = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1');
-                    $this->existeCarpeta($rutaCarpeta);
+                     Auxiliar::existeCarpeta($rutaCarpeta);
                     $rutaCarpeta = public_path('tmp' . DIRECTORY_SEPARATOR . 'anexos');
-                    $this->existeCarpeta($rutaCarpeta);
+                     Auxiliar::existeCarpeta($rutaCarpeta);
 
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
@@ -397,20 +397,6 @@ class ControladorTutorFCT extends Controller
         }
         return $nombreZip;
     }
-
-    /**
-     * Esta funcion crea una carpeta si esta no existe
-     *@author Laura <lauramorenoramos97@gmail.com>
-     * @param [string] $ruta
-     * @return void
-     */
-    public function existeCarpeta($ruta)
-    {
-        if (!is_dir($ruta)) {
-            mkdir($ruta, 0777, true);
-        }
-    }
-
 
     /**
      * Esta funcion nos permite convertir un word en un pdf
@@ -575,9 +561,6 @@ class ControladorTutorFCT extends Controller
         if ($codAux[0] == 'Anexo1') {
             //Eliminar un fichero
             unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-            FCT::where('ruta_anexo', 'like', "%$cod_anexo")->update([
-                'ruta_anexo' => '',
-            ]);
         } else {
             if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
@@ -590,6 +573,65 @@ class ControladorTutorFCT extends Controller
     }
 
 
+    /**
+     * @author Laura <lauramorenoramos97@gmail.com>
+     * Esta funcion sirve para deshabilitar un anexo y borrar su ruta de la tabla correspondiente
+     */
+        public function deshabilitarAnexo(Request $val){
+
+            $cod_anexo=$val->get('cod_anexo');
+
+            Anexo::where('ruta_anexo', 'like', "%$cod_anexo")->update([
+                'habilitado' => 0,
+            ]);
+
+            $codAux = explode("_", $cod_anexo);
+            if ($codAux[0] == 'Anexo1') {
+                FCT::where('ruta_anexo', 'like', "%$cod_anexo")->update([
+                    'ruta_anexo' => '',
+                ]);
+            } else {
+                if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
+                    Convenio::where('ruta_anexo', 'like', "%$cod_anexo")->update([
+                        'ruta_anexo' => '',
+                    ]);
+                }
+            }
+        }
+
+
+         /**
+     * @author Laura <lauramorenoramos97@gmail.com>
+     * Esta funcion sirve para habilitar un anexo y añadir su ruta de la tabla correspondiente
+     */
+        public function habilitarAnexo(Request $val){
+
+             $cod_anexo=$val->get('cod_anexo');
+            $dni_tutor=$val->get('dni_tutor');
+
+            Anexo::where('ruta_anexo', 'like', "%$cod_anexo")->update([
+                'habilitado' => 1,
+            ]);
+
+            $codAux = explode("_", $cod_anexo);
+            //$codAux[0] es el tipo del Anexo
+            if ($codAux[0] == 'Anexo1') {
+                FCT::where('id_empresa', '=', $codAux[1])->update([
+                    'ruta_anexo' => $dni_tutor.DIRECTORY_SEPARATOR.$codAux[0].DIRECTORY_SEPARATOR.$cod_anexo,
+                ]);
+            } else {
+                if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
+
+                    $convenio= explode('_', $cod_anexo);
+                    $convenio = explode('.', $convenio[1]);
+                    $convenio=str_replace('-','/', $convenio[0]);
+
+                    Convenio::where('cod_convenio', '=', $convenio)->update([
+                        'ruta_anexo' => $dni_tutor.DIRECTORY_SEPARATOR.$codAux[0].DIRECTORY_SEPARATOR.$cod_anexo,
+                    ]);
+                }
+            }
+        }
 
 
     /**
@@ -709,7 +751,7 @@ class ControladorTutorFCT extends Controller
         // $nombreTemporal = $nombrePlantilla . '-' . $codConvenioAux . '-tmp';
         $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
         // $rutaTemporal = 'tmp/anexos/' . $nombreTemporal . '.docx';
-        $this->existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
+        Auxiliar::existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
         $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
         //Creo la plantilla y la relleno
         $template = new TemplateProcessor($rutaOrigen);
