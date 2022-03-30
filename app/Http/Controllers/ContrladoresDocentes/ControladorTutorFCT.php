@@ -426,6 +426,7 @@ class ControladorTutorFCT extends Controller
 
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion devuelve los anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
      *
      * @param Request $val
@@ -521,8 +522,9 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion nos permite descargar un anexo en concreto
-     *@author Laura <lauramorenoramos97@gmail.com>
+     *
      * @param Request $val
      * @return void
      */
@@ -635,6 +637,7 @@ class ControladorTutorFCT extends Controller
 
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion permite descargar todos los anexos del crud de anexos del tutor, menos el 3
      *
      * @param Request $val
@@ -656,11 +659,12 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos
      * Miramos los anexos de la carpeta de anexos del tutor, buscamos ese anexo habilitado o no habilitado, segun si
      * la consulta se hace desde el crud de anexos o desde el historial  y comprobamos
      * si este existe en el directorio, en tal caso se añade al zip
-     *@author Laura <lauramorenoramos97@gmail.com>
+     *
      * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
      * @param ZipArchive $zip , el zip donde se almacenaran los archivos
      * @param String $nombreZip, el nombre que tendrá el zip
@@ -1065,6 +1069,7 @@ class ControladorTutorFCT extends Controller
 
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion devuelve el historial de anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
      *
      * @param Request $val

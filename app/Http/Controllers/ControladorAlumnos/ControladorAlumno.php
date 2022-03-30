@@ -573,7 +573,7 @@ class ControladorAlumno extends Controller
             $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
             $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
             Auxiliar::existeCarpeta($rutaCarpeta);
-            $AuxNombre = $dni_alumno . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_.docx';
+            $AuxNombre = $dni_alumno . '_' . $fecha->year . '_.docx';
             $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
 
             $datos = [
@@ -593,7 +593,14 @@ class ControladorAlumno extends Controller
             $template->setValues($datos);
             $template->saveAs($rutaDestino);
 
+            //comprobamos que el anexo no exista para añadirlo a la tabla, sino se duplicaran
+            //los registros
+            $existeAnexo=Anexo::where('ruta_anexo','like',"%$rutaDestino")->get();
+
+            if (count($existeAnexo) == 0) {
             Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino]);
+            }
+
             return response()->download(public_path($rutaDestino));
         } catch (Exception $e) {
             return response()->json([
