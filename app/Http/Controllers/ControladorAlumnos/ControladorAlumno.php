@@ -26,7 +26,6 @@ use PhpOffice\PhpWord\TemplateProcessor;
 
 class ControladorAlumno extends Controller
 {
-    //
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     /***********************************************************************/
@@ -300,7 +299,6 @@ class ControladorAlumno extends Controller
      */
     public function actualizarTutorEmpresa(Request $req)
     {
-        error_log($req->get('dni_tutor_nuevo'));
         try {
             $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
             $dni_alumno = $req->get('dni_alumno');

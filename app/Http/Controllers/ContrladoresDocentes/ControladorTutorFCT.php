@@ -136,11 +136,10 @@ class ControladorTutorFCT extends Controller
     /**
      * Esta función se encarga de actualizar la empresa a la que están asignados
      * los alumnos.
-     *
-     * @author alvaro <alvarosantosmartin6@gmail.com>
      * @param $request tiene las empresas con los datos del id, el responsable, y un array con sus alumnos asiganados
      * que estos tienen dentro si van a fct, su dni, fecha de inicio de las prácticas y de finalización, el horario.
      * También tiene el array de alumnos sin empresa.
+     * @author alvaro <alvarosantosmartin6@gmail.com>
      */
     public function actualizarEmpresaAsignadaAlumno(Request $request)
     {
@@ -150,7 +149,6 @@ class ControladorTutorFCT extends Controller
             $empresas = $request->get('empresas');
             $dni_tutor = $request->get('dni_tutor');
             $this->borrarAnexosTablaFCT($dni_tutor);
-            // error_log(print_r($alumnos_solos, true));
             //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
             foreach ($alumnos_solos as $alumno) {
                 Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -230,11 +228,9 @@ class ControladorTutorFCT extends Controller
         $fecha = Carbon::now();
         $AuxNombre = $dni_tutor . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . $fecha->format('_h_i_s_A');
 
-
-        //***************************************ZIP********************************************** */
+        // Creación del .zip
         $zip = new ZipArchive;
         $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
-        //******************************************************************************************** */
 
         try {
             foreach ($empresas_id as $id) {
@@ -246,6 +242,7 @@ class ControladorTutorFCT extends Controller
                     ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                     ->get();
                 if (count($alumnos) > 0) {
+                    #region Recogida de datos
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
                     //Numero de Convenio
@@ -255,15 +252,12 @@ class ControladorTutorFCT extends Controller
                     //Codigo Ciclo
                     $cod_ciclo = Grupo::select('cod')->where('nombre_ciclo',  $nombre_ciclo[0]->nombre_ciclo)->get();
 
-
-
                     //ARCHIVO
                     $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo1';
                     $convenioAux = str_replace('/', '-', $num_convenio[0]->cod_convenio);
                     $AuxNombre = '_' . $id->id_empresa . '_' . $convenioAux . '_' . $cod_ciclo[0]->cod . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . 'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
-
 
                     //Almacenamos las rutas de los anexos en la bbdd
                     foreach ($alumnos as $a) {
@@ -303,12 +297,11 @@ class ControladorTutorFCT extends Controller
                         ->where('rol_profesor_asignado.id_rol', '=', Parametros::DIRECTOR)
                         ->get();
 
-
                     //Ciudad del centro de estudios
                     $ciudad_centro_estudios = CentroEstudios::select('localidad')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
+                    #endregion
 
-
-                    /**************************************Tabla************************************** */
+                    #region Construcción de la tabla
                     $table = new Table(array('unit' => TblWidth::TWIP));
                     $table->addRow();
                     $table->addCell(1500)->addText('APELLIDOS Y NOMBRE');
@@ -328,8 +321,9 @@ class ControladorTutorFCT extends Controller
                         $table->addCell(1500)->addText($a->fecha_ini);
                         $table->addCell(1500)->addText($a->fecha_fin);
                     }
+                    #endregion
 
-                    /**************************************Datos************************************** */
+                    #region Relleno de datos en Word
                     $datos = [
                         'num_convenio' => $num_convenio[0]->cod_convenio,
                         'dia' => $fecha->day,
@@ -355,6 +349,7 @@ class ControladorTutorFCT extends Controller
                     $template->setValues($datos);
                     $template->setComplexBlock('{table}', $table);
                     $template->saveAs($rutaDestino . '.docx');
+                    #endregion
                 }
 
                 //Convertir en Zip
@@ -421,7 +416,6 @@ class ControladorTutorFCT extends Controller
      */
     public function verAnexos($dni_tutor)
     {
-        //$dni_tutor = $val->get('dni_tutor');
         $directorios = array();
         $datos = array();
         $datosAux = array();
@@ -429,15 +423,13 @@ class ControladorTutorFCT extends Controller
         $fecha = Carbon::now();
         $fechaAux = '';
 
-        ///////////////////////////////ANEXO 0//////////////////////////////////////
+        #region Anexo 0
         $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0';
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
-
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
-
                     //Dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
@@ -445,7 +437,6 @@ class ControladorTutorFCT extends Controller
                     $convenioAux = $datosAuxFechaAnexo0[0];
                     $datosAuxFechaAnexo0 =  explode("-", $datosAuxFechaAnexo0[0]);
                     $fechaAux = $datosAuxFechaAnexo0[2];
-
 
                     //Mientras la fecha de creacion de este anexo sea igual al año actual o sea menor o igual a 4 años después
                     if ($fechaAux  == substr($fecha->year, -2) || $fechaAux <= substr($fecha->year, -2) + 4) {
@@ -470,15 +461,14 @@ class ControladorTutorFCT extends Controller
             }
             closedir($handler);
         }
-        ///////////////////////////////ANEXO 0A//////////////////////////////////////
+        #endregion
+        #region Anexo 0A
         $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A';
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
-
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
-
                     //Dividir un nombre por su separador
                     $datosAux = explode("_", $file);
 
@@ -486,7 +476,6 @@ class ControladorTutorFCT extends Controller
                     $convenioAux = $datosAuxFechaAnexo0[0];
                     $datosAuxFechaAnexo0 =  explode("-", $datosAuxFechaAnexo0[0]);
                     $fechaAux = $datosAuxFechaAnexo0[2];
-
 
                     //Mientras la fecha de creacion de este anexo sea igual al año actual o sea menor o igual a 4 años después
                     if ($fechaAux  == substr($fecha->year, -2) || $fechaAux <= substr($fecha->year, -2) + 4) {
@@ -496,7 +485,6 @@ class ControladorTutorFCT extends Controller
                             $firma_centro = Convenio::select('firmado_director')->where('cod_convenio', '=', $convenioAux)->get();
                             $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
                             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
-
 
                             //meter ese nombre en un array asociativo
                             $datos[] = [
@@ -512,11 +500,11 @@ class ControladorTutorFCT extends Controller
             }
             closedir($handler);
         }
-        ///////////////////////////////ANEXO 1//////////////////////////////////////
+        #endregion
+        #region Anexo I
         $thefolder = public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1';
         if ($handler = opendir($thefolder)) {
             while (false !== ($file = readdir($handler))) {
-
                 //Comparar string en php
                 if (strcmp($file, ".") !== 0 && strcmp($file, "..") !== 0) {
                     $directorios[] = $file;
@@ -524,7 +512,6 @@ class ControladorTutorFCT extends Controller
                     $datosAux = explode("_", $file);
 
                     if ($datosAux[4] == $fecha->year) {
-
                         $convenioAux = str_replace('-', '/', $datosAux[2]);
                         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
                         $cod_centro = Convenio::select('cod_centro')->where('cod_convenio', '=',  $convenioAux)->get();
@@ -539,7 +526,6 @@ class ControladorTutorFCT extends Controller
                                 ->where('matricula.cod_centro', '=', $cod_centro[0]->cod_centro)
                                 ->where('matricula.cod_grupo', '=', $grupo[0]->cod_grupo)
                                 ->first();
-
 
                             $firma_empresa = Fct::select('firmado_empresa')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
                             $firma_centro = Fct::select('firmado_director')->where('id_empresa', '=', $datosAux[1])->where('dni_alumno', '=', $alumno->dni_alumno)->get();
@@ -559,6 +545,7 @@ class ControladorTutorFCT extends Controller
             }
             closedir($handler);
         }
+        #endregion
         return response()->json($datos, 200);
     }
 
@@ -589,7 +576,6 @@ class ControladorTutorFCT extends Controller
      */
     public function descargarAnexo(Request $val)
     {
-
         $dni_tutor = $val->get('dni_tutor');
         $cod_anexo = $val->get('codigo');
         $codAux = explode("_", $cod_anexo);
@@ -606,7 +592,6 @@ class ControladorTutorFCT extends Controller
         }
 
         return Response::download($rutaOriginal);
-        // return response()->download($rutaOriginal);
     }
 
     /**
@@ -670,7 +655,7 @@ class ControladorTutorFCT extends Controller
 
         $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
-            ///////////////////////////////ANEXO1//////////////////////////////////////////
+            #region Anexo I
             foreach ($files as $value) {
                 //El nombreAux es el nombre del anexo completo
                 $nombreAux = basename($value);
@@ -691,7 +676,8 @@ class ControladorTutorFCT extends Controller
                     }
                 }
             }
-            //////////////////////ANEXO0//////////////////////////////////////////
+            #endregion
+            #region Anexo 0
             $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0'));
             foreach ($files as $value) {
                 $nombreAux = basename($value);
@@ -714,7 +700,8 @@ class ControladorTutorFCT extends Controller
                     }
                 }
             }
-            //////////////////////ANEXO0A//////////////////////////////////////////
+            #endregion
+            #region Anexo 0A
             $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
             foreach ($files as $value) {
                 $nombreAux = basename($value);
@@ -737,6 +724,7 @@ class ControladorTutorFCT extends Controller
                     }
                 }
             }
+            #endregion
             $zip->close();
         }
         return $nombreZip;

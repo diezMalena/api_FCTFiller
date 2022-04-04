@@ -33,7 +33,6 @@ class ControladorGenerico extends Controller
         $quer = 'select * from usuarios_view'
             . ' where email = ?';
         $usuario_view = DB::select($quer, [$email]);
-        // error_log(print_r($usuario_view, true));
         if (count($usuario_view) > 0) {
             $usuario_view = $usuario_view[0];
             $ckPass = Hash::check($pass, $usuario_view->password);
