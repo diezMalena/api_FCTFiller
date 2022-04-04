@@ -4,20 +4,25 @@ namespace App\Http\Controllers\ControladorAlumnos;
 
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
+use App\Models\Grupo;
 use App\Models\CentroEstudios;
 use App\Models\Empresa;
 use App\Models\FamiliaProfesional;
 use App\Models\Fct;
 use App\Models\NivelEstudios;
+use App\Auxiliar\Parametros;
 use App\Models\Profesor;
 use App\Models\Seguimiento;
 use App\Models\Trabajador;
+use App\Models\Matricula;
+use App\Models\Anexo;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\GrupoFamilia;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
@@ -284,7 +289,7 @@ class ControladorAlumno extends Controller
         $nombre = $nombrePlantilla . '_' . $dni_alumno . '_' . $fecha_doc . '.docx';
         Auxiliar::existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3'));
         $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . $nombre;
-
+        //Anexo::create(['tipo_anexo' => 'Anexo3', 'ruta_anexo' => $rutaDestino]);
         //Creo la plantilla y la relleno con los valores establecidos anteriormente.
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
@@ -318,7 +323,7 @@ class ControladorAlumno extends Controller
      */
     public function getNombreAlumno(string $dni_alumno)
     {
-        $nombre = Alumno::select('nombre','apellidos')
+        $nombre = Alumno::select('nombre', 'apellidos')
             ->where('dni', '=', $dni_alumno)
             ->first();
 
@@ -338,7 +343,7 @@ class ControladorAlumno extends Controller
             ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->where('matricula.dni_alumno', '=', $dni_alumno)
-            ->select('profesor.nombre AS nombre','profesor.apellidos AS apellidos')
+            ->select('profesor.nombre AS nombre', 'profesor.apellidos AS apellidos')
             ->first();
 
         return $tutor;
@@ -392,7 +397,7 @@ class ControladorAlumno extends Controller
 
         //En la select incluyo al curso academico como otra select:
         $nombre_empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
-            ->where('fct.curso_academico','=', $curso)
+            ->where('fct.curso_academico', '=', $curso)
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->select('empresa.nombre AS nombre')
             ->first();
@@ -460,8 +465,9 @@ class ControladorAlumno extends Controller
      * @return tutor_empresa
      * @author Malena
      */
-    public function sacarDniTutor(string $dni_alumno){
-        $tutor_empresa = Fct::where('dni_alumno','=',$dni_alumno)
+    public function sacarDniTutor(string $dni_alumno)
+    {
+        $tutor_empresa = Fct::where('dni_alumno', '=', $dni_alumno)
             ->select('dni_tutor_empresa')
             ->first();
         return $tutor_empresa;
@@ -474,19 +480,20 @@ class ControladorAlumno extends Controller
      * al que el alumno está asociado.
      * @author Malena
      */
-    public function recogerTutorEmpresa(Request $req){
+    public function recogerTutorEmpresa(Request $req)
+    {
         $dni_alumno = $req->get('dni');
         $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
-        try{
+        try {
             $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-            ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-            ->where('trabajador.dni','=',$dni_tutor)
-            ->select('trabajador.dni AS dni_tutor','trabajador.nombre AS nombre_tutor')
-            ->first();
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.dni', '=', $dni_tutor)
+                ->select('trabajador.dni AS dni_tutor', 'trabajador.nombre AS nombre_tutor')
+                ->first();
             //Recojo el id_empresa:
             $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
-            return response()->json([$datos_tutor,$id_empresa],200);
-        }catch(Exception $e){
+            return response()->json([$datos_tutor, $id_empresa], 200);
+        } catch (Exception $e) {
             return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
         }
     }
@@ -497,7 +504,8 @@ class ControladorAlumno extends Controller
      * @return id_empresa
      * @author Malena
      */
-    public function empresaAsignadaAlumno(string $dni_alumno){
+    public function empresaAsignadaAlumno(string $dni_alumno)
+    {
         /*Necesitamos también el id_empresa para luego poder mostrar en el desplegable todos
         los tutores y responsables de dicha empresa.*/
         $fct = $this->buscarId_fct($dni_alumno);
@@ -510,15 +518,16 @@ class ControladorAlumno extends Controller
      * elegir un tutor nuevo.
      * @author Malena
      */
-    public function getTutoresResponsables(string $id_empresa){
-        try{
+    public function getTutoresResponsables(string $id_empresa)
+    {
+        try {
             $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-                ->where('trabajador.id_empresa','=',$id_empresa)
-                ->select('trabajador.dni AS dni','trabajador.nombre AS nombre')
+                ->where('trabajador.id_empresa', '=', $id_empresa)
+                ->select('trabajador.dni AS dni', 'trabajador.nombre AS nombre')
                 ->get();
-            return response()->json($arrayTutores,200);
-        }catch(Exception $e){
+            return response()->json($arrayTutores, 200);
+        } catch (Exception $e) {
             return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
         }
     }
@@ -527,20 +536,121 @@ class ControladorAlumno extends Controller
      * Método que actualiza en la BBDD el tutor que el alumno ha elegido.
      * @author Malena
      */
-    public function actualizarTutorEmpresa(Request $req){
+    public function actualizarTutorEmpresa(Request $req)
+    {
         error_log($req->get('dni_tutor_nuevo'));
-        try{
+        try {
             $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
             $dni_alumno = $req->get('dni_alumno');
             Fct::where('dni_alumno', $dni_alumno)->update([
                 'dni_tutor_empresa' => $dni_tutor_nuevo,
             ]);
             return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
-        }catch(Exception $e){
+        } catch (Exception $e) {
             // error_log($e);
             return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
         }
     }
 
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite rellenar el AnexoXV
+     * @param Request $req, este req contiene el dni del alumno
+     * @return void
+     */
+    public function rellenarAnexoXV(Request $req)
+    {
 
+        $fecha = Carbon::now();
+        $dni_alumno = $req->get('dni');
+        $nombre_alumno = $this->getNombreAlumno($dni_alumno);
+        $nombre_ciclo = $this->getNombreCicloAlumno($dni_alumno);
+        $centro_estudios = $this->getCentroEstudiosYLocalidad($dni_alumno);
+        $familia_profesional = $this->getDescripcionFamiliaProfesional($nombre_ciclo[0]->nombre_ciclo);
+
+        try {
+            //ARCHIVO
+            $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
+            $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
+            Auxiliar::existeCarpeta($rutaCarpeta);
+            $AuxNombre = $dni_alumno . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_.docx';
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
+
+            $datos = [
+                'alumno_nombre' => $nombre_alumno->nombre . ' ' . $nombre_alumno->apellidos,
+                'alumno_dni' => $dni_alumno,
+                'alumno_curso' => '2º',
+                'alumno_ciclo' => $nombre_ciclo[0]->nombre_ciclo,
+                'nombre_centro' => $centro_estudios[0]->nombre,
+                'ciudad' => $centro_estudios[0]->localidad,
+                'familia_profesional' => $familia_profesional[0]->descripcion,
+                'dia' => $fecha->day,
+                'mes' => Parametros::MESES[$fecha->month],
+                'year' => $fecha->year
+            ];
+
+            $template = new TemplateProcessor($rutaOriginal);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestino);
+
+            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino]);
+            return response()->download(public_path($rutaDestino));
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Error de ficheros: ' . $e
+            ], 500);
+        }
+    }
+
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite obtener la descripcion de la tabla familia profesional a través del
+     * nombre del ciclo
+     * @param [type] $nombreCiclo, es el nombre del ciclo
+     * @return void
+     */
+    public function getDescripcionFamiliaProfesional($nombreCiclo)
+    {
+
+        $familia_profesional = GrupoFamilia::join('grupo', 'grupo.cod', '=', 'grupo_familia.cod_grupo')
+            ->join('familia_profesional', 'familia_profesional.id', '=', 'grupo_familia.id_familia')
+            ->select('familia_profesional.descripcion')
+            ->where('grupo.nombre_ciclo', '=', $nombreCiclo)
+            ->get();
+
+        return $familia_profesional;
+    }
+
+     /**
+      * @author LauraM <lauramorenoramos97@gmail.com>
+      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
+      * @param [type] $dni_alumno, es el dni del alumno
+      * @return void
+      */
+    public function getNombreCicloAlumno($dni_alumno)
+    {
+
+        $nombre_ciclo = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->select('grupo.nombre_ciclo')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $nombre_ciclo;
+    }
+
+    /**
+     *@author LauraM <lauramorenoramos97@gmail.com>
+     *Nos permite obtener el centro de estudios y la localidad al que este
+     *pertenece a través del dni de un alumno
+     * @param [type] $dni_alumno
+     * @return void
+     */
+    public function getCentroEstudiosYLocalidad($dni_alumno)
+    {
+
+        $centro_estudios = Matricula::join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+            ->select('centro_estudios.nombre', 'centro_estudios.localidad')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $centro_estudios;
+    }
 }

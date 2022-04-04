@@ -11,6 +11,7 @@ class Parametros {
     public const DIRECTOR = 1;
     public const JEFE_ESTUDIOS = 2;
     public const TUTOR = 3;
+    public const PROFESOR = 4;
 
 
     public const MESES = [
