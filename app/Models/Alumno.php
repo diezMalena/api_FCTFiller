@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 class Alumno extends Model
 {
     use HasFactory;
+
     protected $fillable = ['dni', 'cod_alumno', 'email', 'password', 'nombre', 'apellidos', 'provincia', 'localidad', 'va_a_fct'];
     protected $table = 'alumno';
     protected $primaryKey = 'dni';

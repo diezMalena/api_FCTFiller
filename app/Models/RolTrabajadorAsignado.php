@@ -17,10 +17,10 @@ use Illuminate\Database\Eloquent\Model;
 class RolTrabajadorAsignado extends Model
 {
     use HasFactory;
+
     protected $fillable = ['dni', 'id_rol'];
     protected $table = 'rol_trabajador_asignado';
     protected $primaryKey = ['dni', 'id_rol'];
     public $incrementing = false;
     protected $keyType = ['string', 'unsignedBigInteger'];
-
 }

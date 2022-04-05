@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 class Fct extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'id_empresa',
         'dni_alumno',
