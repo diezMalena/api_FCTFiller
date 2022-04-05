@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Modelo auxiliar para generar el número autoincremental del convenio
+ * @author Dani J. Coello <daniel.jimenezcoello@gmail.com @DaniJCoello
  */
 class AuxConvenio extends Model
 {

@@ -6,10 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- *
- */
-
-/**
  * Modelo para la tabla convenio
  *
  * Antiguo EmpresaCentroEstudios

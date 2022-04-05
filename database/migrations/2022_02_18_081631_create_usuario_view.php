@@ -14,13 +14,14 @@ class CreateUsuarioView extends Migration
      */
     public function up()
     {
-        DB::statement('CREATE VIEW usuarios_view AS
-        (select alumno.email, alumno.password, "alumno" as "perfil"
-        from alumno UNION all
-        select trabajador.email, trabajador.password, "trabajador" as "perfil"
-        from trabajador UNION all
-        select profesor.email, profesor.password, "profesor" as "perfil"
-        from profesor)');
+        DB::statement('CREATE VIEW usuarios_view AS (
+                        select alumno.email, alumno.password, "alumno" as "perfil"
+                        from alumno UNION all
+                        select trabajador.email, trabajador.password, "trabajador" as "perfil"
+                        from trabajador UNION all
+                        select profesor.email, profesor.password, "profesor" as "perfil"
+                        from profesor)'
+                    );
     }
 
     /**
