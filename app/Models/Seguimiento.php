@@ -23,6 +23,5 @@ class Seguimiento extends Model
         'observaciones',
         'tiempo_empleado'
     ];
-
     protected $table = 'seguimiento';
 }

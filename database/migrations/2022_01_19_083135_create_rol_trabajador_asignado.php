@@ -14,7 +14,7 @@ class CreateRolTrabajadorAsignado extends Migration
 {
     /**
      * Run the migrations.
-     *@author laura <lauramorenoramos97@gmail.com>
+     * @author laura <lauramorenoramos97@gmail.com>
      * @return void
      */
     public function up()

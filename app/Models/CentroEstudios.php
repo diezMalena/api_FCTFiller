@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 class CentroEstudios extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'cod',
         'cif',
