@@ -1136,4 +1136,20 @@ class ControladorTutorFCT extends Controller
 
     #endregion
     /***********************************************************************/
+
+    public function rellenarAnexoII(Request $req)
+    {
+        //Route::post('user/uploadImage', "User\UserController@uploadImage");
+        //return $request;  // null
+        /*if ($request->hasFile('thumbimage')){
+       $file      = $request->file('thumbimage');
+       $filename  = $file->getClientOriginalName();
+       $extension = $file->getClientOriginalExtension();
+       $picture   = date('His').'-'.$filename;
+       $file->move(public_path('tImg'), $picture);
+       return response()->json(["message" => "Image Uploaded Succesfully"]);
+        }else{
+       return response()->json(["message" => "Select image first."]); // returns this
+  }*/
+    }
 }
