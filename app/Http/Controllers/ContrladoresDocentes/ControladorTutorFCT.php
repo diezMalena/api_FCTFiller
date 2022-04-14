@@ -526,6 +526,11 @@ class ControladorTutorFCT extends Controller
             if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
                 $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
                 $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
+            }else{
+                if ($codAux[0] == 'AnexoXV') {
+                    $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
+                    $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
+                }
             }
         }
 
