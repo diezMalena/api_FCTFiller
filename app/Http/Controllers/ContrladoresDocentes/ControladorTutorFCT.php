@@ -528,7 +528,7 @@ class ControladorTutorFCT extends Controller
             if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
                 $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
                 $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
-            }else{
+            } else {
                 if ($codAux[0] == 'AnexoXV') {
                     $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
                     $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
@@ -1130,11 +1130,11 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * @author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
      * al que pertenecen, con ese dato, recogemos los grupos de un centro de estudios desde la tabla
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del
      * centro para devolverlos y poder ver sus anexos en otra funcion.
+     * @author Laura <lauramorenoramos97@gmail.com>
      */
     public function verGrupos($dni)
     {
@@ -1146,19 +1146,62 @@ class ControladorTutorFCT extends Controller
     #endregion
     /***********************************************************************/
 
-    public function rellenarAnexoII(Request $req)
+
+    /***********************************************************************/
+    #region Funciones auxiliares - response
+
+    /**
+     * A esta funcion, le pasas el tipo de anexo, el dni del usuario y el fichero a subir y
+     * te sube el documento al servidor a la carpeta que corresponde.
+     * Hace varias comprobaciones antes, como por ejemplo, si la carpeta a la que vas a subir el
+     * archivo existe, si no existe, la crea.
+     * Tambien comprueba que el archivo exista en bbdd , si no existe, lo crea, pero si existe,
+     *no replicará información
+     *
+     * @param Request $req
+     * @return void
+     *@author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function subirAnexo(Request $req)
     {
-        //Route::post('user/uploadImage', "User\UserController@uploadImage");
-        //return $request;  // null
-        /*if ($request->hasFile('thumbimage')){
-       $file      = $request->file('thumbimage');
-       $filename  = $file->getClientOriginalName();
-       $extension = $file->getClientOriginalExtension();
-       $picture   = date('His').'-'.$filename;
-       $file->move(public_path('tImg'), $picture);
-       return response()->json(["message" => "Image Uploaded Succesfully"]);
-        }else{
-       return response()->json(["message" => "Select image first."]); // returns this
-  }*/
+        $dni = $req->get('dni');
+        $tipo_anexo = $req->get('tipo_anexo');
+
+        //Si estamos recogiendo un documento
+        if ($req->hasFile('documento')) {
+            $file = $req->file('documento');
+
+            //Comprobamos que existe la carpeta donde lo vamos a depositar, y sino existe, se crea
+            $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipo_anexo;
+            Auxiliar::existeCarpeta($rutaCarpeta);
+
+            //recogemos su nombre original
+            $nombreArchivo  = $file->getClientOriginalName();
+            //$extension = $file->getClientOriginalExtension();
+
+            //También hay que añadir dicho anexo a la base de datos, pero no, sin antes comprobar si existe, por que sino, se duplicarian los datos,
+            //lo buscamos sin extension, por que si existe, se actualizara con la nueva ruta y si no existe,
+            //se crea, asi si es un .pdf u otra extension se actualiza
+            $rutaParaBBDD=$rutaCarpeta.DIRECTORY_SEPARATOR .$nombreArchivo;
+            $archivoNombreSinExtension=explode('.',$nombreArchivo);
+            $rutaParaBBDDSinExtension=$rutaCarpeta.DIRECTORY_SEPARATOR .$archivoNombreSinExtension[0];
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => $tipo_anexo, 'ruta_anexo' => $rutaParaBBDD]);
+            }else{
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                    'ruta_anexo' => $rutaParaBBDD,
+                ]);
+            }
+
+            //Lo ponemos con su nombre original, en un directorio que queramos
+            $file->move(public_path($rutaCarpeta), $nombreArchivo);
+            return response()->json(["message" => "Documento subido!"]);
+        } else {
+            return response()->json(["message" => "Selecciona primero un documento"]);
+        }
     }
+    #endregion
+    /***********************************************************************/
 }

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Rutas de autenticación
 |--------------------------------------------------------------------------
 */
+
 Route::group(['middleware' => ['Cors']], function () {
     Route::post('/login', [ControladorGenerico::class, 'login']);
 });
@@ -122,6 +123,10 @@ Route::group(['middleware' => ['Cors']], function () {
 
     /*******************************ANEXO XV*******************************/
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+    /**********************************************************************/
+
+    /*******************************ANEXO II*******************************/
+    Route::post('/subirAnexo', [ControladorTutorFCT::class, 'subirAnexo']);
     /**********************************************************************/
 });
 
