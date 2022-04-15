@@ -448,6 +448,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
@@ -480,6 +481,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
             #endregion
@@ -734,6 +736,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
@@ -765,6 +768,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }

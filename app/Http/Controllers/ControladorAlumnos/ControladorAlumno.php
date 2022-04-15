@@ -564,7 +564,8 @@ class ControladorAlumno extends Controller
 
     /**
      * Esta funcion nos permite rellenar el AnexoXV
-     * @param Request $req, este req contiene el dni del alumno
+     * @param Request $req, este req contiene el dni del alumno y el nombre del archivo que esta en base de datos, para
+     * que coincida el nombre con el del documento que se va a crear
      * @return void
      * @author LauraM <lauramorenoramos97@gmail.com>
      */
@@ -584,7 +585,7 @@ class ControladorAlumno extends Controller
             $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
             $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
             Auxiliar::existeCarpeta($rutaCarpeta);
-            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR .$nombre_archivo[2];
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR .$nombre_archivo;
 
             //Al haber llegado aeste punto, asumimos que el anexo se ha completado y por lo tanto, lo habilitamos
             Anexo::where('ruta_anexo', 'like', "%$nombre_archivo")->update([
