@@ -448,6 +448,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
@@ -480,6 +481,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
             #endregion
@@ -526,6 +528,11 @@ class ControladorTutorFCT extends Controller
             if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
                 $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
                 $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
+            }else{
+                if ($codAux[0] == 'AnexoXV') {
+                    $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
+                    $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
+                }
             }
         }
 
@@ -729,6 +736,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' => $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
@@ -760,6 +768,7 @@ class ControladorTutorFCT extends Controller
                 'empresa' => $empresa_nombre[0]->nombre,
                 'firma_empresa' =>  $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
