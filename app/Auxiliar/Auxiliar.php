@@ -10,6 +10,7 @@ use App\Models\RolEmpresa;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -190,6 +191,105 @@ class Auxiliar
     {
         if (!is_dir($ruta)) {
             mkdir($ruta, 0777, true);
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD Users - Métodos auxiliares
+
+    /**
+     * Añade un usuario a la tabla de usuarios (users)
+     * a partir de un modelo de profesor, alumno o trabajador
+     * @param Model $model Modelo de tipo `Profesor`, `Trabajador` o `Alumno`
+     * @param string $perfil Perfil del usuario (profesor, trabajador o alumno)
+     * @return int Código web de respuesta (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function addUser(Model $model, string $perfil) {
+        try {
+            User::create([
+                'email' => $model->email,
+                'password' => $model->password,
+                'name' => $model->nombre . ' ' . $model->apellidos,
+                'perfil' => $perfil
+            ]);
+            return 201; // Created
+        } catch (Exception $ex) {
+            return 409; // Conflict (ya existe el usuario)
+        }
+    }
+
+    /**
+     * Obtiene un usuario de la tabla de usuarios (users)
+     * @param string $email e-mail del usuario
+     * @return User Modelo con los datos del usuario
+     * @return int Código web de respuesta correspondiente
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getUser(string $email) {
+        try {
+            if ($user = User::where('email', $email)->first()) {
+                return $user;
+            } else {
+                return 404; // Not Found
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal Server Error
+        }
+    }
+
+    /**
+     * Actualiza los datos de un usuario en la tabla de usuarios (users)
+     * @param Model $model Modelo de tipo `Profesor`, `Trabajador` o `Alumno`
+     * @param string $email e-mail del usuario
+     * @return int Código web de respuesta (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function updateUser(Model $model, string $email) {
+        try {
+            $update = User::where('email', $email)->update([
+                'email' => $model->email,
+                'password' => $model->password,
+                'name' => $model->nombre . ' ' . $model->apellidos,
+            ]);
+            if ($update > 0) {
+                return 200; // OK
+            } else if ($update == 0) {
+                $get = self::getUser($email);
+                if (gettype($get) == "integer") {
+                    return $get;
+                } else {
+                    return 304; // Not Modified
+                }
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal server error
+        }
+    }
+
+    /**
+     * Elimina un usuario de la tabla users
+     * @param string $email e-mail del usuario a eliminar
+     * @return int Código de respuesta web correspondiente (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function deleteUser(string $email) {
+        try {
+            $delete = User::where('email', $email)->delete();
+            if ($delete > 0) {
+                return 200; // OK
+            } else if ($delete == 0) {
+                return 404; // Not Fount
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal Server Error
         }
     }
 
