@@ -1166,7 +1166,7 @@ class ControladorTutorFCT extends Controller
     {
         $dni = $req->get('dni');
         $tipo_anexo = $req->get('tipo_anexo');
-
+        error_log($req);
         //Si estamos recogiendo un documento
         if ($req->hasFile('documento')) {
             $file = $req->file('documento');
@@ -1182,14 +1182,14 @@ class ControladorTutorFCT extends Controller
             //También hay que añadir dicho anexo a la base de datos, pero no, sin antes comprobar si existe, por que sino, se duplicarian los datos,
             //lo buscamos sin extension, por que si existe, se actualizara con la nueva ruta y si no existe,
             //se crea, asi si es un .pdf u otra extension se actualiza
-            $rutaParaBBDD=$rutaCarpeta.DIRECTORY_SEPARATOR .$nombreArchivo;
-            $archivoNombreSinExtension=explode('.',$nombreArchivo);
-            $rutaParaBBDDSinExtension=$rutaCarpeta.DIRECTORY_SEPARATOR .$archivoNombreSinExtension[0];
+            $rutaParaBBDD = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
+            $archivoNombreSinExtension = explode('.', $nombreArchivo);
+            $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
             $existeAnexo = Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
 
             if (count($existeAnexo) == 0) {
                 Anexo::create(['tipo_anexo' => $tipo_anexo, 'ruta_anexo' => $rutaParaBBDD]);
-            }else{
+            } else {
                 Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                     'ruta_anexo' => $rutaParaBBDD,
                 ]);
@@ -1201,6 +1201,56 @@ class ControladorTutorFCT extends Controller
         } else {
             return response()->json(["message" => "Selecciona primero un documento"]);
         }
+    }
+    #endregion
+    /***********************************************************************/
+
+
+    /***********************************************************************/
+    #region Anexo II - Programa formativo
+    /**
+     * Esta funcion nos permite rellenar el Anexo 1
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * @param Request $val->get(dni_tutor) es el dni del tutor
+     * @return void
+     */
+    public function rellenarAnexoII(Request $val)
+    {
+
+        $dni_tutor = $val->get('dni_tutor');
+        $centro_estudos_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
+        $centro_nombre = CentroEstudios::select('nombre')->where('cod','=',$centro_estudos_tutor[0]->cod_centro)->get();
+        $centro_cif =CentroEstudios::select('cif')->where('cod','=',$centro_estudos_tutor[0]->cod_centro)->get();
+        $tutor_nombre = Profesor::select('nombre')->where('dni','=',$dni_tutor)->get();
+        $tutor_apellidos = Profesor::select('apellidos')->where('dni','=',$dni_tutor)->get();
+        $grupo_tutoriza=Tutoria::select('cod_grupo')->where('dni_profesor','=',$dni_tutor)->get();
+        $familia_profesional_descripcion = '';
+        $ciclo_nombre = '';
+
+        $alumnos_del_tutor = Tutoria::join('matricula', 'tutoria.cod_centro', '=', 'matricula.cod_centro')
+            ->where('matricula.cod_centro', '=', $centro_estudos_tutor[0]->cod_centro)
+            ->select('matricula.dni_alumno')
+            ->get();
+
+        foreach ($alumnos_del_tutor as $a) {
+            $alumno_nombre = Alumno::select('nombre')->where('dni','=',$a->dni)->get();
+            $alumno_apellidos = Alumno::select('apellidos')->where('dni','=',$a->dni)->get();
+
+        }
+
+        $empresa_nombre = '';
+        $tutor_empresa_nombre = '';
+        $fct_fecha_ini = '';
+        $fct_fecha_fin = '';
+        $fct_departamento = '';
+        $fct_horas = '';
+
+
+        $datos = [
+            //'num_convenio' => $num_convenio[0]->cod_convenio,
+        ];
+
+        //return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
     }
     #endregion
     /***********************************************************************/

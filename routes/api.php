@@ -125,6 +125,10 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
 
+    /*******************************ANEXO XV*******************************/
+    Route::post('/rellenarAnexoII', [ControladorAlumno::class, 'rellenarAnexoII']);
+    /**********************************************************************/
+
     /*******************************ANEXO II*******************************/
     Route::post('/subirAnexo', [ControladorTutorFCT::class, 'subirAnexo']);
     /**********************************************************************/
