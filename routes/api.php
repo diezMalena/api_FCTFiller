@@ -125,11 +125,15 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
 
-    /*******************************ANEXO XV*******************************/
-    Route::post('/rellenarAnexoII', [ControladorAlumno::class, 'rellenarAnexoII']);
+    /*******************************ANEXO IV*******************************/
+    Route::post('/rellenarAnexoIV', [ControladorAlumno::class, 'rellenarAnexoIV']);
     /**********************************************************************/
 
     /*******************************ANEXO II*******************************/
+    Route::post('/rellenarAnexoII', [ControladorAlumno::class, 'rellenarAnexoII']);
+    /**********************************************************************/
+
+    /*******************************SUBIR ANEXO*******************************/
     Route::post('/subirAnexo', [ControladorTutorFCT::class, 'subirAnexo']);
     /**********************************************************************/
 });

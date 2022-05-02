@@ -1214,7 +1214,7 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
     #region Anexo II - Programa formativo
     /**
-     * Esta funcion nos permite rellenar el Anexo 1
+     * Esta funcion nos permite rellenar el Anexo 2
      * @author LauraM <lauramorenoramos97@gmail.com>
      * @param Request $val->get(dni_tutor) es el dni del tutor
      * @return void
