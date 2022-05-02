@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ContrladoresDocentes;
 
 use App\Auxiliar\Auxiliar;
+use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
@@ -197,9 +198,9 @@ class ControladorTutorFCT extends Controller
     #region Anexo I - Generación y gestión
 
     /**
-     * @author LauraM <lauramorenoramos97@gmail.com>
-     * A esta funcion le pasas el dni del tutor, con esa dni, busca las rutas de sus anexos en la tabla FCT
+     * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla FCT
      * y borra esos anexos
+     *@author LauraM <lauramorenoramos97@gmail.com>
      */
     public function borrarAnexosTablaFCT($dni_tutor)
     {
@@ -219,6 +220,10 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+/**
+ * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla Anexos
+ * y borra esos anexos, que esten habilitados
+ */
     public function borrarAnexosTablaAnexos($tipoAnexo, $dni_tutor)
     {
 
@@ -1216,7 +1221,7 @@ class ControladorTutorFCT extends Controller
      */
     public function rellenarAnexoII(Request $val)
     {
-
+        $fecha = Carbon::now();
         $dni_tutor = $val->get('dni_tutor');
         $centro_estudos_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
         $centro_nombre = CentroEstudios::select('nombre')->where('cod','=',$centro_estudos_tutor[0]->cod_centro)->get();
@@ -1224,31 +1229,45 @@ class ControladorTutorFCT extends Controller
         $tutor_nombre = Profesor::select('nombre')->where('dni','=',$dni_tutor)->get();
         $tutor_apellidos = Profesor::select('apellidos')->where('dni','=',$dni_tutor)->get();
         $grupo_tutoriza=Tutoria::select('cod_grupo')->where('dni_profesor','=',$dni_tutor)->get();
-        $familia_profesional_descripcion = '';
-        $ciclo_nombre = '';
 
         $alumnos_del_tutor = Tutoria::join('matricula', 'tutoria.cod_centro', '=', 'matricula.cod_centro')
             ->where('matricula.cod_centro', '=', $centro_estudos_tutor[0]->cod_centro)
             ->select('matricula.dni_alumno')
             ->get();
 
+        //Como voy a obtener el nombre del documento??
+        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'. DIRECTORY_SEPARATOR .$fecha->year));
+        $rutaOrigen = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year . DIRECTORY_SEPARATOR .'plantilla' . '.docx';
+
         foreach ($alumnos_del_tutor as $a) {
             $alumno_nombre = Alumno::select('nombre')->where('dni','=',$a->dni)->get();
             $alumno_apellidos = Alumno::select('apellidos')->where('dni','=',$a->dni)->get();
+            $ciclo_nombre = Auxiliar::getNombreCicloAlumno($a->dni);
+            $familia_profesional_descripcion = Auxiliar::getDescripcionFamiliaProfesional($ciclo_nombre[0]->nombre_ciclo);
+            $empresa_nombre = ControladorAlumno::getNombreEmpresa($a->dni);
+            $tutor_empresa_nombre = ControladorAlumno::getNombreTutorEmpresa($a->dni);
+            $fct=ControladorAlumno::getDatosFct($a->dni);
+            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year. DIRECTORY_SEPARATOR . 'Anexo2_'.$a->dni.'docx';
 
+            $datos = [
+                'centro_nombre' =>  $centro_nombre->nombre,
+                'centro_cif' => $centro_cif[0]->cif,
+                'tutor_nombre' => $tutor_nombre[0]->nombre,
+                'tutor_apellidos' => $tutor_apellidos[0]->apellidos,
+                'grupo_tutoriza' => $grupo_tutoriza[0]->apellidos,
+                'alumno_nombre' => $tutor_apellidos[0]->nombre,
+                'alumno_apellidos' => $tutor_apellidos[0]->apellidos,
+                'familia_profesional_descripcion' => $familia_profesional_descripcion[0]->nombre,
+                'empresa_nombre' => $empresa_nombre[0]->nombre,
+                'tutor_empresa_nombre' => $tutor_empresa_nombre[0]->nombre,
+            ];
+    
+            $template = new TemplateProcessor($rutaOrigen);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestino);
+            unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year. DIRECTORY_SEPARATOR .'plantilla' . '.docx');
+            Anexo::create(['tipo_anexo' => 'Anexo2', 'ruta_anexo' => $rutaDestino]);
         }
-
-        $empresa_nombre = '';
-        $tutor_empresa_nombre = '';
-        $fct_fecha_ini = '';
-        $fct_fecha_fin = '';
-        $fct_departamento = '';
-        $fct_horas = '';
-
-
-        $datos = [
-            //'num_convenio' => $num_convenio[0]->cod_convenio,
-        ];
 
         //return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
     }

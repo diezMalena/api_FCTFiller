@@ -195,4 +195,62 @@ class Auxiliar
 
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
+    #region Funciones auxiliares para el Anexo XV
+
+    /**
+     * Esta funcion nos permite obtener la descripcion de la tabla familia profesional a través del
+     * nombre del ciclo
+     * @param [type] $nombreCiclo, es el nombre del ciclo
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public function getDescripcionFamiliaProfesional($nombreCiclo)
+    {
+
+        $familia_profesional = GrupoFamilia::join('grupo', 'grupo.cod', '=', 'grupo_familia.cod_grupo')
+            ->join('familia_profesional', 'familia_profesional.id', '=', 'grupo_familia.id_familia')
+            ->select('familia_profesional.descripcion')
+            ->where('grupo.nombre_ciclo', '=', $nombreCiclo)
+            ->get();
+
+        return $familia_profesional;
+    }
+
+     /**
+      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
+      * @param [type] $dni_alumno, es el dni del alumno
+      * @return void
+      * @author LauraM <lauramorenoramos97@gmail.com>
+      */
+    public function getNombreCicloAlumno($dni_alumno)
+    {
+
+        $nombre_ciclo = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->select('grupo.nombre_ciclo')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $nombre_ciclo;
+    }
+
+    /**
+     *Nos permite obtener el centro de estudios y la localidad al que este
+     *pertenece a través del dni de un alumno
+     * @param [type] $dni_alumno
+     * @return void
+     *@author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function getCentroEstudiosYLocalidad($dni_alumno)
+    {
+
+        $centro_estudios = Matricula::join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+            ->select('centro_estudios.nombre', 'centro_estudios.localidad')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $centro_estudios;
+    }
+
+    #endregion
+    /***********************************************************************/  
 }
