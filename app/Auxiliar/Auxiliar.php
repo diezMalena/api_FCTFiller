@@ -193,6 +193,70 @@ class Auxiliar
         }
     }
 
+    /**
+     * Guarda un fichero en base64 en la carpeta indicada
+     * @param string $path Ubicación en la que se desea guardar el fichero
+     * @param string $nombreFichero Nombre con el que se va a guardar el fichero
+     * @param string $fichero Cadena de texto en formato base64 que contiene el fichero
+     * @return string Ruta del fichero generado, si se ha guardado sin errores.
+     * @return boolean En caso de error, devuelve false.
+     * @author David Sánchez Barragán
+     */
+    public static function guardarFichero($path, $nombreFichero, $fichero)
+    {
+        if (strlen($path) == 0 || strlen($nombreFichero) == 0 || strlen($fichero) == 0) {
+            return false;
+        } else {
+            try {
+                //Se comprueba que existe el directorio $path antes de guardar el fichero
+                //Si el directorio no existe, se crea
+                self::existeCarpeta($path);
+
+                //Obtenemos la extensión del fichero:
+                $extension = explode('/', mime_content_type($fichero))[1];
+                //Abrimos el flujo de escritura para guardar el fichero
+                $flujo = fopen($path . DIRECTORY_SEPARATOR .  $nombreFichero . '.' . $extension, 'wb');
+
+                //Dividimos el string en comas
+                // $datos[ 0 ] == "data:type/extension;base64"
+                // $datos[ 1 ] == <actual base64 file>
+                $datos = explode(',', $fichero);
+
+                if (count($datos) > 1) {
+                    fwrite($flujo, base64_decode($datos[1]));
+                } else {
+                    return false;
+                }
+
+                fclose($flujo);
+
+                $devolver = $path . DIRECTORY_SEPARATOR . $nombreFichero . '.' . $extension;
+
+                return $devolver;
+            } catch (\Throwable $th) {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Borra el fichero según la ruta indicada en $path
+     *
+     * @param string $path Ruta del fichero a eliminar
+     * @author David Sánchez Barragán
+     */
+    public static function borrarFichero($path)
+    {
+        unlink($path);
+    }
+
+    /**
+     * Devuelve el server de ejecución del PHP
+     */
+    public static function obtenerURLServidor() {
+        return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
+    }
+
     #endregion
     /***********************************************************************/
 }
