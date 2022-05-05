@@ -3,6 +3,7 @@
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
+use App\Http\Controllers\ControladorEmpresas\ControladorResponCentro;
 use App\Http\Controllers\ControladorGenerico;
 use Illuminate\Support\Facades\Route;
 
@@ -125,11 +126,15 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
 
-    /*******************************ANEXO XV*******************************/
-    Route::post('/rellenarAnexoII', [ControladorAlumno::class, 'rellenarAnexoII']);
+    /*******************************ANEXO IV*******************************/
+    Route::post('/rellenarAnexoIV', [ControladorResponCentro::class, 'rellenarAnexoIV']);
     /**********************************************************************/
 
     /*******************************ANEXO II*******************************/
+    Route::post('/rellenarAnexoII', [ControladorTutorFCT::class, 'rellenarAnexoII']);
+    /**********************************************************************/
+
+    /*******************************SUBIR ANEXO*******************************/
     Route::post('/subirAnexo', [ControladorTutorFCT::class, 'subirAnexo']);
     /**********************************************************************/
 });
