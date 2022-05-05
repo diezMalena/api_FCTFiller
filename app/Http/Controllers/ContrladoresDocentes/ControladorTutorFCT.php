@@ -220,10 +220,10 @@ class ControladorTutorFCT extends Controller
         }
     }
 
-/**
- * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla Anexos
- * y borra esos anexos, que esten habilitados
- */
+    /**
+     * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla Anexos
+     * y borra esos anexos, que esten habilitados
+     */
     public function borrarAnexosTablaAnexos($tipoAnexo, $dni_tutor)
     {
 
@@ -1221,56 +1221,104 @@ class ControladorTutorFCT extends Controller
      */
     public function rellenarAnexoII(Request $val)
     {
+        $controlador=new ControladorAlumno();
+        $nombreDocumentoDefecto = 'plantilla.docx';
         $fecha = Carbon::now();
         $dni_tutor = $val->get('dni_tutor');
-        $centro_estudos_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
-        $centro_nombre = CentroEstudios::select('nombre')->where('cod','=',$centro_estudos_tutor[0]->cod_centro)->get();
-        $centro_cif =CentroEstudios::select('cif')->where('cod','=',$centro_estudos_tutor[0]->cod_centro)->get();
-        $tutor_nombre = Profesor::select('nombre')->where('dni','=',$dni_tutor)->get();
-        $tutor_apellidos = Profesor::select('apellidos')->where('dni','=',$dni_tutor)->get();
-        $grupo_tutoriza=Tutoria::select('cod_grupo')->where('dni_profesor','=',$dni_tutor)->get();
+        $centro_estudios_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
+        $centro_nombre = CentroEstudios::select('nombre')->where('cod', '=', $centro_estudios_tutor[0]->cod_centro)->get();
+        $centro_cif = CentroEstudios::select('cif')->where('cod', '=', $centro_estudios_tutor[0]->cod_centro)->get();
+        $tutor_nombre = Profesor::select('nombre')->where('dni', '=', $dni_tutor)->get();
+        $tutor_apellidos = Profesor::select('apellidos')->where('dni', '=', $dni_tutor)->get();
+        $ciclo_nombre = $this->getNombreCicloTutor($dni_tutor);
+        $familia_profesional_descripcion = ControladorAlumno::getDescripcionFamiliaProfesional($ciclo_nombre[0]->nombre_ciclo);
 
-        $alumnos_del_tutor = Tutoria::join('matricula', 'tutoria.cod_centro', '=', 'matricula.cod_centro')
-            ->where('matricula.cod_centro', '=', $centro_estudos_tutor[0]->cod_centro)
-            ->select('matricula.dni_alumno')
-            ->get();
+        $alumnos_del_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
 
-        //Como voy a obtener el nombre del documento??
-        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'. DIRECTORY_SEPARATOR .$fecha->year));
-        $rutaOrigen = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year . DIRECTORY_SEPARATOR .'plantilla' . '.docx';
+        //Como voy a obtener el nombre del documento?? pondre que suban el documento con un nombre concreto plantilla.docx
+        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $fecha->year));
+        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $nombreDocumentoDefecto;
 
         foreach ($alumnos_del_tutor as $a) {
-            $alumno_nombre = Alumno::select('nombre')->where('dni','=',$a->dni)->get();
-            $alumno_apellidos = Alumno::select('apellidos')->where('dni','=',$a->dni)->get();
-            $ciclo_nombre = Auxiliar::getNombreCicloAlumno($a->dni);
-            $familia_profesional_descripcion = Auxiliar::getDescripcionFamiliaProfesional($ciclo_nombre[0]->nombre_ciclo);
-            $empresa_nombre = ControladorAlumno::getNombreEmpresa($a->dni);
-            $tutor_empresa_nombre = ControladorAlumno::getNombreTutorEmpresa($a->dni);
-            $fct=ControladorAlumno::getDatosFct($a->dni);
-            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year. DIRECTORY_SEPARATOR . 'Anexo2_'.$a->dni.'docx';
+            $alumno_nombre = Alumno::select('nombre')->where('dni', '=', $a->dni_alumno)->get();
+            $alumno_apellidos = Alumno::select('apellidos')->where('dni', '=', $a->dni_alumno)->get();
+            //Sacar alumnos que van a FCT
+
+            $empresa_nombre = $controlador->getNombreEmpresa($a->dni_alumno);
+            $tutor_empresa_nombre = $controlador->getNombreTutorEmpresa($a->dni_alumno);
+            $fct = $controlador->getDatosFct($a->dni_alumno);
+            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $fecha->year . DIRECTORY_SEPARATOR . 'Anexo2_' . $a->dni_alumno . '.docx';
 
             $datos = [
-                'centro_nombre' =>  $centro_nombre->nombre,
+                'centro_nombre' =>  $centro_nombre[0]->nombre,
                 'centro_cif' => $centro_cif[0]->cif,
                 'tutor_nombre' => $tutor_nombre[0]->nombre,
                 'tutor_apellidos' => $tutor_apellidos[0]->apellidos,
-                'grupo_tutoriza' => $grupo_tutoriza[0]->apellidos,
-                'alumno_nombre' => $tutor_apellidos[0]->nombre,
-                'alumno_apellidos' => $tutor_apellidos[0]->apellidos,
-                'familia_profesional_descripcion' => $familia_profesional_descripcion[0]->nombre,
-                'empresa_nombre' => $empresa_nombre[0]->nombre,
-                'tutor_empresa_nombre' => $tutor_empresa_nombre[0]->nombre,
+                'empresa_nombre' => $empresa_nombre->nombre,
+                'tutor_empresa_nombre' => $tutor_empresa_nombre->nombre,
+                'fct_fecha_ini' => $fct->fecha_ini,
+                'fct_fecha_fin' => $fct->fecha_fin,
+                'alumno_nombre' => $alumno_nombre[0]->nombre,
+                'alumno_apellidos' => $alumno_apellidos[0]->apellidos,
+                'familia_profesional_descripcion' => $familia_profesional_descripcion[0]->descripcion,
+                'ciclo_nombre' => $ciclo_nombre[0]->nombre_ciclo,
+                'fct_departamento' => $fct->departamento,
+                'fct_horas' => $fct->horas
             ];
-    
-            $template = new TemplateProcessor($rutaOrigen);
-            $template->setValues($datos);
-            $template->saveAs($rutaDestino);
-            unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$fecha->year. DIRECTORY_SEPARATOR .'plantilla' . '.docx');
-            Anexo::create(['tipo_anexo' => 'Anexo2', 'ruta_anexo' => $rutaDestino]);
+
+            Auxiliar::templateProcessorAndSetValues($rutaOriginal, $rutaDestino, $datos);
+
+            $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo2')->where('ruta_anexo', 'like', "%$a->dni_alumno%")->get();
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => 'Anexo2', 'ruta_anexo' => $rutaDestino]);
+            }
         }
 
+        //unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$nombreDocumentoDefecto);
         //return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
+
     }
+
+
+    /***********************************************************************/
+    #region Funciones auxiliares para el Anexo II
+
+    /**
+     * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el tutor
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return void $nombre_ciclo, devuelveel nombre del ciclo
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function getNombreCicloTutor($dni_tutor)
+    {
+
+        $nombre_ciclo = Tutoria::join('grupo', 'grupo.cod', '=', 'tutoria.cod_grupo')
+            ->select('grupo.nombre_ciclo')
+            ->where('tutoria.dni_profesor', '=', $dni_tutor)->get();
+
+        return $nombre_ciclo;
+    }
+
+    /**
+     * Esta funcion nos permite obtener el nombre del los alumnos tutorizados por un tutor
+     *que van a FCT
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return $nombre_ciclo, devuelveel nombre del ciclo
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function getAlumnosQueVanAFct($dni_tutor)
+    {
+        $alumnosVanFct =  Tutoria::join('matricula', 'tutoria.cod_centro', '=', 'matricula.cod_centro')
+            ->join('fct', 'matricula.dni_alumno', '=', 'fct.dni_alumno')
+            ->where('tutoria.dni_profesor', '=', $dni_tutor)
+            ->select('matricula.dni_alumno')
+            ->get();
+
+        return $alumnosVanFct;
+    }
+
+    #endregion
+    /***********************************************************************/
     #endregion
     /***********************************************************************/
 }
