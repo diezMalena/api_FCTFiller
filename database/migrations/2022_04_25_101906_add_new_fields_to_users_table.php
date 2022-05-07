@@ -15,9 +15,9 @@ class AddNewFieldsToUsersTable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('perfil')->after('remember_token');
+            $table->string('tipo')->after('remember_token');
         });
-        DB::statement('INSERT INTO users (email, password, name, perfil)
+        DB::statement('INSERT INTO users (email, password, name, tipo)
                         SELECT alumno.email, alumno.password, CONCAT(alumno.nombre, " ", alumno.apellidos), "alumno" AS "perfil"
                         FROM alumno UNION ALL
                         SELECT trabajador.email, trabajador.password, CONCAT(trabajador.nombre, " ", trabajador.apellidos), "trabajador" AS "perfil"

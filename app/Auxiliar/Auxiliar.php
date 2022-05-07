@@ -145,17 +145,19 @@ class Auxiliar
     /**
      * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email, según qué tipo de usuario sea.
      *
-     * @param int $usuario array con los datos del usuario
+     * @param User $user Modelo con los datos básicos del usuario
+     * @return Model $usuario Modelo con los datos del usuario, según su perfil
      * @author alvaro <alvarosantosmartin6@gmail.com>
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function getDatosUsuario($usuario_view)
+    public static function getDatosUsuario($user)
     {
-        if ($usuario_view->perfil == 'alumno') {
-            $usuario = Alumno::where('email', '=', $usuario_view->email)
+        if ($user->tipo == 'alumno') {
+            $usuario = Alumno::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
-        } else if ($usuario_view->perfil == 'trabajador') {
-            $usuario = Trabajador::where('email', '=', $usuario_view->email)
+        } else if ($user->tipo == 'trabajador') {
+            $usuario = Trabajador::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
             $roles = RolTrabajadorAsignado::where('dni', '=', $usuario->dni)
@@ -163,7 +165,7 @@ class Auxiliar
                 ->get();
             $usuario->roles = $roles;
         } else {
-            $usuario = Profesor::where('email', '=', $usuario_view->email)
+            $usuario = Profesor::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
             $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
@@ -171,7 +173,7 @@ class Auxiliar
                 ->get();
             $usuario->roles = $roles;
         }
-        $usuario->tipo = $usuario_view->perfil;
+        $usuario->tipo = $user->tipo;
         return $usuario;
     }
 

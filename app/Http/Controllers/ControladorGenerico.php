@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
+use App\Models\RolProfesorAsignado;
+use App\Models\RolTrabajadorAsignado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -15,38 +17,28 @@ class ControladorGenerico extends Controller
     #region Autenticación
 
     /**
-     * Extrae de una vista los datos del usuario que ha introducido el correo y contraseña,
-     * comprueba que ese email existe en la base de datos y después compara que la contraseña
-     * que ha introducido el usuario coincida con la contraseña asociada a ese email.
-     * Si todo eso es correcto llama a la función de obtener sus datos y creal el token,
-     * si no, devuelve un error.
+     * Coteja los datos de email y contraseña del login con los de la base de datos,
+     * devolviendo el modelo del usuario con sus roles construidos (si los tuviera) si es correcto
+     * y un código estándar http según el resultado
      *
-     * @param int $usuario array con los datos del usuario
-     * @author alvaro <alvarosantosmartin6@gmail.com>
+     * @param Request $req Los datos del login (email y password)
+     * @return Response Respuesta JSON que contiene un mensaje, un código http y, si el login es correcto, un modelo usuario
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public function login(Request $request)
+    public function login(Request $req)
     {
-        //Extraigo los campos
-        $email = $request->get('email');
-        $pass = $request->get('pass');
-        //Hago la query
-        $quer = 'select * from usuarios_view'
-            . ' where email = ?';
-        $usuario_view = DB::select($quer, [$email]);
-        if (count($usuario_view) > 0) {
-            $usuario_view = $usuario_view[0];
-            $ckPass = Hash::check($pass, $usuario_view->password);
-            if ($ckPass) {
-                $usuario = Auxiliar::getDatosUsuario($usuario_view);
-                //DSB Cambio 10-03-2022: Añadido codigo de centro de estudios
-                $usuario->cod_centro = Auxiliar::obtenerCentroPorDNIProfesor($usuario->dni);
-                // $usuario->token = auth()->user()->createToken('authToken')->accessToken;
-                return response()->json($usuario, 200);
-            } else {
-                return response()->json(['mensaje' => 'Datos de inicio de sesión incorrectos'], 403);
-            }
+        $loginData = $req->all();
+        if (!auth()->attempt($loginData)) {
+            return response()->json(['message' => 'Login incorrecto'], 400);
         } else {
-            return response()->json(['mensaje' => 'Datos de inicio de sesión incorrectos'], 403);
+            $user = auth()->user();
+            $token = $user->createToken('authToken')->accessToken;
+            $usuario = Auxiliar::getDatosUsuario($user);
+            return response()->json([
+                'usuario' => $usuario,
+                'access_token' => $token,
+                'message' => 'Login correcto'
+            ], 200);
         }
     }
 
