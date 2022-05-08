@@ -6,6 +6,7 @@ use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;

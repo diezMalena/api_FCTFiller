@@ -6,7 +6,6 @@ use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
-use App\Models\RolEmpresa;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
@@ -211,7 +210,8 @@ class Auxiliar
      *
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function addUser(Model $model, string $perfil) {
+    public static function addUser(Model $model, string $perfil)
+    {
         try {
             User::create([
                 'email' => $model->email,
@@ -233,7 +233,8 @@ class Auxiliar
      *
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function getUser(string $email) {
+    public static function getUser(string $email)
+    {
         try {
             if ($user = User::where('email', $email)->first()) {
                 return $user;
@@ -253,7 +254,8 @@ class Auxiliar
      *
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function updateUser(Model $model, string $email) {
+    public static function updateUser(Model $model, string $email)
+    {
         try {
             $update = User::where('email', $email)->update([
                 'email' => $model->email,
@@ -282,7 +284,8 @@ class Auxiliar
      *
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function deleteUser(string $email) {
+    public static function deleteUser(string $email)
+    {
         try {
             $delete = User::where('email', $email)->delete();
             if ($delete > 0) {
@@ -293,6 +296,38 @@ class Auxiliar
         } catch (Exception $ex) {
             return 500; // Internal Server Error
         }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Obtención de roles
+
+    /**
+     * Devuelve los roles de un profesor a partir de su email
+     *
+     * @param string $email email del usuario
+     * @return array Array de roles del profesor
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getRolesProfesorFromEmail(string $email)
+    {
+        return RolProfesorAsignado::where('dni', Profesor::where('email', $email)->first()->dni)
+            ->pluck('id_rol')->toArray();
+    }
+
+    /**
+     * Devuelve los roles de un trabajador a partir de su email
+     *
+     * @param string $email email del usuario
+     * @return array Array de roles del trabajador
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getRolesTrabajadorFromEmail(string $email)
+    {
+        return RolTrabajadorAsignado::where('dni', Trabajador::where('email', $email)->first()->dni)
+            ->pluck('id_rol')->toArray();
     }
 
     #endregion
