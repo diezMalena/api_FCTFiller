@@ -109,9 +109,15 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::put('/addDepartamento', [ControladorAlumno::class, 'addDepartamento']);
     Route::post('/sumatorioHorasTotales', [ControladorAlumno::class, 'sumatorioHorasTotales']);
     Route::post('/devolverJornadas', [ControladorAlumno::class, 'devolverJornadas']);
+    Route::post('/devolverSemanas', [ControladorAlumno::class, 'devolverSemanas']);
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
     Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
+
+    //Subida de hoja de seguimiento:
+    Route::post('/subirAnexo3', [ControladorAlumno::class, 'subirAnexo3']);
+
+
     //----Gestión del tutor de la empresa
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::get('getTutoresResponsables/id={id_empresa}', [ControladorAlumno::class, 'getTutoresResponsables']);

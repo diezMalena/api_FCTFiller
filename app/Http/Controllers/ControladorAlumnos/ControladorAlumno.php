@@ -16,6 +16,7 @@ use App\Models\Seguimiento;
 use App\Models\Trabajador;
 use App\Models\Matricula;
 use App\Models\Anexo;
+use App\Models\Semana;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
@@ -28,6 +29,9 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Illuminate\Support\Facades\Storage;
+
+
 
 class ControladorAlumno extends Controller
 {
@@ -96,18 +100,27 @@ class ControladorAlumno extends Controller
     public function addJornada(Request $req)
     {
         $jornada = $req->get('jornada');
-
-        $fct = $this->buscarId_fct($req->get('dni_alumno'));
+        $dni_alumno = $req->get('dni_alumno');
+        $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
         $jornada['id_fct'] = $id_fct;
 
-        $ultimoOrden = $this->encontrarUltimoOrden($id_fct);
-        if ($ultimoOrden[0]->orden_jornada == null) {
+        $ultimoOrden = $this->encontrarUltimoOrden($id_fct)[0]->orden_jornada;
+        if ($ultimoOrden == null) {
             $jornada['orden_jornada'] = 1;
         } else {
-            $jornada['orden_jornada'] = $ultimoOrden[0]->orden_jornada + 1;
+            $jornada['orden_jornada'] = $ultimoOrden + 1;
         }
         $seguimiento = Seguimiento::create($jornada);
+
+        if(($ultimoOrden + 1) % 5 == 0){
+            //Es el último día de la semana:
+            $jornadas = $this->ultimaJornada($dni_alumno);
+            $semana = Semana::create([
+                'id_fct' => $id_fct,
+                'id_quinto_dia' => $jornadas[0]->id,
+            ]);
+        }
     }
 
     /**
@@ -119,7 +132,10 @@ class ControladorAlumno extends Controller
      */
     public function devolverJornadas(Request $req)
     {
-        $dni_alumno = $dni_alumno = $req->get('dni');
+        //este array tendrá dentro las jornadas divididas de 5 en 5 para organizarlas en semanas.
+        $semanas = []; //Array de semanas
+        $semana = []; //Array de jornadas
+        $dni_alumno = $req->get('dni');
 
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
@@ -128,11 +144,34 @@ class ControladorAlumno extends Controller
             ->select('seguimiento.id AS id_jornada', 'seguimiento.orden_jornada AS orden_jornada', 'seguimiento.fecha_jornada AS fecha_jornada', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
-            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->orderBy('seguimiento.orden_jornada', 'ASC')
             ->get();
 
-        return response()->json($jornadas, 200);
+
+        for($i=0;$i<count($jornadas);$i++){
+            $semana[] = $jornadas[$i];
+            if(count($semana) == 5 || $i == count($jornadas)-1){
+                $semanas[] = $semana;
+                $semana = [];
+            }
+        }
+        return response()->json($semanas, 200);
     }
+
+
+
+    public function devolverSemanas(Request $req){
+        $dni_alumno = $req->get('dni');
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+
+        $semanas = Semana::where('id_fct', '=', $id_fct)
+            ->orderBy('id_quinto_dia', 'DESC')
+            ->get();
+
+        return response()->json($semanas, 200);
+    }
+
 
     /**
      * Método que recibe una jornada editada y la actualiza en la BBDD.
@@ -329,6 +368,7 @@ class ControladorAlumno extends Controller
     public function generarAnexo3(Request $req)
     {
         $dni_alumno = $req->get('dni');
+        $id_quinto_dia = $req->get('id_quinto_dia');
 
         //Primero, vamos a sacar el centro donde está el alumno:
         $centro = $this->centroDelAlumno($dni_alumno);
@@ -347,7 +387,7 @@ class ControladorAlumno extends Controller
         //Sacamos los registros que necesitamos de la tabla FCT:
         $fct = $this->getDatosFct($dni_alumno);
         //Cogemos las ultimas 5 jornadas, para ponerlas en el documento:
-        $jornadas = $this->las5UltimasJornadas($dni_alumno);
+        $jornadas = $this->las5UltimasJornadas($dni_alumno, $id_quinto_dia);
 
         //Construyo el array con todos los datos y ss correspondientes prefijos.
         $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional', 'ciclo', 'empresa', 'tutor_empresa', 'fct'];
@@ -380,6 +420,22 @@ class ControladorAlumno extends Controller
         $template->saveAs($rutaDestino);
 
         return response()->download(public_path($rutaDestino));
+    }
+
+    /**
+     * Esta función es para el alumno que se baja el documento, lo firma y lo sube por primera vez, para los tutores será diferente
+     */
+    public function subirAnexo3(Request $req){
+        $ficheros = $req->ficheros[0];
+        $dni_alumno = $req->get('dni');
+
+        $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
+
+        $path=Storage::putFile($rutaDestino, $ficheros);
+        // Storage::put($ficheros[1]->name, $rutaDestino);
+        // $path=$ficheros->storeAs(
+        //     $rutaDestino, $ficheros->name
+        // );
     }
 
     /***********************************************************************/
@@ -518,20 +574,44 @@ class ControladorAlumno extends Controller
      * @return array $jornadas
      * @author Malena
      */
-    public function las5UltimasJornadas(string $dni_alumno)
+    public function las5UltimasJornadas(string $dni_alumno, $id_quinto_dia)
     {
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
 
+        $quinto_dia = Seguimiento:: where('id','=',$id_quinto_dia)
+            ->first();
+
         $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id','seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
+            ->where('seguimiento.orden_jornada','<=',$quinto_dia->orden_jornada)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
             ->take(5)
             ->get();
 
+
         return $jornadas;
+    }
+
+    /**
+     * Método que recoge la última jornada añadida.
+     */
+    public function ultimaJornada($dni_alumno){
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+
+        $jornada = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
+            ->select('seguimiento.id AS id','seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->where('fct.dni_alumno', '=', $dni_alumno)
+            ->where('fct.id_empresa', '=', $id_empresa)
+            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->take(1)
+            ->get();
+
+
+        return $jornada;
     }
 
     /**
@@ -546,6 +626,7 @@ class ControladorAlumno extends Controller
             ->first();
         return $tutor_empresa;
     }
+
 
     #endregion
     /***********************************************************************/
