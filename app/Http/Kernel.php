@@ -73,5 +73,6 @@ class Kernel extends HttpKernel
         'representante' => \App\Http\Middleware\AuthRepresentante::class,
         'responsable' => \App\Http\Middleware\AuthResponsable::class,
         'tutor_empresa' => \App\Http\Middleware\AuthTutorEmpresa::class,
+        'alumno_tutor' => \App\Http\Middleware\AuthAlumnoOTutor::class,
     ];
 }

@@ -100,10 +100,10 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
 
 /*
 |--------------------------------------------------------------------------
-| Rutas para el perfil del alumnado
+| Rutas a las que pueden acceder tutor y alumno
 |--------------------------------------------------------------------------
 */
-Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
+Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function () {
     /************************SEGUIMIENTO - ANEXO III************************/
     Route::any('/addJornada', [ControladorAlumno::class, 'addJornada']);
     Route::any('/devolverDatosAlumno', [ControladorAlumno::class, 'devolverDatosAlumno']);
