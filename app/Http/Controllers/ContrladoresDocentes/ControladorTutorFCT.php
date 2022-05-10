@@ -35,6 +35,7 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Faker\Core\Number;
@@ -1169,20 +1170,36 @@ class ControladorTutorFCT extends Controller
      */
     public function subirAnexo(Request $req)
     {
-        $dni = $req->get('dni');
-        $tipo_anexo = $req->get('tipo_anexo');
         error_log($req);
-        //Si estamos recogiendo un documento
-        if ($req->hasFile('documento')) {
-            $file = $req->file('documento');
-
+        $fichero= $req->get('file');
+        $dni = $req->get('dni');
+        $tipoAnexo = $req->get('tipoAnexo');
+        $nombreArchivo = $req->get('nombreArchivo');
+        try{
             //Comprobamos que existe la carpeta donde lo vamos a depositar, y sino existe, se crea
-            $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipo_anexo;
+            $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipoAnexo;
             Auxiliar::existeCarpeta($rutaCarpeta);
 
-            //recogemos su nombre original
-            $nombreArchivo  = $file->getClientOriginalName();
-            //$extension = $file->getClientOriginalExtension();
+            //Obtenemos la extensión del fichero:
+            //$extension = explode('/', mime_content_type($fichero))[1];
+
+            //Abrimos el flujo de escritura para guardar el fichero
+            //$flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo . '.' . $extension, 'wb');
+            $flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo , 'wb');
+
+                //Dividimos el string en comas
+                // $datos[ 0 ] == "data:type/extension;base64"
+                // $datos[ 1 ] == <actual base64 file>
+
+                $datos = explode(',', $fichero);
+
+                if (count($datos) > 1) {
+                    fwrite($flujo, base64_decode($datos[1]));
+                } else {
+                    return false;
+                }
+
+                fclose($flujo);
 
             //También hay que añadir dicho anexo a la base de datos, pero no, sin antes comprobar si existe, por que sino, se duplicarian los datos,
             //lo buscamos sin extension, por que si existe, se actualizara con la nueva ruta y si no existe,
@@ -1190,10 +1207,10 @@ class ControladorTutorFCT extends Controller
             $rutaParaBBDD = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
             $archivoNombreSinExtension = explode('.', $nombreArchivo);
             $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
-            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
-
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+                error_log('fsdfd');
             if (count($existeAnexo) == 0) {
-                Anexo::create(['tipo_anexo' => $tipo_anexo, 'ruta_anexo' => $rutaParaBBDD]);
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
             } else {
                 Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                     'ruta_anexo' => $rutaParaBBDD,
@@ -1201,10 +1218,10 @@ class ControladorTutorFCT extends Controller
             }
 
             //Lo ponemos con su nombre original, en un directorio que queramos
-            $file->move(public_path($rutaCarpeta), $nombreArchivo);
-            return response()->json(["message" => "Documento subido!"]);
-        } else {
-            return response()->json(["message" => "Selecciona primero un documento"]);
+            $fichero->move(public_path($rutaCarpeta), $nombreArchivo);
+
+        } catch (\Throwable $th) {
+            return false;
         }
     }
     #endregion
@@ -1212,19 +1229,25 @@ class ControladorTutorFCT extends Controller
 
 
     /***********************************************************************/
-    #region Anexo II - Programa formativo
+    #region Anexo II Y IV - Programa formativo
     /**
-     * Esta funcion nos permite rellenar el Anexo 2
+     * Esta funcion nos permite rellenar el Anexo II Y IV
      * @author LauraM <lauramorenoramos97@gmail.com>
      * @param Request $val->get(dni_tutor) es el dni del tutor
      * @return void
      */
-    public function rellenarAnexoII(Request $val)
+    public function rellenarAnexoIIYIV(Request $val)
     {
+        //Controlador
         $controlador=new ControladorAlumno();
+
+        //Request
+        $dni_tutor = $val->get('dni_tutor');
+        $tipo_anexo= $val->get('anexo');
+
+        //Resto variables relleno Anexo
         $nombreDocumentoDefecto = 'plantilla.docx';
         $fecha = Carbon::now();
-        $dni_tutor = $val->get('dni_tutor');
         $centro_estudios_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
         $centro_nombre = CentroEstudios::select('nombre')->where('cod', '=', $centro_estudios_tutor[0]->cod_centro)->get();
         $centro_cif = CentroEstudios::select('cif')->where('cod', '=', $centro_estudios_tutor[0]->cod_centro)->get();
@@ -1232,23 +1255,23 @@ class ControladorTutorFCT extends Controller
         $tutor_apellidos = Profesor::select('apellidos')->where('dni', '=', $dni_tutor)->get();
         $ciclo_nombre = $this->getNombreCicloTutor($dni_tutor);
         $familia_profesional_descripcion = ControladorAlumno::getDescripcionFamiliaProfesional($ciclo_nombre[0]->nombre_ciclo);
-
         $alumnos_del_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
 
         //Como voy a obtener el nombre del documento?? pondre que suban el documento con un nombre concreto plantilla.docx
-        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $fecha->year));
-        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $nombreDocumentoDefecto;
+        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo));
+        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo . DIRECTORY_SEPARATOR . $nombreDocumentoDefecto;
 
         foreach ($alumnos_del_tutor as $a) {
+
             $alumno_nombre = Alumno::select('nombre')->where('dni', '=', $a->dni_alumno)->get();
             $alumno_apellidos = Alumno::select('apellidos')->where('dni', '=', $a->dni_alumno)->get();
-            //Sacar alumnos que van a FCT
-
             $empresa_nombre = $controlador->getNombreEmpresa($a->dni_alumno);
-            $tutor_empresa_nombre = $controlador->getNombreTutorEmpresa($a->dni_alumno);
+            $tutor_empresa_nombre = $this->getNombreYApellidoTutorEmpresa($a->dni_alumno);
             $fct = $controlador->getDatosFct($a->dni_alumno);
-            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR . $fecha->year . DIRECTORY_SEPARATOR . 'Anexo2_' . $a->dni_alumno . '.docx';
+            //Seguramente, si es el anexo IV añada un If y ponga el ID de la empresa o dni del trabajador
+            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo .DIRECTORY_SEPARATOR . $tipo_anexo.'_' . $a->dni_alumno .'_'. $fecha->year.'_.docx';
 
+            //Datos que van a rellenar los anexos
             $datos = [
                 'centro_nombre' =>  $centro_nombre[0]->nombre,
                 'centro_cif' => $centro_cif[0]->cif,
@@ -1256,6 +1279,7 @@ class ControladorTutorFCT extends Controller
                 'tutor_apellidos' => $tutor_apellidos[0]->apellidos,
                 'empresa_nombre' => $empresa_nombre->nombre,
                 'tutor_empresa_nombre' => $tutor_empresa_nombre->nombre,
+                'tutor_empresa_apellido' => $tutor_empresa_nombre->apellidos,
                 'fct_fecha_ini' => $fct->fecha_ini,
                 'fct_fecha_fin' => $fct->fecha_fin,
                 'alumno_nombre' => $alumno_nombre[0]->nombre,
@@ -1263,25 +1287,29 @@ class ControladorTutorFCT extends Controller
                 'familia_profesional_descripcion' => $familia_profesional_descripcion[0]->descripcion,
                 'ciclo_nombre' => $ciclo_nombre[0]->nombre_ciclo,
                 'fct_departamento' => $fct->departamento,
-                'fct_horas' => $fct->horas
+                'fct_horas' => $fct->horas,
+                'dia' => $fecha->day,
+                'mes' => Parametros::MESES[$fecha->month],
+                'year' => $fecha->year,
             ];
 
             Auxiliar::templateProcessorAndSetValues($rutaOriginal, $rutaDestino, $datos);
 
-            $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo2')->where('ruta_anexo', 'like', "%$a->dni_alumno%")->get();
+            //Base de datos
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('ruta_anexo', 'like', "%$a->dni_alumno%")->get();
             if (count($existeAnexo) == 0) {
-                Anexo::create(['tipo_anexo' => 'Anexo2', 'ruta_anexo' => $rutaDestino]);
+                Anexo::create(['tipo_anexo' => $tipo_anexo, 'ruta_anexo' => $rutaDestino]);
             }
         }
 
-        //unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2' . DIRECTORY_SEPARATOR .$nombreDocumentoDefecto);
+        //unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo . DIRECTORY_SEPARATOR .$nombreDocumentoDefecto);
         //return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
 
     }
 
 
     /***********************************************************************/
-    #region Funciones auxiliares para el Anexo II
+    #region Funciones auxiliares para el Anexo II y IV
 
     /**
      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el tutor
@@ -1297,6 +1325,22 @@ class ControladorTutorFCT extends Controller
             ->where('tutoria.dni_profesor', '=', $dni_tutor)->get();
 
         return $nombre_ciclo;
+    }
+
+   /**
+    * Esta funcion nos permite obtener el nombre y el apellido del tutor de la empresa
+    * @param [type] $dni_tutor, es el dni del tutor
+    * @author LauraM <lauramorenoramos97@gmail.com>
+    */
+    public static function getNombreYApellidoTutorEmpresa($dni_alumno)
+    {
+
+        $tutor_empresa = Trabajador::join('fct', 'trabajador.dni', '=', 'fct.dni_tutor_empresa')
+        ->select('trabajador.nombre','trabajador.apellidos')
+        ->where('fct.dni_alumno', '=', $dni_alumno)
+        ->first();
+
+        return $tutor_empresa;
     }
 
     /**
