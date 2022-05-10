@@ -30,6 +30,7 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 
 
@@ -113,7 +114,7 @@ class ControladorAlumno extends Controller
         }
         $seguimiento = Seguimiento::create($jornada);
 
-        if(($ultimoOrden + 1) % 5 == 0){
+        if (($ultimoOrden + 1) % 5 == 0) {
             //Es el último día de la semana:
             $jornadas = $this->ultimaJornada($dni_alumno);
             $semana = Semana::create([
@@ -148,9 +149,9 @@ class ControladorAlumno extends Controller
             ->get();
 
 
-        for($i=0;$i<count($jornadas);$i++){
+        for ($i = 0; $i < count($jornadas); $i++) {
             $semana[] = $jornadas[$i];
-            if(count($semana) == 5 || $i == count($jornadas)-1){
+            if (count($semana) == 5 || $i == count($jornadas) - 1) {
                 $semanas[] = $semana;
                 $semana = [];
             }
@@ -160,7 +161,8 @@ class ControladorAlumno extends Controller
 
 
 
-    public function devolverSemanas(Request $req){
+    public function devolverSemanas(Request $req)
+    {
         $dni_alumno = $req->get('dni');
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
@@ -425,17 +427,16 @@ class ControladorAlumno extends Controller
     /**
      * Esta función es para el alumno que se baja el documento, lo firma y lo sube por primera vez, para los tutores será diferente
      */
-    public function subirAnexo3(Request $req){
-        $ficheros = $req->ficheros[0];
-        $dni_alumno = $req->get('dni');
+    public function subirAnexo3(Request $req)
+    {
+        $dni_alumno = $req->dni;
+        $rutaDestino = public_path() . DIRECTORY_SEPARATOR . $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
 
-        $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
-
-        $path=Storage::putFile($rutaDestino, $ficheros);
-        // Storage::put($ficheros[1]->name, $rutaDestino);
-        // $path=$ficheros->storeAs(
-        //     $rutaDestino, $ficheros->name
-        // );
+        if (strpos($req->file_name, ".pdf")) {
+            $replaced = Str::replace('.pdf', '', $req->file_name);
+        }
+        // error_log($replaced);
+        $foto = Auxiliar::guardarFichero($rutaDestino, $replaced, $req->file);
     }
 
     /***********************************************************************/
@@ -579,14 +580,14 @@ class ControladorAlumno extends Controller
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
 
-        $quinto_dia = Seguimiento:: where('id','=',$id_quinto_dia)
+        $quinto_dia = Seguimiento::where('id', '=', $id_quinto_dia)
             ->first();
 
         $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.id AS id','seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
-            ->where('seguimiento.orden_jornada','<=',$quinto_dia->orden_jornada)
+            ->where('seguimiento.orden_jornada', '<=', $quinto_dia->orden_jornada)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
             ->take(5)
             ->get();
@@ -598,12 +599,13 @@ class ControladorAlumno extends Controller
     /**
      * Método que recoge la última jornada añadida.
      */
-    public function ultimaJornada($dni_alumno){
+    public function ultimaJornada($dni_alumno)
+    {
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
 
         $jornada = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.id AS id','seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
@@ -712,12 +714,12 @@ class ControladorAlumno extends Controller
         return $familia_profesional;
     }
 
-     /**
-      * @author LauraM <lauramorenoramos97@gmail.com>
-      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
-      * @param [type] $dni_alumno, es el dni del alumno
-      * @return void
-      */
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return void
+     */
     public function getNombreCicloAlumno($dni_alumno)
     {
 
