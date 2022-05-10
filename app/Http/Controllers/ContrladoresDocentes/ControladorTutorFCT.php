@@ -164,6 +164,8 @@ class ControladorTutorFCT extends Controller
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
                 Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
+                $trabajador = Trabajador::find($empresa['dni_responsable']);
+                Auxiliar::updateUser($trabajador, $trabajador->email);
                 $alumnos = $empresa['alumnos'];
                 foreach ($alumnos as $alumno) {
                     Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -827,11 +829,13 @@ class ControladorTutorFCT extends Controller
         $message = '';
         $code = 0;
         try {
+            $email = Trabajador::find($req->dni)->email;
             Trabajador::where('dni', $req->dni)->update([
                 'nombre' => $req->nombre,
                 'apellidos' => $req->apellidos,
                 'email' => $req->email
             ]);
+            Auxiliar::updateUser(Trabajador::find($req->dni), $email);
             $title = 'Representante actualizado';
             $message = 'Se han actualizado los datos de ';
             $code = 200;
@@ -879,6 +883,7 @@ class ControladorTutorFCT extends Controller
             $repre_aux["id_empresa"] = $empresa->id;
             $repre_aux["password"] = Hash::make($repre_aux["password"]);
             $representante = Trabajador::create($repre_aux);
+            Auxiliar::addUser($representante, "trabajador");
             RolTrabajadorAsignado::create([
                 'dni' => $representante->dni,
                 'id_rol' => 1,
