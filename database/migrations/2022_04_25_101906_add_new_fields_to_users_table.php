@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -17,14 +18,17 @@ class AddNewFieldsToUsersTable extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('tipo')->after('remember_token');
         });
-        DB::statement('INSERT INTO users (email, password, name, tipo)
+        if (User::count() != 0) {
+            DB::statement(
+                'INSERT INTO users (email, password, name, tipo)
                         SELECT alumno.email, alumno.password, CONCAT(alumno.nombre, " ", alumno.apellidos), "alumno" AS "perfil"
                         FROM alumno UNION ALL
                         SELECT trabajador.email, trabajador.password, CONCAT(trabajador.nombre, " ", trabajador.apellidos), "trabajador" AS "perfil"
                         FROM trabajador UNION ALL
                         SELECT profesor.email, profesor.password, CONCAT(profesor.nombre, " ", profesor.apellidos), "profesor" AS "perfil"
                         FROM profesor'
-        );
+            );
+        }
     }
 
     /**

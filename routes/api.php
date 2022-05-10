@@ -125,4 +125,4 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     /**********************************************************************/
 });
 
-Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba'])->middleware('director');
+Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);

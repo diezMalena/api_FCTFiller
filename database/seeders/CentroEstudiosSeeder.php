@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Auxiliar\Auxiliar;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
@@ -53,8 +54,10 @@ class CentroEstudiosSeeder extends Seeder
                         'apellidos' => 'Santos Cabaña',
                         'cod_centro_estudios' => $centro->cod,
                     ]);
+                    Auxiliar::addUser($profe, "profesor");
                 } else {
                     $profe = Profesor::factory()->create();
+                    Auxiliar::addUser($profe, "profesor");
                 }
                 //Extraigo su clave primaria y la establezco en la factoría de los roles del profe
                 $dni = $profe->dni;

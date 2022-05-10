@@ -241,7 +241,7 @@ class ControladorJefatura extends Controller
                         try {
                             //Se recoge el DNI, si está vacío, se recoge el NIE
                             $dni = trim($vec[array_search('DNI', self::CABECERA_ALUMNOS)] != '' ?  $vec[array_search('DNI', self::CABECERA_ALUMNOS)] : $vec[array_search('NIE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\"");
-                            Alumno::create([
+                            $alu = Alumno::create([
                                 'dni' => $dni,
                                 'cod_alumno' => trim($vec[array_search('ALUMNO', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 //Para mantener la integridad de la base de datos, si el correo
@@ -255,6 +255,7 @@ class ControladorJefatura extends Controller
                                 'localidad' => trim($vec[array_search('LOCALIDAD', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'va_a_fct' => '0'
                             ]);
+                            Auxiliar::addUser($alu, 'alumno');
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
@@ -381,7 +382,7 @@ class ControladorJefatura extends Controller
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
 
-                            Profesor::create([
+                            $profe = Profesor::create([
                                 'dni' => $dni,
                                 'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
                                 'password' => Hash::make('superman'),
@@ -389,6 +390,7 @@ class ControladorJefatura extends Controller
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'cod_centro_estudios' => $codCentroEstudios
                             ]);
+                            Auxiliar::addUser($profe, "profesor");
 
                             //DSB Cambio 16-04-2022: se añade el rol profesor a todos los profesores creados
                             RolProfesorAsignado::create([
@@ -671,7 +673,7 @@ class ControladorJefatura extends Controller
      */
     public function eliminarProfesor($dni_profesor)
     {
-
+        Auxiliar::deleteUser(Profesor::find($dni_profesor)->email);
         Profesor::where('dni', '=', $dni_profesor)->delete();
         $ruta = public_path($dni_profesor);
         $this->eliminarCarpetaRecursivo($ruta);
@@ -728,7 +730,8 @@ class ControladorJefatura extends Controller
                     'message' => 'Este profesor ya existe'
                 ], 401);
             } else {
-                Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => Hash::make($password1), 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
+                $profe = Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => Hash::make($password1), 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
+                Auxiliar::addUser($profe, "profesor");
                 foreach ($roles as $r) {
                     RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
                 }
@@ -767,9 +770,10 @@ class ControladorJefatura extends Controller
 
         if (strcmp($password1, $password2) == 0) {
 
+            $email = Profesor::find($dniPersonaAnt)->email;
             Profesor::where('dni', $dniPersonaAnt)
                 ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
-
+            Auxiliar::updateUser(Profesor::find($dni), $email);
             RolProfesorAsignado::where('dni', '=', $dni)->delete();
             foreach ($roles as $r) {
                 RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
@@ -906,7 +910,7 @@ class ControladorJefatura extends Controller
     public function addAlumno(Request $r)
     {
         try {
-            Alumno::create([
+            $alu = Alumno::create([
                 'dni' => $r->dni,
                 'cod_alumno' => $r->cod_alumno,
                 'email' => $r->email,
@@ -917,6 +921,7 @@ class ControladorJefatura extends Controller
                 'localidad' => $r->localidad,
                 'va_a_fct' => $r->va_a_fct,
             ]);
+            Auxiliar::addUser($alu, 'alumno');
 
             Matricula::create([
                 'cod' => $r->matricula_cod,
@@ -945,7 +950,9 @@ class ControladorJefatura extends Controller
     public function modificarAlumno(Request $r)
     {
         try {
+            $email = '';
             if (strlen($r->dni_antiguo) != 0) {
+                $email = Alumno::find($r->dni_antiguo)->email;
                 Alumno::where('dni', '=', $r->dni_antiguo)->update([
                     'dni' => $r->dni,
                     'cod_alumno' => $r->cod_alumno,
@@ -956,11 +963,13 @@ class ControladorJefatura extends Controller
                     'localidad' => $r->localidad,
                     'va_a_fct' => $r->va_a_fct
                 ]);
+
                 if ($r->password) {
                     Alumno::where('dni', '=', $r->dni)->update([
                         'password' => Hash::make($r->password)
                     ]);
                 }
+                Auxiliar::addUser(Alumno::find($r->dni), $email);
 
                 Matricula::where([
                     ['dni_alumno', '=', $r->dni],
@@ -991,6 +1000,7 @@ class ControladorJefatura extends Controller
     public function eliminarAlumno($dni_alumno)
     {
         try {
+            Auxiliar::deleteUser(Alumno::find($dni_alumno));
             Alumno::where('dni', '=', $dni_alumno)->delete();
 
             return response()->json(['mensaje' => 'Alumno borrado correctamente'], 200);

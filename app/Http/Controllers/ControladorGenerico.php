@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
+use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\User;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
