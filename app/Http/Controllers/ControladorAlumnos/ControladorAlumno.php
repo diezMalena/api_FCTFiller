@@ -22,6 +22,9 @@ use Exception;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
+use App\Models\Gasto;
 use App\Models\GrupoFamilia;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -631,12 +634,12 @@ class ControladorAlumno extends Controller
         return $familia_profesional;
     }
 
-     /**
-      * @author LauraM <lauramorenoramos97@gmail.com>
-      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
-      * @param [type] $dni_alumno, es el dni del alumno
-      * @return void
-      */
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return void
+     */
     public function getNombreCicloAlumno($dni_alumno)
     {
 
@@ -668,4 +671,55 @@ class ControladorAlumno extends Controller
     /***********************************************************************/
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
+    #region Resumen de gastos del alumno - Anexo VI
+    #region CRUD Tickets transporte
+
+    /**
+     * Obtiene todos los datos para la pantalla de gestión de gastos, en el perfil de alumno:
+     * - Objeto clase Gasto del alumno
+     * - Lista de facturas de tranporte
+     * - Lista de facturas de manutención
+     * @param string $dni_alumno DNI del alumno
+     * @return Response Respuesta con los tickets del alumno
+     */
+    public function gestionGastosAlumno($dni_alumno)
+    {
+        $gasto = Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->get()->first();
+        if ($gasto) {
+            $gasto->facturasTransporte = FacturaTransporte::where([
+                ['dni_alumno', '=', $dni_alumno],
+                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])->get();
+            $gasto->facturasManutencion = FacturaManutencion::where([
+                ['dni_alumno', '=', $dni_alumno],
+                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])->get();
+
+            return response()->json($gasto, 200);
+        } else {
+            return response()->json([], 204);
+        }
+    }
+
+    // /**
+    //  * Lista los tickets del alumno indicado
+    //  * @param string $dni_alumno DNI del alumno
+    //  * @return Response Respuesta con los tickets del alumno
+    //  */
+    // public function listarFacturasTransporte($dni_alumno)
+    // {
+    //     $lista = FacturaTransporte::all();
+    //     if(count($lista) > 0) {
+    //         return response()->json($lista, 200);
+    //     } else {
+    //         return response()->json(['mensaje' => 'No existen registros'], 204);
+    //     }
+    // }
+    #endregion
+    #endregion
 }

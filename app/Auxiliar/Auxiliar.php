@@ -213,7 +213,7 @@ class Auxiliar
                 self::existeCarpeta($path);
 
                 //Obtenemos la extensión del fichero:
-                $extension = explode('/', mime_content_type($fichero))[1];
+                $extension = explode('.', explode('/', mime_content_type($fichero))[1])[0];
                 //Abrimos el flujo de escritura para guardar el fichero
                 $flujo = fopen($path . DIRECTORY_SEPARATOR .  $nombreFichero . '.' . $extension, 'wb');
 
@@ -247,7 +247,11 @@ class Auxiliar
      */
     public static function borrarFichero($path)
     {
-        unlink($path);
+        try {
+            unlink($path);
+        } catch (\Throwable $th) {
+
+        }
     }
 
     /**

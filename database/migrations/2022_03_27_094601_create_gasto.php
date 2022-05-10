@@ -16,13 +16,14 @@ class CreateGasto extends Migration
         Schema::create('gasto', function (Blueprint $table) {
             $table->string('dni_alumno');
             $table->string('curso_academico');
-            $table->string('tipo_desplazamiento')->default('');
-            $table->integer('total_gastos')->default(0);
-            $table->string('residencia_alumno')->default('');
-            $table->string('ubicacion_centro_trabajo')->default('');
-            $table->integer('distancia_centroEd_centroTra')->default(0);
-            $table->integer('distancia_centroEd_residencia')->default(0);
-            $table->integer('distancia_centroTra_residencia')->default(0);
+            $table->string('tipo_desplazamiento')->default('')->nullable(true);
+            $table->float('total_gastos')->default(0)->nullable(true);
+            $table->string('residencia_alumno')->default('')->nullable(true);
+            $table->string('ubicacion_centro_trabajo')->default('')->nullable(true);
+            $table->float('distancia_centroEd_centroTra')->default(0)->nullable(true);
+            $table->float('distancia_centroEd_residencia')->default(0)->nullable(true);
+            $table->float('distancia_centroTra_residencia')->default(0)->nullable(true);
+            $table->integer('dias_transporte_privado')->default(0)->nullable(true);
             $table->primary(['dni_alumno', 'curso_academico']);
             $table->foreign('dni_alumno')->references('dni')->on('alumno')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();

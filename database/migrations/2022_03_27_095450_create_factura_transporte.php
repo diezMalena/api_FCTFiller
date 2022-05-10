@@ -14,14 +14,14 @@ class CreateFacturaTransporte extends Migration
     public function up()
     {
         Schema::create('factura_transporte', function (Blueprint $table) {
+            $table->id();
             $table->string('dni_alumno');
             $table->string('curso_academico');
             $table->date('fecha');
-            $table->integer('importe');
+            $table->float('importe');
             $table->string('origen')->default('');
             $table->string('destino')->default('');
             $table->string('imagen_ticket')->default('');
-            $table->primary(['dni_alumno', 'curso_academico']);
             $table->foreign('dni_alumno')->references('dni')->on('alumno')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
         });

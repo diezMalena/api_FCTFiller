@@ -98,6 +98,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors']], function () {
     /************************************************************************/
 });
 
+
 /*
 |--------------------------------------------------------------------------
 | Rutas para el perfil del alumnado
@@ -122,6 +123,11 @@ Route::group(['middleware' => ['Cors']], function () {
 
     /*******************************ANEXO XV*******************************/
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+    /**********************************************************************/
+
+    /******************************ANEXO VI********************************/
+    // Route::get('/listarFacturasTransporte/{dni_alumno}', [ControladorAlumno::class, 'listarFacturasTransporte']);
+    Route::get('/gestionGastosAlumno/{dni_alumno}', [ControladorAlumno::class, 'gestionGastosAlumno']);
     /**********************************************************************/
 });
 
