@@ -6,10 +6,10 @@ use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
-use App\Models\RolEmpresa;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -144,17 +144,19 @@ class Auxiliar
     /**
      * Obtiene todos los datos de un usuario a partir de su tipo de perfil y su email, según qué tipo de usuario sea.
      *
-     * @param int $usuario array con los datos del usuario
+     * @param User $user Modelo con los datos básicos del usuario
+     * @return Model $usuario Modelo con los datos del usuario, según su perfil
      * @author alvaro <alvarosantosmartin6@gmail.com>
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public static function getDatosUsuario($usuario_view)
+    public static function getDatosUsuario($user)
     {
-        if ($usuario_view->perfil == 'alumno') {
-            $usuario = Alumno::where('email', '=', $usuario_view->email)
+        if ($user->tipo == 'alumno') {
+            $usuario = Alumno::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
-        } else if ($usuario_view->perfil == 'trabajador') {
-            $usuario = Trabajador::where('email', '=', $usuario_view->email)
+        } else if ($user->tipo == 'trabajador') {
+            $usuario = Trabajador::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
             $roles = RolTrabajadorAsignado::where('dni', '=', $usuario->dni)
@@ -162,7 +164,7 @@ class Auxiliar
                 ->get();
             $usuario->roles = $roles;
         } else {
-            $usuario = Profesor::where('email', '=', $usuario_view->email)
+            $usuario = Profesor::where('email', '=', $user->email)
                 ->select(['email', 'nombre', 'apellidos', 'dni'])
                 ->first();
             $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
@@ -170,7 +172,7 @@ class Auxiliar
                 ->get();
             $usuario->roles = $roles;
         }
-        $usuario->tipo = $usuario_view->perfil;
+        $usuario->tipo = $user->tipo;
         return $usuario;
     }
 
@@ -259,6 +261,141 @@ class Auxiliar
      */
     public static function obtenerURLServidor() {
         return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD Users - Métodos auxiliares
+
+    /**
+     * Añade un usuario a la tabla de usuarios (users)
+     * a partir de un modelo de profesor, alumno o trabajador
+     * @param Model $model Modelo de tipo `Profesor`, `Trabajador` o `Alumno`
+     * @param string $perfil Perfil del usuario (profesor, trabajador o alumno)
+     * @return int Código web de respuesta (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function addUser(Model $model, string $perfil)
+    {
+        try {
+            User::create([
+                'email' => $model->email,
+                'password' => $model->password,
+                'name' => $model->nombre . ' ' . $model->apellidos,
+                'perfil' => $perfil
+            ]);
+            return 201; // Created
+        } catch (Exception $ex) {
+            return 409; // Conflict (ya existe el usuario)
+        }
+    }
+
+    /**
+     * Obtiene un usuario de la tabla de usuarios (users)
+     * @param string $email e-mail del usuario
+     * @return User Modelo con los datos del usuario
+     * @return int Código web de respuesta correspondiente
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getUser(string $email)
+    {
+        try {
+            if ($user = User::where('email', $email)->first()) {
+                return $user;
+            } else {
+                return 404; // Not Found
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal Server Error
+        }
+    }
+
+    /**
+     * Actualiza los datos de un usuario en la tabla de usuarios (users)
+     * @param Model $model Modelo de tipo `Profesor`, `Trabajador` o `Alumno`
+     * @param string $email e-mail del usuario
+     * @return int Código web de respuesta (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function updateUser(Model $model, string $email)
+    {
+        try {
+            $update = User::where('email', $email)->update([
+                'email' => $model->email,
+                'password' => $model->password,
+                'name' => $model->nombre . ' ' . $model->apellidos,
+            ]);
+            if ($update > 0) {
+                return 200; // OK
+            } else if ($update == 0) {
+                $get = self::getUser($email);
+                if (gettype($get) == "integer") {
+                    return $get;
+                } else {
+                    return 304; // Not Modified
+                }
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal server error
+        }
+    }
+
+    /**
+     * Elimina un usuario de la tabla users
+     * @param string $email e-mail del usuario a eliminar
+     * @return int Código de respuesta web correspondiente (200-500)
+     *
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function deleteUser(string $email)
+    {
+        try {
+            $delete = User::where('email', $email)->delete();
+            if ($delete > 0) {
+                return 200; // OK
+            } else if ($delete == 0) {
+                return 404; // Not Fount
+            }
+        } catch (Exception $ex) {
+            return 500; // Internal Server Error
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Obtención de roles
+
+    /**
+     * Devuelve los roles de un profesor a partir de su email
+     *
+     * @param string $email email del usuario
+     * @return array Array de roles del profesor
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getRolesProfesorFromEmail(string $email)
+    {
+        return RolProfesorAsignado::where('dni', Profesor::where('email', $email)->first()->dni)
+            ->pluck('id_rol')->toArray();
+    }
+
+    /**
+     * Devuelve los roles de un trabajador a partir de su email
+     *
+     * @param string $email email del usuario
+     * @return array Array de roles del trabajador
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public static function getRolesTrabajadorFromEmail(string $email)
+    {
+        return RolTrabajadorAsignado::where('dni', Trabajador::where('email', $email)->first()->dni)
+            ->pluck('id_rol')->toArray();
     }
 
     #endregion

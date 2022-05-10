@@ -23,4 +23,5 @@ php artisan migrate:refresh --path=database/migrations/2022_02_08_115433_create_
 php artisan migrate:refresh --path=database/migrations/2022_03_27_094601_create_gasto.php
 php artisan migrate:refresh --path=database/migrations/2022_03_27_095436_create_factura_manutencion.php
 php artisan migrate:refresh --path=database/migrations/2022_03_27_095450_create_factura_transporte.php
-
+php artisan migrate:refresh --path=database/migrations/2022_03_15_090910_anexo.php
+php artisan migrate
