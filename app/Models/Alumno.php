@@ -16,7 +16,22 @@ use Illuminate\Database\Eloquent\Model;
 class Alumno extends Model
 {
     use HasFactory;
-    protected $fillable = ['dni', 'cod_alumno', 'email', 'password', 'nombre', 'apellidos', 'provincia', 'localidad', 'va_a_fct'];
+
+    protected $fillable = [
+        'dni',
+        'cod_alumno',
+        'email',
+        'password',
+        'nombre',
+        'apellidos',
+        'provincia',
+        'localidad',
+        'va_a_fct',
+        'foto',
+        'curriculum',
+        'cuenta_bancaria',
+        'matricula_coche'
+    ];
     protected $table = 'alumno';
     protected $primaryKey = 'dni';
     public $incrementing = false;

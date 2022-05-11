@@ -20,17 +20,30 @@ use Illuminate\Support\Facades\DB;
 
 class ControladorJefatura extends Controller
 {
+
+    /***********************************************************************/
+    #region Declaración de constantes
     const CABECERA_ALUMNOS = ["ALUMNO", "APELLIDOS", "NOMBRE", "SEXO", "DNI", "NIE", "FECHA_NACIMIENTO", "LOCALIDAD_NACIMIENTO", "PROVINCIA_NACIMIENTO", "NOMBRE_CORRESPONDENCIA", "DOMICILIO", "LOCALIDAD", "PROVINCIA", "TELEFONO", "MOVIL", "CODIGO_POSTAL", "TUTOR1", "DNI_TUTOR1", "TUTOR2", "DNI_TUTOR2", "PAIS", "NACIONALIDAD", "EMAIL_ALUMNO", "EMAIL_TUTOR2", "EMAIL_TUTOR1", "TELEFONOTUTOR1", "TELEFONOTUTOR2", "MOVILTUTOR1", "MOVILTUTOR2", "APELLIDO1", "APELLIDO2", "TIPODOM", "NTUTOR1", "NTUTOR2", "NSS"];
     const CABECERA_MATRICULAS = ["ALUMNO", "APELLIDOS", "NOMBRE", "MATRICULA", "ETAPA", "ANNO", "TIPO", "ESTUDIOS", "GRUPO", "REPETIDOR", "FECHAMATRICULA", "CENTRO", "PROCEDENCIA", "ESTADOMATRICULA", "FECHARESMATRICULA", "NUM_EXP_CENTRO", "PROGRAMA_2"];
     const CABECERA_PROFESORES = ["CODIGO", "APELLIDOS", "NOMBRE", "NRP", "DNI", "ABREVIATURA", "FECHA_NACIMIENTO", "SEXO", "TITULO", "DOMICILIO", "LOCALIDAD", "CODIGO_POSTAL", "PROVINCIA", "TELEFONO_RP", "ESPECIALIDAD", "CUERPO", "DEPARTAMENTO", "FECHA_ALTA_CENTRO", "FECHA_BAJA_CENTRO", "EMAIL", "TELEFONO"];
     const CABECERA_UNIDADES = ["ANNO", "GRUPO", "ESTUDIO", "CURSO", "TUTOR"];
+    const ORDEN_PROCESAMIENTO = ['profesores', 'alumnos', 'unidades', 'matriculas'];
+    #endregion
+    /***********************************************************************/
 
+    /***********************************************************************/
+    #region Subida masiva de datos - Procesamiento de CSV
 
     /**
      * Función que recibe el fichero CSV y lo guarda en la ruta temporal
      * para su posterior procesamiento
      *
-     * @param Request $r La request debe incluir como mínimo, el fichero,
+     * Modificación DSB 15 de Marzo de 2022:
+     *   - Añadidos el orden de procesamiento: Profesores, Alumnos, Unidades, Matrículas.
+     *   - Si el directorio tmp/csv no existe, se crea
+     *   - Añadido el DNI de la persona logueada en el sistema
+     *
+     * @param Request $r La request debe incluir como mínimo, el fichero en formato cadena Base64,
      * el nombre del fichero y el nombre de la caja en la que el usuario arrastra el fichero
      *
      * @return Response Devuelve un error en caso de que el CSV esté mal formado u ocurra algún problema
@@ -39,20 +52,33 @@ class ControladorJefatura extends Controller
      */
     public function recibirCSV(Request $r)
     {
+        $documentosPeticion = [];
         $errores = [];
 
-        #region Bucle
-        foreach ($r->collect() as $item) {
-            $nombreCaja = strtolower($item['box_file']);
-            //$tipoFichero = $item['content_type'];
-            $nombreFichero = $item['file_name'];
-            $fichero = $item['file_content'];
+        //Metemos en al array $documentosPeticion los datos de la petición
+        //para tenerlos indexados
+        foreach ($r->ficheros as $item) {
+            $documentosPeticion[strtolower($item['box_file'])] = $item;
+        }
+
+        #region Bucle procesamiento
+
+        foreach (self::ORDEN_PROCESAMIENTO as $nombreCaja) {
+            $nombreFichero = '';
+            $fichero = '';
+            try {
+                $nombreFichero = $documentosPeticion[$nombreCaja]['file_name'];
+                $fichero = $documentosPeticion[$nombreCaja]['file_content'];
+            } catch (Exception $th) {
+                //Si el fichero no se encuentra en el array, lanzará una excepción, que recogemos
+                //e indicamos que se prosiga con la ejecución del bucle, saltándose la actual
+                continue;
+            }
 
             //Si se guarda el fichero satisfactoriamente, se comprueba
             //si el fichero es íntegro
             if ($this->guardarFichero($nombreCaja, $fichero)) {
                 $resultado = $this->comprobarFichero($nombreCaja, $nombreFichero);
-                //error_log($resultado);
                 //Si el resultado es distinto de cero, el fichero no está bien
                 //por lo tanto, se mete el resultado en errores
                 if ($resultado != 0) {
@@ -60,19 +86,17 @@ class ControladorJefatura extends Controller
                 } else {
                     //Si es cero, el fichero está bien y pasamos a insertar los registros en
                     //base de datos
-                    $resultado = $this->procesarFicheroABBDD($nombreCaja);
-
+                    $resultado = $this->procesarFicheroABBDD($nombreCaja, $r->dni);
 
                     //Si el resultado es distinto de cero, el fichero ha tenido errores al insertarse
                     //por lo tanto, se mete el resultado en errores
-
                     if ($resultado != 0) {
                         $errores[$nombreCaja] = $resultado;
                     }
                 }
 
                 //Borramos el fichero al final
-                $this->borrarFichero($this->getCSVPathFile($nombreCaja));
+                Auxiliar::borrarFichero($this->getCSVPathFile($nombreCaja));
             } else {
                 $errores[$nombreCaja] = 'No se pudo guardar el fichero en el servidor';
             }
@@ -101,30 +125,23 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    public function procesarFicheroABBDD($nombreCaja)
+    public function procesarFicheroABBDD($nombreCaja, $DNILogueado)
     {
 
         $resultado = false;
-        //error_log($nombreCaja);
         switch ($nombreCaja) {
 
             case 'alumnos':
                 $resultado = $this->procesarFicheroABBDDAlumnos($nombreCaja);
                 break;
-                // case 'materias':
-                //     $resultado =  $this->procesarFicheroABBDDMaterias($nombreCaja);
-                //     break;
             case 'matriculas':
-                $resultado =  $this->procesarFicheroABBDDMatriculas($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado);
                 break;
-                // case 'notas':
-                //     $resultado =  $this->procesarFicheroABBDDNotas($nombreCaja);
-                //     break;
             case 'profesores':
-                $resultado =  $this->procesarFicheroABBDDProfesores($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado);
                 break;
             case 'unidades':
-                $resultado =  $this->procesarFicheroABBDDUnidades($nombreCaja);
+                $resultado =  $this->procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado);
                 break;
             default:
                 $resultado =  'Error';
@@ -166,6 +183,9 @@ class ControladorJefatura extends Controller
     private function guardarFichero($nombreCaja, $fichero)
     {
         try {
+            //Modificación DSB 15-3-2022: Comprobar que existe el directorio tmp/csv antes de guardar el fichero
+            //Si el directorio no existe, se crea
+            Auxiliar::existeCarpeta($this->getCSVPath());
             //Abrimos el flujo de escritura para guardar el fichero
             $flujo = fopen($this->getCSVPathFile($nombreCaja), 'wb');
 
@@ -173,7 +193,6 @@ class ControladorJefatura extends Controller
             // $datos[ 0 ] == "data:type/extension;base64"
             // $datos[ 1 ] == <actual base64 string>
             $datos = explode(',', $fichero);
-
 
             if (count($datos) > 1) {
                 fwrite($flujo, base64_decode($datos[1]));
@@ -189,16 +208,7 @@ class ControladorJefatura extends Controller
         }
     }
 
-    /**
-     * Borra el fichero según la ruta indicada en $path
-     *
-     * @param string $path Ruta del fichero a eliminar
-     * @author David Sánchez Barragán
-     */
-    private function borrarFichero($path)
-    {
-        unlink($path);
-    }
+
 
     /**
      * Método que procesa el fichero de Alumnos.csv e inserta su contenido en BBDD (tabla Alumno)
@@ -219,31 +229,30 @@ class ControladorJefatura extends Controller
 
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        //error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
                             //Se recoge el DNI, si está vacío, se recoge el NIE
                             $dni = trim($vec[array_search('DNI', self::CABECERA_ALUMNOS)] != '' ?  $vec[array_search('DNI', self::CABECERA_ALUMNOS)] : $vec[array_search('NIE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\"");
-                            Alumno::create([
+                            $alu = Alumno::create([
                                 'dni' => $dni,
                                 'cod_alumno' => trim($vec[array_search('ALUMNO', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 //Para mantener la integridad de la base de datos, si el correo
                                 //está vacío, se genera uno con el DNI
                                 'email' => trim($vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] != '' ? $vec[array_search('EMAIL_ALUMNO', self::CABECERA_ALUMNOS)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
                                 //Se debería crear una contraseña por defecto para todos los usuarios dados de alta automáticamente
-                                'password' => md5('12345'),
+                                'password' => Hash::make('superman'),
                                 'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'provincia' => trim($vec[array_search('PROVINCIA', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'localidad' => trim($vec[array_search('LOCALIDAD', self::CABECERA_ALUMNOS)], " \t\n\r\0\x0B\""),
                                 'va_a_fct' => '0'
                             ]);
+                            Auxiliar::addUser($alu, 'alumno');
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
                             } else {
                                 $errores = $errores . 'Error en línea' . $numLinea . ': ' . $th->getMessage() . Parametros::NUEVA_LINEA;
                             }
-                            ////error_log($th->getMessage());
                         }
                     }
                 }
@@ -271,7 +280,7 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado = '1A')
+    private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado)
     {
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
@@ -279,10 +288,8 @@ class ControladorJefatura extends Controller
         if ($file = fopen($filePath, "r")) {
             while (!feof($file)) {
                 $vec = explode("\t", fgets($file));
-
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
                             //Se DEBE sustituir esta variable con una select al centro de estudios
                             //según el DNI de la persona que se ha logueado.
@@ -290,7 +297,6 @@ class ControladorJefatura extends Controller
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))->get()[0]->dni;
 
                             $codNivel = explode(' ', trim($vec[array_search('ESTUDIOS', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))[2];
@@ -304,10 +310,8 @@ class ControladorJefatura extends Controller
                             $anio = trim($vec[array_search('ANNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\"");
 
                             $matricula = trim($vec[array_search('MATRICULA', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\"");
-                            //error_log($matricula);
 
                             $cursoAcademico = Auxiliar::obtenerCursoAcademicoPorAnio($anio);
-
 
                             Matricula::create([
                                 'cod' => $matricula,
@@ -349,7 +353,7 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado = '1A')
+    private function procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado)
     {
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
@@ -357,10 +361,8 @@ class ControladorJefatura extends Controller
         if ($file = fopen($filePath, "r")) {
             while (!feof($file)) {
                 $vec = explode("\t", fgets($file));
-
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
                             $dni = trim($vec[array_search('DNI', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\"");
 
@@ -370,15 +372,21 @@ class ControladorJefatura extends Controller
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
 
-                            Profesor::create([
+                            $profe = Profesor::create([
                                 'dni' => $dni,
                                 'email' => trim($vec[array_search('EMAIL', self::CABECERA_PROFESORES)] != '' ? $vec[array_search('EMAIL', self::CABECERA_PROFESORES)] : $dni . '@fctfiller.com', " \t\n\r\0\x0B\""),
-                                'password' => md5('12345'),
+                                'password' => Hash::make('superman'),
                                 'nombre' => trim($vec[array_search('NOMBRE', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'apellidos' => trim($vec[array_search('APELLIDOS', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\""),
                                 'cod_centro_estudios' => $codCentroEstudios
+                            ]);
+                            Auxiliar::addUser($profe, "profesor");
+
+                            //DSB Cambio 16-04-2022: se añade el rol profesor a todos los profesores creados
+                            RolProfesorAsignado::create([
+                                'dni' => $dni,
+                                'id_rol' => Parametros::PROFESOR
                             ]);
                         } catch (Exception $th) {
                             if (str_contains($th->getMessage(), 'Integrity')) {
@@ -413,9 +421,8 @@ class ControladorJefatura extends Controller
      *
      * @author David Sánchez Barragán
      */
-    private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado = '1A')
+    private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado)
     {
-        //error_log('hola');
         $numLinea = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
         $errores = '';
@@ -425,7 +432,6 @@ class ControladorJefatura extends Controller
 
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
-                        ////error_log('Lo proceso. La línea es la ' . $numLinea);
                         try {
                             //Se DEBE sustituir esta variable con una select al centro de estudios
                             //según el DNI de la persona que se ha logueado.
@@ -433,22 +439,15 @@ class ControladorJefatura extends Controller
                             //hacer solo la búsqueda en la tabla profesores.
                             //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            // $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', Profesor::all()->first()->dni)->get()->first()->cod_centro_estudios))->get()[0]->cod;
-                            //error_log('Cod centro estudios: ' . $codCentroEstudios);
 
                             //Se obtiene el nombre del ciclo (columna ESTUDIO), separando la cadena por
                             //paréntesis. Nos quedamos con la cadena central y la buscamos en la tabla.
                             $estudio =  preg_split("(\(|\))", trim($vec[array_search('ESTUDIO', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\""));
-                            //error_log('estudio: ' . print_r($estudio, true));
-
-                            //return response()->json(200);
 
                             //Esta consulta se hace "a pelo" porque no coge la funcion lower de SQL
-                            //$codGrupo = Grupo::where('lower(nombre_ciclo)', $estudio)->get()[0]->cod;
                             $codGrupo = DB::select('select cod from grupo
                             where lower(nombre_ciclo) = ' . "'" . strtolower($estudio[1]) . "'
                             and cod_nivel = '" . $estudio[0] . "'")[0]->cod;
-
 
                             OfertaGrupo::create([
                                 'cod_centro' => $codCentroEstudios,
@@ -458,10 +457,6 @@ class ControladorJefatura extends Controller
                             $anio = trim($vec[array_search('ANNO', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\"");
 
                             $profesor = explode(",", str_replace("\"", "", trim($vec[array_search('TUTOR', self::CABECERA_UNIDADES)], " \t\n\r\0\x0B\"")));
-                            //error_log(print_r($profesor, true));
-                            // error_log(trim($profesor[1], " \t\n\r\0\x0B\""));
-                            // error_log(trim($profesor[0], " \t\n\r\0\x0B\""));
-                            // error_log($codCentroEstudios);
 
                             $dniProfesor = Profesor::where(
                                 [
@@ -470,7 +465,6 @@ class ControladorJefatura extends Controller
                                     ['cod_centro_estudios', '=', $codCentroEstudios]
                                 ]
                             )->get()[0]->dni;
-                            error_log($dniProfesor);
 
                             Tutoria::create([
                                 'dni_profesor' => $dniProfesor,
@@ -478,8 +472,13 @@ class ControladorJefatura extends Controller
                                 'curso_academico' => Auxiliar::obtenerCursoAcademicoPorAnio($anio),
                                 'cod_centro' => $codCentroEstudios
                             ]);
+
+                            //DSB Cambio 16-04-2022: se añade el rol tutor a los tutores de cada curso:
+                            $r = RolProfesorAsignado::create([
+                                'dni' => $dniProfesor,
+                                'id_rol' => Parametros::TUTOR
+                            ]);
                         } catch (Exception $th) {
-                            error_log($th);
                             if (str_contains($th->getMessage(), 'Integrity')) {
                                 $errores = $errores . 'Registro repetido, línea ' . $numLinea . ' del CSV.' . Parametros::NUEVA_LINEA;
                             } else {
@@ -559,13 +558,10 @@ class ControladorJefatura extends Controller
                 // Si estamos en el primer número de línea
                 // ese será el encabezado
                 if ($numLinea != 0) {
-
                     if ($columnasEncabezado != count($vec) && count($vec) > 1) {
-                        //dd($vec);
                         return false;
                     }
                 } else {
-                    //dd($vec);
                     $columnasEncabezado = count($vec);
                 }
                 $numLinea++;
@@ -576,9 +572,15 @@ class ControladorJefatura extends Controller
         return true;
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD de profesores
+
     /**
      * @author Laura <lauramorenoramos@gmail.com>
-     *Esta funcion te devuelve todos los profesores de la base de datos
+     * Esta funcion te devuelve todos los profesores de la base de datos
      * @return void
      */
     public function verProfesores($dni_profesor)
@@ -662,7 +664,7 @@ class ControladorJefatura extends Controller
      */
     public function eliminarProfesor($dni_profesor)
     {
-
+        Auxiliar::deleteUser(Profesor::find($dni_profesor)->email);
         Profesor::where('dni', '=', $dni_profesor)->delete();
         $ruta = public_path($dni_profesor);
         $this->eliminarCarpetaRecursivo($ruta);
@@ -719,10 +721,9 @@ class ControladorJefatura extends Controller
                     'message' => 'Este profesor ya existe'
                 ], 401);
             } else {
-                Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => Hash::make($password1), 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
-
+                $profe = Profesor::create(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => Hash::make($password1), 'cod_centro_estudios' => $centroEstudios[0]->cod_centro_estudios]);
+                Auxiliar::addUser($profe, "profesor");
                 foreach ($roles as $r) {
-                    error_log($r);
                     RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
                 }
                 return response()->json([
@@ -760,9 +761,10 @@ class ControladorJefatura extends Controller
 
         if (strcmp($password1, $password2) == 0) {
 
+            $email = Profesor::find($dniPersonaAnt)->email;
             Profesor::where('dni', $dniPersonaAnt)
                 ->update(['dni' => $dni, 'email' => $email, 'nombre' => $nombre, 'apellidos' => $apellidos, 'password' => $password1]);
-
+            Auxiliar::updateUser(Profesor::find($dni), $email);
             RolProfesorAsignado::where('dni', '=', $dni)->delete();
             foreach ($roles as $r) {
                 RolProfesorAsignado::create(['dni' => $dni, 'id_rol' => $r]);
@@ -820,6 +822,12 @@ class ControladorJefatura extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region CRUD de alumnos
+
     /**
      * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
      * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
@@ -832,9 +840,24 @@ class ControladorJefatura extends Controller
             $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
                 ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
                 ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
-                ->where('profesor.dni', '=', $dni_logueado)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->where([
+                    ['profesor.dni', '=', $dni_logueado],
+                    ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])
+                ->select([
+                    'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
+                    'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
+                    'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
+                    'alumno.cuenta_bancaria',
+                    'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
+                    'matricula.cod_centro as matricula_cod_centro'
+                ])
                 ->get();
+
+            foreach ($listado as $alumno) {
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
+            }
 
             return response()->json($listado, 200);
         } catch (Exception $th) {
@@ -852,13 +875,29 @@ class ControladorJefatura extends Controller
     {
         try {
             $alumno = Alumno::where('dni', '=', $dni_alumno)
-                ->select(['alumno.dni', 'alumno.cod_alumno', 'alumno.email', 'alumno.password', 'alumno.nombre', 'alumno.apellidos', 'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct'])
+                ->select([
+                    'alumno.dni', 'alumno.cod_alumno',
+                    'alumno.email', 'alumno.nombre', 'alumno.apellidos',
+                    'alumno.provincia', 'alumno.localidad', 'alumno.va_a_fct',
+                    'alumno.matricula_coche', 'alumno.cuenta_bancaria'
+                ])
                 ->get()->first();
 
             if ($alumno) {
                 //Pongo a cadena vacía la contraseña por seguridad,
                 //para que no viaje por la red
                 $alumno->password = '';
+
+                //Foto y CV
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
+
+                //Incorporación del ciclo formativo al que pertenece
+                $alumno->ciclo = Matricula::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->select(['cod_grupo'])->get()->first()->cod_grupo;
+
                 return response()->json($alumno, 200);
             } else {
                 return response()->json(['mensaje' => 'No existe el alumno consultado'], 400);
@@ -877,16 +916,32 @@ class ControladorJefatura extends Controller
     public function addAlumno(Request $r)
     {
         try {
-            Alumno::create([
+            $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
+            $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
+
+            $alu = Alumno::create([
                 'dni' => $r->dni,
                 'cod_alumno' => $r->cod_alumno,
                 'email' => $r->email,
-                'password' => $r->password,
+                'password' => Hash::make($r->password),
                 'nombre' => $r->nombre,
                 'apellidos' => $r->apellidos,
                 'provincia' => $r->provincia,
                 'localidad' => $r->localidad,
                 'va_a_fct' => $r->va_a_fct,
+                'foto' => $foto ? $foto : '',
+                'curriculum' => $curriculum ? $curriculum : '',
+                'cuenta_bancaria' => $r->cuenta_bancaria,
+                'matricula_coche' => $r->matricula_coche
+            ]);
+            Auxiliar::addUser($alu, 'alumno');
+
+            Matricula::create([
+                'cod' => $r->matricula_cod,
+                'cod_centro' => $r->matricula_cod_centro,
+                'dni_alumno' => $r->dni,
+                'cod_grupo' => $r->matricula_cod_grupo,
+                'curso_academico' => Auxiliar::obtenerCursoAcademico()
             ]);
 
             return response()->json(['message' => 'Alumno creado correctamente'], 200);
@@ -908,17 +963,70 @@ class ControladorJefatura extends Controller
     public function modificarAlumno(Request $r)
     {
         try {
-            Alumno::where('dni', '=', $r->dni)->update([
-                'dni' => $r->dni,
-                'cod_alumno' => $r->cod_alumno,
-                'email' => $r->email,
-                'password' => $r->password,
-                'nombre' => $r->nombre,
-                'apellidos' => $r->apellidos,
-                'provincia' => $r->provincia,
-                'localidad' => $r->localidad,
-                'va_a_fct' => $r->va_a_fct,
-            ]);
+            $email = '';
+            if (strlen($r->dni_antiguo) != 0) {
+                $foto = '';
+                $curriculum = '';
+
+                //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+                //se recoge entonces el path original que tuvieran
+                if (!str_contains($r->foto, "descargarFoto")) {
+                    $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
+                    $fotoAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
+                    if (strlen($fotoAnterior) != 0) {
+                        Auxiliar::borrarFichero($fotoAnterior);
+                    }
+                } else {
+                    $foto = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
+                }
+
+                if (!str_contains($r->curriculum, "descargarCurriculum")) {
+                    $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
+                    $cvAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
+                    if (strlen($cvAnterior) != 0) {
+                        Auxiliar::borrarFichero($cvAnterior);
+                    }
+                } else {
+                    $curriculum = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
+                }
+
+
+                $email = Alumno::find($r->dni_antiguo)->email;
+                Alumno::where('dni', '=', $r->dni_antiguo)->update([
+                    'dni' => $r->dni,
+                    'cod_alumno' => $r->cod_alumno,
+                    'email' => $r->email,
+                    'nombre' => $r->nombre,
+                    'apellidos' => $r->apellidos,
+                    'provincia' => $r->provincia,
+                    'localidad' => $r->localidad,
+                    'va_a_fct' => $r->va_a_fct,
+                    'foto' => $foto != '' ? $foto : '',
+                    'curriculum' => $curriculum ? $curriculum : '',
+                    'cuenta_bancaria' => $r->cuenta_bancaria,
+                    'matricula_coche' => $r->matricula_coche
+                ]);
+
+                if ($r->password) {
+                    Alumno::where('dni', '=', $r->dni)->update([
+                        'password' => Hash::make($r->password)
+                    ]);
+                }
+                Auxiliar::addUser(Alumno::find($r->dni), $email);
+
+                Matricula::where([
+                    ['dni_alumno', '=', $r->dni],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->update([
+                    'cod' => $r->matricula_cod,
+                    'cod_centro' => $r->matricula_cod_centro,
+                    'dni_alumno' => $r->dni,
+                    'cod_grupo' => $r->matricula_cod_grupo,
+                    'curso_academico' => Auxiliar::obtenerCursoAcademico()
+                ]);
+            } else {
+                throw new Exception('El usuario no puede estar vacío');
+            }
 
             return response()->json(['message' => 'Alumno actualizado'], 200);
         } catch (Exception $ex) {
@@ -935,13 +1043,60 @@ class ControladorJefatura extends Controller
     public function eliminarAlumno($dni_alumno)
     {
         try {
+            Auxiliar::deleteUser(Alumno::find($dni_alumno));
             Alumno::where('dni', '=', $dni_alumno)->delete();
-
-            //Aquí va la eliminación de los anexos asociados al alumno, cuando los tengamos
 
             return response()->json(['mensaje' => 'Alumno borrado correctamente'], 200);
         } catch (Exception $ex) {
             return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
         }
     }
+
+    /**
+     * Devuelve un objeto File para que la foto sea accesible desde el lado cliente
+     * @param string $dni DNI del alumno del que se quiere obtener la foto
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el lado cliente
+     */
+    public function descargarFotoPerfil($dni, $guid)
+    {
+        $pathFoto = Alumno::where('dni', '=', $dni)->select('foto')->get()->first()->foto;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Devuelve un objeto File para que descarga el curriculum
+     * @param string $dni DNI del alumno del que se quiere obtener el curriculum
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el lado cliente
+     */
+    public function descargarCurriculum($dni, $guid)
+    {
+        $pathCV = Alumno::where('dni', '=', $dni)->select('curriculum')->get()->first()->curriculum;
+        if ($pathCV) {
+            return response()->file($pathCV);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Obtiene un listado de grupos
+     * @return Response JSON con grupos
+     * @author David Sánchez Barragán
+     */
+    public function listarGrupos()
+    {
+        $listaGrupos = Grupo::select(['cod', 'nombre_ciclo'])->get();
+        return response()->json($listaGrupos, 200);
+    }
+
+    #endregion
+    /***********************************************************************/
 }
