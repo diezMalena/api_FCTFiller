@@ -18,7 +18,7 @@ class AddNewFieldsToUsersTable extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('tipo')->after('remember_token');
         });
-        if (User::count() != 0) {
+        if (User::count() == 0) {
             DB::statement(
                 'INSERT INTO users (email, password, name, tipo)
                         SELECT alumno.email, alumno.password, CONCAT(alumno.nombre, " ", alumno.apellidos), "alumno" AS "perfil"

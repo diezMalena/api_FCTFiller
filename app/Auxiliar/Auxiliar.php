@@ -303,7 +303,7 @@ class Auxiliar
             if ($user = User::where('email', $email)->first()) {
                 return $user;
             } else {
-                return 404; // Not Found
+                return 204; // No Content
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error
@@ -355,7 +355,7 @@ class Auxiliar
             if ($delete > 0) {
                 return 200; // OK
             } else if ($delete == 0) {
-                return 404; // Not Fount
+                return 204; // Not Found
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error

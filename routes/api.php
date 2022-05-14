@@ -26,6 +26,10 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
     Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
     /***********************************************************************/
+    /****************Obtener familias profesionales y ciclos****************/
+    Route::get('/familias_profesionales', [ControladorGenerico::class, 'getFamiliasProfesionales']);
+    Route::get('/ciclos/{familia?}', [ControladorGenerico::class, 'getCiclos']);
+    /***********************************************************************/
 });
 
 /*
