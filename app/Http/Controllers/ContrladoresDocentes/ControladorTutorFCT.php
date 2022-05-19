@@ -871,9 +871,12 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Recoge los datos que se envía desde el cliente, y añade estos a sus correspondientes tablas.
-     * También, se generará el Anexo0 al añadir las empresas.
+     * Registra una empresa y su representante en la base de datos,
+     * así como los ciclos de interés para la empresa
+     *
+     * @return Response JSON con la respuesta del servidor: 200 -> OK, 400 -> error
      * @author @Malena
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function addDatosEmpresa(Request $req)
     {
@@ -881,18 +884,39 @@ class ControladorTutorFCT extends Controller
             $empresa = Empresa::create($req->empresa);
             $repre_aux = $req->representante;
             $repre_aux["id_empresa"] = $empresa->id;
-            $repre_aux["password"] = Hash::make($repre_aux["password"]);
+            $repre_aux["password"] = Hash::make("superman");
             $representante = Trabajador::create($repre_aux);
             Auxiliar::addUser($representante, "trabajador");
             RolTrabajadorAsignado::create([
                 'dni' => $representante->dni,
                 'id_rol' => 1,
             ]);
-            $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
-            $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
-            return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
+            $this->asignarCiclosEmpresa($empresa->id, $req->ciclos);
+            // $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
+            // $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
+            return response()->json(['message' => 'Registro correcto'], 200);
         } catch (Exception $ex) {
             return response()->json(['message' => 'Registro fallido'], 400);
+        }
+    }
+
+    /**
+     * Registra la asignación de ciclos de interés para una empresa dada
+     *
+     * @param int $idEmpresa ID de la empresa
+     * @param array[string] $codCiclos array con los códigos de los ciclos de interés para la empresa
+     * @return void|Response Si hay error, JSON con una respuesta de error
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function asignarCiclosEmpresa($idEmpresa, $codCiclos)
+    {
+        try {
+            EmpresaGrupo::where('id_empresa', $idEmpresa)->delete();
+            foreach ($codCiclos as $cod) {
+                EmpresaGrupo::create(['id_empresa' => $idEmpresa, 'cod_grupo' => $cod]);
+            }
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Fallo al asignar los grupos'], 400);
         }
     }
 
