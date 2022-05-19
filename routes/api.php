@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Rutas de autenticación
 |--------------------------------------------------------------------------
 */
+
 Route::group(['middleware' => ['Cors']], function () {
     Route::post('/login', [ControladorGenerico::class, 'login']);
 });
@@ -106,6 +107,16 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
 |--------------------------------------------------------------------------
 */
 Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function () {
+    /*******************************ANEXO XV*******************************/
+    Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+    /**********************************************************************/
+});
+
+Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);
+
+
+Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () {
+
     /************************SEGUIMIENTO - ANEXO III************************/
     Route::any('/addJornada', [ControladorAlumno::class, 'addJornada']);
     Route::any('/devolverDatosAlumno', [ControladorAlumno::class, 'devolverDatosAlumno']);
@@ -117,20 +128,15 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
     Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
-
-    //Subida de hoja de seguimiento:
-    Route::post('/subirAnexo3', [ControladorAlumno::class, 'subirAnexo3']);
-
+    Route::post('/descargarAnexo3', [ControladorAlumno::class, 'descargarAnexo3']);
+    Route::post('/hayDocumento', [ControladorAlumno::class, 'hayDocumento']);
 
     //----Gestión del tutor de la empresa
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
-    Route::get('getTutoresResponsables/id={id_empresa}', [ControladorAlumno::class, 'getTutoresResponsables']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
     /**********************************************************************/
 
-    /*******************************ANEXO XV*******************************/
-    Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
-    /**********************************************************************/
-});
 
-Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);
+    //Subida de hoja de seguimiento:
+    Route::post('/subirAnexo3', [ControladorAlumno::class, 'subirAnexo3']);
+});

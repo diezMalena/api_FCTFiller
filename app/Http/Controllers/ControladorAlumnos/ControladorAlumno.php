@@ -307,35 +307,18 @@ class ControladorAlumno extends Controller
         $dni_alumno = $req->get('dni');
         $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
         try {
-            $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+            $mail_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
                 ->where('trabajador.dni', '=', $dni_tutor)
-                ->select('trabajador.dni AS dni_tutor', 'trabajador.nombre AS nombre_tutor')
+                ->select('trabajador.email AS email')
                 ->first();
+            error_log($mail_tutor->email);
+            $email_tutor = $mail_tutor->email;
             //Recojo el id_empresa:
             $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
-            return response()->json([$datos_tutor, $id_empresa], 200);
+            return response()->json([$email_tutor, $id_empresa], 200);
         } catch (Exception $e) {
             return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que recoge todos los tutores y responsables de una empresa, para que el alumno pueda
-     * elegir un tutor nuevo.
-     * @author Malena
-     */
-    public function getTutoresResponsables(string $id_empresa)
-    {
-        try {
-            $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-                ->where('trabajador.id_empresa', '=', $id_empresa)
-                ->select('trabajador.dni AS dni', 'trabajador.nombre AS nombre')
-                ->get();
-            return response()->json($arrayTutores, 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
         }
     }
 
@@ -346,10 +329,20 @@ class ControladorAlumno extends Controller
     public function actualizarTutorEmpresa(Request $req)
     {
         try {
-            $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
+            $mail_tutor_nuevo = $req->get('mail_tutor_nuevo');
             $dni_alumno = $req->get('dni_alumno');
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+
+            //Tenemos el mail del nuevo tutor, tenemos que coger su dni para poder actualizarlo en la tabla FCT:
+            $dni_tutor_nuevo = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.id_empresa', '=', $id_empresa)
+                ->where('trabajador.email', '=', $mail_tutor_nuevo)
+                ->select('trabajador.dni AS dni')
+                ->first();
+
             Fct::where('dni_alumno', $dni_alumno)->update([
-                'dni_tutor_empresa' => $dni_tutor_nuevo,
+                'dni_tutor_empresa' => $dni_tutor_nuevo->dni,
             ]);
             return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
         } catch (Exception $e) {
@@ -421,22 +414,95 @@ class ControladorAlumno extends Controller
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
+
+        /*Cuando se genere un nuevo Word, las firmas de los 3 implicados se pondrán a 0 dado que se entiende que al generar un Word nuevo, es porque el
+        alumno ha cambiado algún campo y hay que firmarlo y subirlo nuevo.*/
+
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+        error_log($id_fct);
+        $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
+            ->where('id_quinto_dia', '=', $id_quinto_dia)
+            ->update([
+                'firmado_alumno' => 0,
+                'firmado_tutor_estudios' => 0,
+                'firmado_tutor_empresa' => 0,
+            ]);
+
         return response()->download(public_path($rutaDestino));
     }
 
+
+    public function hayDocumento(Request $req)
+    {
+        $ruta_hoja = Semana::where('id_fct', '=', $req->id_fct)
+            ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+            ->select('ruta_hoja')
+            ->first();
+        return response()->json($ruta_hoja, 200);
+    }
+
+
+    public function descargarAnexo3(Request $req)
+    {
+        return response()->download(public_path($req->ruta_hoja));
+    }
+
     /**
-     * Esta función es para el alumno que se baja el documento, lo firma y lo sube por primera vez, para los tutores será diferente
+     *
      */
     public function subirAnexo3(Request $req)
     {
-        $dni_alumno = $req->dni;
-        $rutaDestino = public_path() . DIRECTORY_SEPARATOR . $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
+        try {
+            $dni = $req->dni;
+            $rutaDestino = public_path() . DIRECTORY_SEPARATOR . $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
+            if (strpos($req->file_name, ".pdf")) {
+                $replaced = Str::replace('.pdf', '', $req->file_name);
+            }
+            $subida = Auxiliar::guardarFichero($rutaDestino, $replaced, $req->file);
+            $ruta_hoja = $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded' . DIRECTORY_SEPARATOR . $req->file_name;
 
-        if (strpos($req->file_name, ".pdf")) {
-            $replaced = Str::replace('.pdf', '', $req->file_name);
+            $rol_dni_alumno = Alumno::select('dni')
+                ->where('dni', '=', $dni)
+                ->first();
+
+            if ($rol_dni_alumno == null) {
+                $rol_dni_tutor = Profesor::select('dni')
+                    ->where('dni', '=', $dni)
+                    ->first();
+                if ($rol_dni_tutor == null) {
+                    $rol_dni_tutor_empresa = Trabajador::select('dni')
+                        ->where('dni', '=', $dni)
+                        ->first();
+                    if ($rol_dni_tutor_empresa != null) {
+                        $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                            ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                            ->update([
+                                'ruta_hoja' => $ruta_hoja,
+                                'firmado_tutor_empresa' => 1
+                            ]);
+                    }
+                } else {
+                    $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                        ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                        ->update([
+                            'ruta_hoja' => $ruta_hoja,
+                            'firmado_tutor_estudios' => 1
+                        ]);
+                }
+            } else {
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_alumno' => 1
+                    ]);
+            }
+
+            return response()->json(['message' => 'Documento subido correctamente.'], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, el documento no se ha subido.'], 450);
         }
-        // error_log($replaced);
-        $foto = Auxiliar::guardarFichero($rutaDestino, $replaced, $req->file);
     }
 
     /***********************************************************************/
