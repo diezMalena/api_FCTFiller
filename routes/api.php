@@ -23,8 +23,11 @@ Route::group(['middleware' => ['Cors']], function () {
 */
 Route::group(['middleware' => ['Cors']], function () {
     /*********************Obtener provincias y ciudades*********************/
-    Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
-    Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
+    Route::get('listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
+    Route::get('listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
+    /***********************************************************************/
+    /****************************CRUD Alumnos*******************************/
+    Route::get('descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
     /***********************************************************************/
 });
 
@@ -95,8 +98,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
     Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
     Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
     Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
-    Route::get('/descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
-    Route::get('/descargarCurriculum/{dni}/{guid}', [ControladorJefatura::class, 'descargarCurriculum']);
+    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
     /************************************************************************/
 });
 
@@ -126,11 +128,15 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     /*******************************ANEXO XV*******************************/
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
+});
 
+Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
     /******************************ANEXO VI********************************/
-    // Route::get('/listarFacturasTransporte/{dni_alumno}', [ControladorAlumno::class, 'listarFacturasTransporte']);
     Route::get('/gestionGastosAlumno/{dni_alumno}', [ControladorAlumno::class, 'gestionGastosAlumno']);
+    Route::put('/actualizarDatosGastoAlumno', [ControladorAlumno::class, 'actualizarDatosGastoAlumno']);
+    Route::put('/actualizarDiasVehiculoPrivado', [ControladorAlumno::class, 'actualizarDiasVehiculoPrivado']);
     /**********************************************************************/
 });
+
 
 Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);

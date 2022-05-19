@@ -682,7 +682,7 @@ class ControladorAlumno extends Controller
      * - Lista de facturas de tranporte
      * - Lista de facturas de manutención
      * @param string $dni_alumno DNI del alumno
-     * @return Response Respuesta con los tickets del alumno
+     * @return Response Respuesta con la información del alumno, según su DNI y el curso académico actual
      */
     public function gestionGastosAlumno($dni_alumno)
     {
@@ -691,6 +691,7 @@ class ControladorAlumno extends Controller
             ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
         ])->get()->first();
         if ($gasto) {
+
             $gasto->facturasTransporte = FacturaTransporte::where([
                 ['dni_alumno', '=', $dni_alumno],
                 ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
@@ -700,26 +701,138 @@ class ControladorAlumno extends Controller
                 ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
             ])->get();
 
+            $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
+            $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
+            $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
+            $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+
             return response()->json($gasto, 200);
         } else {
             return response()->json([], 204);
         }
     }
 
-    // /**
-    //  * Lista los tickets del alumno indicado
-    //  * @param string $dni_alumno DNI del alumno
-    //  * @return Response Respuesta con los tickets del alumno
-    //  */
-    // public function listarFacturasTransporte($dni_alumno)
-    // {
-    //     $lista = FacturaTransporte::all();
-    //     if(count($lista) > 0) {
-    //         return response()->json($lista, 200);
-    //     } else {
-    //         return response()->json(['mensaje' => 'No existen registros'], 204);
-    //     }
-    // }
+
+
+    /**
+     * Actualiza la información en la tabla Gasto según el objeto recibido
+     * @param Request $r Request con forma de objeto Gasto
+     * @return Response Respuesta HTTP estándar
+     */
+    public function actualizarDatosGastoAlumno(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
+            'residencia_alumno' => $r->residencia_alumno,
+            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo,
+            'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
+            'distancia_centroEd_residencia' => $r->distancia_centroEd_residencia,
+            'distancia_centroTra_residencia' => $r->distancia_centroTra_residencia
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     * Actualiza el campo dias_transporte_privado del modelo Gasto
+     * @param Request $r Request que incluye el dni del alumno a actualizar y el número de días
+     * @return Response Código HTTP estándar
+     */
+    public function actualizarDiasVehiculoPrivado(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'dias_transporte_privado' => $r->dias_transporte_privado
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+    #endregion
+
+    #region Funciones auxiliares CRUD Anexo VI:
+    /**
+     * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
+     * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
+     * @return boolean|float Si el alumno tiene derecho a compensación de gastos, devuelve un número.
+     * En caso contrario, devuelve false.
+     */
+    public function calcularGastoVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return false;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return false;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de transporte público
+     * @param string $dni_alumno DNI del alumno
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoTransportePublico($dni_alumno)
+    {
+        return FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de manutención
+     * @param string $dni_alumno DNI del alumno
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoManutencion($dni_alumno)
+    {
+        return FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Obtiene el tipo de desplazamiento (necesario para el Anexo VI)
+     * según los parámetros recibidos en la función.
+     * @param string $residencia_alumno Residencia del alumno (Localidad del centro educativo/Localidad distinta a la del centro educativo)
+     * @param string $ubicacion_centro_trabajo Ubicación del centro de trabajo (Dentro del núcleo urbano/Fuera del núcleo urbano/En otra localidad)
+     * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
+     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo.
+     */
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
+    {
+        if (str_contains($residencia_alumno, 'distinta')) {
+            return "Centro educativo";
+        }
+
+        if (str_contains($ubicacion_centro_trabajo, 'Fuera')) {
+            return "Centro educativo";
+        }
+
+        if (
+            str_contains($residencia_alumno, 'Localidad del centro educativo')
+            && str_contains($ubicacion_centro_trabajo, 'Dentro')
+        ) {
+            return "No aplica";
+        }
+
+        return "Domicilio";
+    }
     #endregion
     #endregion
 }

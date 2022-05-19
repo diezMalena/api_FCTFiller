@@ -848,15 +848,15 @@ class ControladorJefatura extends Controller
                     'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
                     'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
                     'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
-                    'alumno.cuenta_bancaria',
+                    'alumno.cuenta_bancaria', 'alumno.curriculum',
                     'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
                     'matricula.cod_centro as matricula_cod_centro'
                 ])
                 ->get();
 
             foreach ($listado as $alumno) {
-                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
-                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->curriculum = ($alumno->curriculum != null ? 'si' : '');
             }
 
             return response()->json($listado, 200);
@@ -889,7 +889,7 @@ class ControladorJefatura extends Controller
                 $alumno->password = '';
 
                 //Foto y CV
-                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
                 $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
 
                 //Incorporación del ciclo formativo al que pertenece
@@ -963,7 +963,6 @@ class ControladorJefatura extends Controller
     public function modificarAlumno(Request $r)
     {
         try {
-            $email = '';
             if (strlen($r->dni_antiguo) != 0) {
                 $foto = '';
                 $curriculum = '';
@@ -990,8 +989,6 @@ class ControladorJefatura extends Controller
                     $curriculum = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
                 }
 
-
-                $email = Alumno::find($r->dni_antiguo)->email;
                 Alumno::where('dni', '=', $r->dni_antiguo)->update([
                     'dni' => $r->dni,
                     'cod_alumno' => $r->cod_alumno,
@@ -1012,7 +1009,8 @@ class ControladorJefatura extends Controller
                         'password' => Hash::make($r->password)
                     ]);
                 }
-                Auxiliar::addUser(Alumno::find($r->dni), $email);
+
+                Auxiliar::updateUser(Alumno::where('dni', '=', $r->dni)->get()->first(), $r->email);
 
                 Matricula::where([
                     ['dni_alumno', '=', $r->dni],
@@ -1072,15 +1070,13 @@ class ControladorJefatura extends Controller
     /**
      * Devuelve un objeto File para que descarga el curriculum
      * @param string $dni DNI del alumno del que se quiere obtener el curriculum
-     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
-     * el cambio de foto si se actualiza.
      * @return File Objeto File para que la foto sea accesible desde el lado cliente
      */
-    public function descargarCurriculum($dni, $guid)
+    public function descargarCurriculum($dni)
     {
         $pathCV = Alumno::where('dni', '=', $dni)->select('curriculum')->get()->first()->curriculum;
         if ($pathCV) {
-            return response()->file($pathCV);
+            return response()->download($pathCV);
         } else {
             return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
         }
