@@ -774,19 +774,29 @@ class ControladorTutorFCT extends Controller
     #region CRUD de empresas
 
     /**
-     * Devuelve las empresas asociadas a un profesor mediante los convenios con su centro de estudios
+     * Devuelve todas las empresas del sistema con un atributo booleano 'convenio',
+     * que adquiere true cuando hay convenio entre el centro del profesor y la empresa
      *
      * @param string $dniProfesor el DNI del profesor
-     * @return response JSON con la colección de empresas asociadas
-     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     * @return response JSON con la colección de empresas
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function getEmpresasFromProfesor(string $dniProfesor)
     {
-        $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
-        $empresas = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
-            ->where('convenio.cod_centro', $codCentro)
-            ->get();
-        return response()->json($empresas, 200);
+        try {
+            $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
+            // $empresas = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
+            //     ->where('convenio.cod_centro', $codCentro)
+            //     ->get();
+            $empresas = Empresa::all();
+            foreach ($empresas as $empresa) {
+                $empresa->convenio = Convenio::where('cod_centro', $codCentro)
+                    ->where('id_empresa', $empresa->id)->first() ? true : false;
+            }
+            return response()->json($empresas, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Fallo al obtener las empresas'], 400);
+        }
     }
 
     /**
