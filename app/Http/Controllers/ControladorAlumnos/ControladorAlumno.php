@@ -574,7 +574,8 @@ class ControladorAlumno extends Controller
 
         $fecha = Carbon::now();
         $dni_alumno = $req->get('dni');
-        $nombre_archivo=$req->get('cod_anexo');
+        $dni_tutor = $this->getDniTutorDelAlumno($dni_alumno);
+        $nombre_archivo = $req->get('cod_anexo');
         $nombre_alumno = $this->getNombreAlumno($dni_alumno);
         $nombre_ciclo = $this->getNombreCicloAlumno($dni_alumno);
         $centro_estudios = $this->getCentroEstudiosYLocalidad($dni_alumno);
@@ -585,35 +586,109 @@ class ControladorAlumno extends Controller
             $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
             $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
             Auxiliar::existeCarpeta($rutaCarpeta);
-            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR .$nombre_archivo;
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
+            $rutaCarpetaTutor = public_path($dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV');
+            Auxiliar::existeCarpeta($rutaCarpetaTutor);
+            $rutaDestinoTutor = $dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
 
             //Al haber llegado aeste punto, asumimos que el anexo se ha completado y por lo tanto, lo habilitamos
             Anexo::where('ruta_anexo', 'like', "%$nombre_archivo")->update([
                 'habilitado' => 1,
             ]);
 
-            $datos = [
-                'alumno_nombre' => $nombre_alumno->nombre . ' ' . $nombre_alumno->apellidos,
-                'alumno_dni' => $dni_alumno,
-                'alumno_curso' => '2º',
-                'alumno_ciclo' => $nombre_ciclo[0]->nombre_ciclo,
-                'nombre_centro' => $centro_estudios[0]->nombre,
-                'ciudad' => $centro_estudios[0]->localidad,
-                'familia_profesional' => $familia_profesional[0]->descripcion,
+            #region Relleno de datos en Word
+            $auxPrefijos = ['alumno', 'ciclo', 'centro', 'familia_profesional'];
+            $auxDatos = [$nombre_alumno, $nombre_ciclo[0], $centro_estudios[0], $familia_profesional[0]];
+            $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+            $datos = $datos +  [
                 'dia' => $fecha->day,
                 'mes' => Parametros::MESES[$fecha->month],
-                'year' => $fecha->year
+                'year' => $fecha->year,
+                'dni' => $dni_alumno,
+                'curso' => '2º'
+
             ];
 
             $template = new TemplateProcessor($rutaOriginal);
             $template->setValues($datos);
             $template->saveAs($rutaDestino);
+            $template = new TemplateProcessor($rutaOriginal);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestinoTutor);
+            #endregion
 
-         //return response()->download(public_path($rutaDestino));
+            return response()->download(public_path($rutaDestino));
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Error de ficheros: ' . $e
             ], 500);
+        }
+    }
+
+    /**
+     * Esta funcion es llamada por la función original subirAnexoEspecifico, como el Anexo15 tiene muchas mas cosas
+     * teniendo en cuenta que necesitamos guardar todo en la base de datos, referenciando al tutor
+     * y guardarlo tambien en la carpeta del tutor, esta función añade todo lo necesario para ello.
+     * Para una explicación extensa de que hace subirAnexoXV acudir a subirAnexoEspecifico.
+     *
+     * @param [type] $dni el dni del alumno
+     * @param [type] $tipoAnexo el tipo de anexo
+     * @param [type] $nombreArchivo el nombre del archivo
+     * @param [type] $fichero el fichero en cuestión que se va a subir
+     * @param [type] $rutaCarpetaAlumno la ruta de la carpeta asociada al alumno $dniAlumno/AnexoXV en este ccaso
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public function subirAnexoXV($dni, $tipoAnexo, $nombreArchivo, $fichero, $rutaCarpetaAlumno)
+    {
+        $tutor = $this->getDniTutorDelAlumno($dni);
+        $rutaCarpeta = $tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . $tipoAnexo;
+
+        try {
+            Auxiliar::existeCarpeta($rutaCarpeta);
+            $flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
+            $flujoAux = fopen($rutaCarpetaAlumno . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
+
+            //Dividimos el string en comas
+            // $datos[ 0 ] == "data:type/extension;base64"
+            // $datos[ 1 ] == <actual base64 file>
+
+            $datos = explode(',', $fichero);
+
+            if (count($datos) > 1) {
+                fwrite($flujo, base64_decode($datos[1]));
+                fwrite($flujoAux, base64_decode($datos[1]));
+            } else {
+                return false;
+            }
+            fclose($flujo);
+            fclose($flujoAux);
+
+
+            $rutaParaBBDD = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
+            $archivoNombreSinExtension = explode('.', $nombreArchivo);
+            $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaCarpeta]);
+            } else {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                    'ruta_anexo' => $rutaParaBBDD,
+                ]);
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                    'ruta_anexo' => $rutaParaBBDD,
+                ]);
+            }
+
+            //Lo ponemos con su nombre original, en un directorio que queramos
+            //El anexoXV es especial, hay que almacenarlo en dos sitios
+            $fichero->move(public_path($rutaCarpetaAlumno), $nombreArchivo);
+            $fichero->move(public_path($rutaCarpeta), $nombreArchivo);
+        } catch (\Throwable $th) {
+            return false;
         }
     }
 
@@ -655,6 +730,18 @@ class ControladorAlumno extends Controller
         return $nombre_ciclo;
     }
 
+    public static function getDniTutorDelAlumno($dni_alumno)
+    {
+
+        $tutor = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+            ->select('tutoria.dni_profesor')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)
+            ->get();
+
+        return $tutor;
+    }
+
     /**
      *Nos permite obtener el centro de estudios y la localidad al que este
      *pertenece a través del dni de un alumno
@@ -694,44 +781,44 @@ class ControladorAlumno extends Controller
         $Anexos = Anexo::where('ruta_anexo', 'like', "%$dni_alumno%")->get();
 
         foreach ($Anexos as $a) {
-        //Un anexo es habilitado si este esta relleno por completo
+            //Un anexo es habilitado si este esta relleno por completo
 
-        $anexoAux=explode('/',$a->ruta_anexo);
-        $datos[] = [
-            'nombre' => $a->tipo_anexo,
-            'relleno' => $a->habilitado,
-            'codigo' => $anexoAux[2],
-            'fecha'=>$a->created_at
-        ];
+            $anexoAux = explode('/', $a->ruta_anexo);
+            $datos[] = [
+                'nombre' => $a->tipo_anexo,
+                'relleno' => $a->habilitado,
+                'codigo' => $anexoAux[2],
+                'fecha' => $a->created_at
+            ];
 
-        return response()->json($datos, 200);
+            return response()->json($datos, 200);
+        }
     }
-    }
 
-/**
- * Si el alumno no tiene los anexos obligatorios en base de datos, estos se crearan en ella como deshabilitados
- * , de manera que si el alumno acaba de entrar por primera vez a la aplicacion, le apareceran los anexos
- * que debería tener en su crud de anexos y le aparecera si estan o no rellenos (habilitados o deshabilitados)
- * una vez completados, o sea, rellenos por el usuario, se habilitaran.
- *
- * @param [type] $dni_alumno
- * @return void
- * @author LauraM <lauramorenoramos97@gmail.com
- */
-    public function elAlumnoTieneSusAnexosObligatorios($dni_alumno){
+    /**
+     * Si el alumno no tiene los anexos obligatorios en base de datos, estos se crearan en ella como deshabilitados
+     * , de manera que si el alumno acaba de entrar por primera vez a la aplicacion, le apareceran los anexos
+     * que debería tener en su crud de anexos y le aparecera si estan o no rellenos (habilitados o deshabilitados)
+     * una vez completados, o sea, rellenos por el usuario, se habilitaran.
+     *
+     * @param [type] $dni_alumno
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com
+     */
+    public function elAlumnoTieneSusAnexosObligatorios($dni_alumno)
+    {
 
         $fecha = Carbon::now();
 
         //AnexoXV
-         //comprobamos que el anexo no exista para añadirlo a la tabla, sino se duplicaran
-         //los registros
+        //comprobamos que el anexo no exista para añadirlo a la tabla, sino se duplicaran
+        //los registros
         $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "%$dni_alumno%")->get();
         if (count($existeAnexo) == 0) {
-        $AuxNombre = $dni_alumno . '_' . $fecha->year . '_.docx';
-        $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
-        Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino,'habilitado'=>1]);
+            $AuxNombre = $dni_alumno . '_' . $fecha->year . '_.docx';
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
+            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino, 'habilitado' => 1]);
         }
-
     }
 
     /**
@@ -740,7 +827,8 @@ class ControladorAlumno extends Controller
      * @return void
      *@author LauraM <lauramorenoramos97@gmail.com>
      */
-    public function descargarTodoAlumnos(Request $req){
+    public function descargarTodoAlumnos(Request $req)
+    {
         $zip = new ZipArchive;
         $AuxNombre = Str::random(7);
         $dni = $req->get('dni_alumno');
@@ -752,7 +840,7 @@ class ControladorAlumno extends Controller
 
         return response()->download(public_path($nombreZip));
     }
-   /**
+    /**
      * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos de Alumnos
      * Miramos los anexos de la carpeta de anexos del alumno, buscamos ese anexo habilitado
      * si este existe en el directorio, en tal caso se añade al zip
@@ -784,7 +872,4 @@ class ControladorAlumno extends Controller
     }
     #endregion
     /***********************************************************************/
-
-
-
 }
