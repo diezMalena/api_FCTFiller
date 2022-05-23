@@ -791,7 +791,7 @@ class ControladorTutorFCT extends Controller
             $empresas = Empresa::all();
             foreach ($empresas as $empresa) {
                 $empresa->convenio = Convenio::where('cod_centro', $codCentro)
-                    ->where('id_empresa', $empresa->id)->first() ? true : false;
+                    ->where('id_empresa', $empresa->id)->first();
             }
             return response()->json($empresas, 200);
         } catch (Exception $ex) {
@@ -908,6 +908,22 @@ class ControladorTutorFCT extends Controller
         } catch (Exception $ex) {
             return response()->json(['message' => 'Registro fallido'], 400);
         }
+    }
+
+    public function checkCIFEmpresa(Request $req) {
+        return Empresa::where('cif', $req->cif)->count() == 0;
+    }
+
+    public function checkEmailEmpresa(Request $req) {
+        return Empresa::where('email', $req->email)->count() == 0;
+    }
+
+    public function checkEmailTrabajador(Request $req) {
+        return Trabajador::where('email', $req->email)->count() == 0;
+    }
+
+    public function checkDNITrabajador(Request $req) {
+        return Trabajador::where('dni', $req->dni)->count() == 0;
     }
 
     /**

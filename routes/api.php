@@ -131,4 +131,4 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     /**********************************************************************/
 });
 
-Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);
+Route::any('prueba', [ControladorTutorFCT::class, 'checkCIFEmpresa']);

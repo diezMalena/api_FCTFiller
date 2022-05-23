@@ -23,8 +23,8 @@ class Convenio extends Model
         'cod_convenio',
         'cod_centro',
         'id_empresa',
-        'curso_academico_inicio',
-        'curso_academico_fin',
+        'fecha_ini',
+        'fecha_fin',
         'firmado_director',
         'firmado_empresa',
         'ruta_anexo'
