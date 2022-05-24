@@ -781,18 +781,19 @@ class ControladorAlumno extends Controller
         $Anexos = Anexo::where('ruta_anexo', 'like', "%$dni_alumno%")->get();
 
         foreach ($Anexos as $a) {
+            //return response($Anexos);
             //Un anexo es habilitado si este esta relleno por completo
-
-            $anexoAux = explode('/', $a->ruta_anexo);
-            $datos[] = [
-                'nombre' => $a->tipo_anexo,
-                'relleno' => $a->habilitado,
-                'codigo' => $anexoAux[2],
-                'fecha' => $a->created_at
-            ];
-
-            return response()->json($datos, 200);
+            if(strcmp($a->tipo_anexo, 'Anexo4') != 0 && strcmp($a->tipo_anexo, 'Anexo2') != 0){
+                $anexoAux = explode('/', $a->ruta_anexo);
+                $datos[] = [
+                    'nombre' => $a->tipo_anexo,
+                    'relleno' => $a->habilitado,
+                    'codigo' => $anexoAux[2],
+                    'fecha' => $a->created_at
+                ];
+            }
         }
+        return response()->json($datos, 200);
     }
 
     /**
