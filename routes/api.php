@@ -127,16 +127,16 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () 
     Route::post('/devolverSemanas', [ControladorAlumno::class, 'devolverSemanas']);
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
-    Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
-    Route::post('/descargarAnexo3', [ControladorAlumno::class, 'descargarAnexo3']);
-    Route::post('/hayDocumento', [ControladorAlumno::class, 'hayDocumento']);
-
     //----Gestión del tutor de la empresa
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
     /**********************************************************************/
-
-
-    //Subida de hoja de seguimiento:
+    //Gestión de hoja de seguimiento:
+    Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
+    Route::post('/descargarAnexo3', [ControladorAlumno::class, 'descargarAnexo3']);
+    Route::post('/hayDocumento', [ControladorAlumno::class, 'hayDocumento']);
     Route::post('/subirAnexo3', [ControladorAlumno::class, 'subirAnexo3']);
+    /**********************************************************************/
+
+    Route::post('/getAlumnosAsociados', [ControladorAlumno::class, 'getAlumnosAsociados']);
 });

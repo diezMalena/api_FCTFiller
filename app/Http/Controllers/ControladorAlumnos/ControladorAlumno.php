@@ -353,6 +353,46 @@ class ControladorAlumno extends Controller
     #endregion
     /***********************************************************************/
 
+
+
+    /***********************************************************************/
+    #region Recoger alumnos asociados a un tutor
+
+    public function getAlumnosAsociados(Request $req)
+    {
+        //dni_tutor puede ser tanto de instituto como de empresa
+        $dni = $req->dni_tutor;
+        $esTutorEstudios = Profesor::where('dni', '=', $dni)
+            ->select('dni')
+            ->first();
+
+        $alumnosAsociados = [];
+        //Si encontramos un tutor_estudios con ese dni, sacamos sus alumnos asociados,
+        //Sino, querrá decir que el dni pertenecerá a un tutor de la empresa, y se le mostrarán sus correspondientes alumnos.
+        if($esTutorEstudios != null){
+            $alumnosAsociados = Alumno::join('matricula', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+            ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+            ->where('tutoria.dni_profesor', '=', $dni)
+            ->select('alumno.dni AS dni','alumno.nombre AS nombre')
+            ->get();
+        }else{
+            $alumnosAsociados = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+            ->where('fct.dni_tutor_empresa', '=', $dni)
+            ->select('alumno.dni AS dni','alumno.nombre AS nombre')
+            ->get();
+        }
+
+        return response()->json($alumnosAsociados, 200);
+    }
+
+
+    #endregion
+    /***********************************************************************/
+
+
+
+
     /***********************************************************************/
     #region Generación y descarga del Anexo III
 
