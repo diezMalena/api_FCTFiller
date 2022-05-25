@@ -780,9 +780,9 @@ class ControladorAlumno extends Controller
                 return 0;
             } else {
                 if (str_contains($gasto->residencia_alumno, 'distinta')) {
-                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO;
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO  * $gasto->dias_transporte_privado;
                 } else {
-                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO;
+                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO * $gasto->dias_transporte_privado;
                 }
             }
         }
