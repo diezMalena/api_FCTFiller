@@ -116,6 +116,7 @@ class ControladorTutorFCT extends Controller
                 ->where([['rol_trabajador_asignado.id_rol', Parametros::RESPONSABLE_CENTRO], ['empresa.id', $empresa->id]])
                 ->select('trabajador.nombre')
                 ->first();
+            //Por si acaso la empresa no tiene un responsable asignado, ponemos al representante legal
             if (!$responsable) {
                 $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                     ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
@@ -165,8 +166,8 @@ class ControladorTutorFCT extends Controller
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
                 Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
-                $trabajador = Trabajador::find($empresa['dni_responsable']);
-                Auxiliar::updateUser($trabajador, $trabajador->email);
+                // $trabajador = Trabajador::find($empresa['dni_responsable']);
+                // Auxiliar::updateUser($trabajador, $trabajador->email);
                 $alumnos = $empresa['alumnos'];
                 foreach ($alumnos as $alumno) {
                     Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -900,7 +901,12 @@ class ControladorTutorFCT extends Controller
             Auxiliar::addUser($representante, "trabajador");
             RolTrabajadorAsignado::create([
                 'dni' => $representante->dni,
-                'id_rol' => 1,
+                'id_rol' => Parametros::REPRESENTANTE_LEGAL,
+            ]);
+            //Metemos al representante legal como responsable del centro para que haya alguno en la asignación
+            RolTrabajadorAsignado::create([
+                'dni' => $representante->dni,
+                'id_rol' => Parametros::RESPONSABLE_CENTRO,
             ]);
             $this->asignarCiclosEmpresa($empresa->id, $req->ciclos);
             // $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
