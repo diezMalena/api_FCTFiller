@@ -910,22 +910,6 @@ class ControladorTutorFCT extends Controller
         }
     }
 
-    public function checkCIFEmpresa(Request $req) {
-        return Empresa::where('cif', $req->cif)->count() == 0;
-    }
-
-    public function checkEmailEmpresa(Request $req) {
-        return Empresa::where('email', $req->email)->count() == 0;
-    }
-
-    public function checkEmailTrabajador(Request $req) {
-        return Trabajador::where('email', $req->email)->count() == 0;
-    }
-
-    public function checkDNITrabajador(Request $req) {
-        return Trabajador::where('dni', $req->dni)->count() == 0;
-    }
-
     /**
      * Registra la asignación de ciclos de interés para una empresa dada
      *

@@ -30,6 +30,7 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/familias_profesionales', [ControladorGenerico::class, 'getFamiliasProfesionales']);
     Route::get('/ciclos/{familia?}', [ControladorGenerico::class, 'getCiclos']);
     /***********************************************************************/
+    Route::get('check_duplicado/{elemento}.{campo}={valor}', [ControladorGenerico::class, 'checkDuplicate']);
 });
 
 /*
@@ -45,6 +46,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::put('update_trabajador', [ControladorTutorFCT::class, 'updateTrabajador']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
+    //----Gestión del convenio / acuerdo
     Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     /***********************************************************************/
@@ -130,5 +132,3 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
 });
-
-Route::any('prueba', [ControladorTutorFCT::class, 'checkCIFEmpresa']);

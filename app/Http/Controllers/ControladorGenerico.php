@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
+use App\Models\Empresa;
 use App\Models\FamiliaProfesional;
 use App\Models\Grupo;
 use App\Models\GrupoFamilia;
 use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
+use App\Models\Trabajador;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
@@ -134,5 +136,36 @@ class ControladorGenerico extends Controller
     /***********************************************************************/
 
     #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+
+    /**
+     * Comprueba que un registro está duplicado en la base de datos
+     *
+     * @param string $elemento nombre de la tabla de la que se hace comprobación
+     * @param string $campo nombre del campo con el que se hace la comprobación
+     * @param string $valor valor del campo que se comprueba
+     * @return boolean true si el registro está duplicado, false si es único
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function checkDuplicate(string $elemento, string $campo, string $valor)
+    {
+        $duplicado = false;
+        try {
+            switch ($elemento) {
+                case 'empresa':
+                    $duplicado = Empresa::where($campo, $valor)->count() != 0;
+                    break;
+                case 'trabajador':
+                    $duplicado = Trabajador::where($campo, $valor)->count() != 0;
+                    break;
+            }
+            return response()->json($duplicado, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error en la comprobación'], 500);
+        }
+    }
+
     /***********************************************************************/
 }
