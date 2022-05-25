@@ -691,20 +691,31 @@ class ControladorAlumno extends Controller
             ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
         ])->get()->first();
         if ($gasto) {
+            if ($gasto->tipo_desplazamiento == "No aplica") {
+                $gasto->facturasTransporte = [];
+                $gasto->facturasManutencion = [];
 
-            $gasto->facturasTransporte = FacturaTransporte::where([
-                ['dni_alumno', '=', $dni_alumno],
-                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-            ])->get();
-            $gasto->facturasManutencion = FacturaManutencion::where([
-                ['dni_alumno', '=', $dni_alumno],
-                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-            ])->get();
+                $gasto->sumatorio_gasto_vehiculo_privado = 0;
+                $gasto->sumatorio_gasto_transporte_publico = 0;
+                $gasto->sumatorio_gasto_manutencion = 0;
+                $gasto->total_gastos = 0;
+            } else {
+                $gasto->facturasTransporte = FacturaTransporte::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                $gasto->facturasManutencion = FacturaManutencion::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
 
-            $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
-            $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
-            $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
-            $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+                $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
+                $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
+                $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
+                $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+            }
+
+            //error_log($gasto);
 
             return response()->json($gasto, 200);
         } else {
@@ -727,7 +738,7 @@ class ControladorAlumno extends Controller
         ])->update([
             'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
             'residencia_alumno' => $r->residencia_alumno,
-            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo,
+            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
             'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
             'distancia_centroEd_residencia' => $r->distancia_centroEd_residencia,
             'distancia_centroTra_residencia' => $r->distancia_centroTra_residencia
@@ -758,16 +769,15 @@ class ControladorAlumno extends Controller
     /**
      * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
      * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
-     * @return boolean|float Si el alumno tiene derecho a compensación de gastos, devuelve un número.
-     * En caso contrario, devuelve false.
+     * @return float Cálculo del importe correspondiente.
      */
     public function calcularGastoVehiculoPrivado($gasto)
     {
         if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
-            return false;
+            return 0;
         } else {
             if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
-                return false;
+                return 0;
             } else {
                 if (str_contains($gasto->residencia_alumno, 'distinta')) {
                     return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO;
@@ -783,6 +793,7 @@ class ControladorAlumno extends Controller
     /**
      * Devuelve el total del importe de los tickets de transporte público
      * @param string $dni_alumno DNI del alumno
+     * @return float Cálculo del importe correspondiente.
      * @author David Sánchez Barragán
      */
     public function calcularGastoTransportePublico($dni_alumno)
@@ -795,7 +806,8 @@ class ControladorAlumno extends Controller
 
     /**
      * Devuelve el total del importe de los tickets de manutención
-     * @param string $dni_alumno DNI del alumno
+     * @param string $dni_alumno DNI del alumno.
+     * @return float Cálculo del importe correspondiente.
      * @author David Sánchez Barragán
      */
     public function calcularGastoManutencion($dni_alumno)
@@ -812,7 +824,8 @@ class ControladorAlumno extends Controller
      * @param string $residencia_alumno Residencia del alumno (Localidad del centro educativo/Localidad distinta a la del centro educativo)
      * @param string $ubicacion_centro_trabajo Ubicación del centro de trabajo (Dentro del núcleo urbano/Fuera del núcleo urbano/En otra localidad)
      * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
-     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo.
+     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo,
+     * No aplica-> no se tiene derecho a gastos de manutencion.
      */
     public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
     {
