@@ -110,20 +110,21 @@ class ControladorTutorFCT extends Controller
             ->get();
 
         foreach ($empresas as  $empresa) {
-            //Aquí rocojo el nombre del responsable de esa empresa
+            //Aquí rocojo el responsable de esa empresa. Si no hay, se saca al representante legal, que va a estar sí o sí
             $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
-                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->where([['rol_trabajador_asignado.id_rol', Parametros::RESPONSABLE_CENTRO], ['empresa.id', $empresa->id]])
                 ->select('trabajador.nombre')
-                ->get()[0]->nombre;
-            $empresa->nombre_responsable = $responsable;
-            //Aquí rocojo el dni del responsable de esa empresa
-            $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
-                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
-                ->select('trabajador.dni')
-                ->get()[0]->dni;
-            $empresa->dni_responsable = $dni_responsable;
+                ->first();
+            if (!$responsable) {
+                $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                    ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                    ->where([['rol_trabajador_asignado.id_rol', Parametros::REPRESENTANTE_LEGAL], ['empresa.id', $empresa->id]])
+                    ->select('trabajador.nombre')
+                    ->first();
+            }
+            $empresa->nombre_responsable = $responsable->nombre;
+            $empresa->dni_responsable = $responsable->dni;
             //Aquí rocojo los alumnos asociados a esa empresa
             $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
                 ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
