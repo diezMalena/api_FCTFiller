@@ -732,6 +732,7 @@ class ControladorAlumno extends Controller
 
 
 
+
     /**
      * Actualiza la información en la tabla Gasto según el objeto recibido
      * @param Request $r Request con forma de objeto Gasto
@@ -769,6 +770,29 @@ class ControladorAlumno extends Controller
         ]);
 
         return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    public function nuevaFacturaTransporte(Request $r)
+    {
+        $imagen_ticket = '';
+
+        if($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
+        }
+
+        $factura = new FacturaTransporte([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => $imagen_ticket,
+        ]);
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
     }
 
     /**
