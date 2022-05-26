@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Rutas de autenticación
 |--------------------------------------------------------------------------
 */
+
 Route::group(['middleware' => ['Cors']], function () {
     Route::post('/login', [ControladorGenerico::class, 'login']);
 });
@@ -28,6 +29,9 @@ Route::group(['middleware' => ['Cors']], function () {
     /***********************************************************************/
     /****************************CRUD Alumnos*******************************/
     Route::get('descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
+    /***********************************************************************/
+    /************************ CRUD Factura Transporte **********************/
+    Route::get('descargarImagenTicketTransporte/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketTransporte']);
     /***********************************************************************/
 });
 
@@ -135,6 +139,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
     Route::get('/gestionGastosAlumno/{dni_alumno}', [ControladorAlumno::class, 'gestionGastosAlumno']);
     Route::put('/actualizarDatosGastoAlumno', [ControladorAlumno::class, 'actualizarDatosGastoAlumno']);
     Route::put('/actualizarDiasVehiculoPrivado', [ControladorAlumno::class, 'actualizarDiasVehiculoPrivado']);
+    Route::put('/actualizarFacturaTransporte', [ControladorAlumno::class, 'actualizarFacturaTransporte']);
     /**********************************************************************/
 });
 

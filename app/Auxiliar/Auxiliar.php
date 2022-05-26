@@ -250,7 +250,9 @@ class Auxiliar
     public static function borrarFichero($path)
     {
         try {
-            unlink($path);
+            if(file_exists($path)) {
+                unlink($path);
+            }
         } catch (\Throwable $th) {
 
         }
