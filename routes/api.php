@@ -30,8 +30,9 @@ Route::group(['middleware' => ['Cors']], function () {
     /****************************CRUD Alumnos*******************************/
     Route::get('descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
     /***********************************************************************/
-    /************************ CRUD Factura Transporte **********************/
+    /**************** CRUD Factura Transporte y Manutencion ****************/
     Route::get('descargarImagenTicketTransporte/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketTransporte']);
+    Route::get('descargarImagenTicketManutencion/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketManutencion']);
     /***********************************************************************/
 });
 
@@ -141,6 +142,10 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
     Route::put('/actualizarDiasVehiculoPrivado', [ControladorAlumno::class, 'actualizarDiasVehiculoPrivado']);
     Route::put('/actualizarFacturaTransporte', [ControladorAlumno::class, 'actualizarFacturaTransporte']);
     Route::post('/nuevaFacturaTransporte', [ControladorAlumno::class, 'nuevaFacturaTransporte']);
+    Route::delete('/eliminarFacturaTransporte/{id}', [ControladorAlumno::class, 'eliminarFacturaTransporte']);
+    Route::put('/actualizarFacturaManutencion', [ControladorAlumno::class, 'actualizarFacturaManutencion']);
+    Route::post('/nuevaFacturaManutencion', [ControladorAlumno::class, 'nuevaFacturaManutencion']);
+    Route::delete('/eliminarFacturaManutencion/{id}', [ControladorAlumno::class, 'eliminarFacturaManutencion']);
     /**********************************************************************/
 });
 

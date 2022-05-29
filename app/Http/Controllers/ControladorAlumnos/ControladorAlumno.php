@@ -772,6 +772,9 @@ class ControladorAlumno extends Controller
         return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
     }
 
+    /**
+     *
+     */
     public function nuevaFacturaTransporte(Request $r)
     {
         $imagen_ticket = '';
@@ -787,6 +790,30 @@ class ControladorAlumno extends Controller
             'importe' => $r->importe,
             'origen' => $r->origen,
             'destino' => $r->destino,
+            'imagen_ticket' => $imagen_ticket,
+        ]);
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaManutencion(Request $r)
+    {
+        $imagen_ticket = '';
+
+        if($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+        }
+
+        $factura = new FacturaManutencion([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
             'imagen_ticket' => $imagen_ticket,
         ]);
 
@@ -827,6 +854,55 @@ class ControladorAlumno extends Controller
 
         return response()->json(['mensaje' => 'Factura actualizada correctamente']);
     }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaManutencion(Request $r)
+    {
+        $imagen_ticket = '';
+
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->foto, "descargarImagenTicketManutencion")) {
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+            $imagen_ticket_anterior = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+        } else {
+            $imagen_ticket = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaManutencion::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    public function eliminarFacturaManutencion ($id) {
+        try {
+            FacturaManutencion::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+
+    public function eliminarFacturaTransporte ($id) {
+        try {
+            FacturaTransporte::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
     #endregion
 
     #region Funciones auxiliares CRUD Anexo VI:
@@ -842,6 +918,19 @@ class ControladorAlumno extends Controller
             return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
         }
     }
+
+    /**
+     * Descarga la imagen del ticket de manutención
+     */
+    public function descargarImagenTicketManutencion($id, $guid) {
+        $pathFoto = FacturaManutencion::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
     /**
      * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
      * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
