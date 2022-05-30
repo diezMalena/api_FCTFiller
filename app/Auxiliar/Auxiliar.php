@@ -2,6 +2,7 @@
 
 namespace App\Auxiliar;
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
@@ -165,12 +166,16 @@ class Auxiliar
             $usuario->roles = $roles;
         } else {
             $usuario = Profesor::where('email', '=', $user->email)
-                ->select(['email', 'nombre', 'apellidos', 'dni'])
+                ->select(['email', 'nombre', 'apellidos', 'dni', 'cod_centro_estudios'])
                 ->first();
             $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
                 ->select('id_rol')
                 ->get();
             $usuario->roles = $roles;
+            //DJC Cambio 28-05-2022: añadido objeto de centro de estudios al profesor. Lo siento por la ñapa
+            $usuario->centro = CentroEstudios::find($usuario->cod_centro_estudios);
+            $controller = new ControladorTutorFCT();
+            $usuario->centro->director = $controller->getDirectorCentroEstudios($usuario->cod_centro_estudios);
         }
         $usuario->tipo = $user->tipo;
         return $usuario;

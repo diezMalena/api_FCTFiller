@@ -139,6 +139,7 @@ class ControladorGenerico extends Controller
     /***********************************************************************/
 
     /***********************************************************************/
+    #region Auxiliares
 
     /**
      * Comprueba que un registro está duplicado en la base de datos
@@ -167,5 +168,6 @@ class ControladorGenerico extends Controller
         }
     }
 
+    #endregion
     /***********************************************************************/
 }

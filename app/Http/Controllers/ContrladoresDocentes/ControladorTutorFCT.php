@@ -787,9 +787,6 @@ class ControladorTutorFCT extends Controller
     {
         try {
             $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
-            // $empresas = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
-            //     ->where('convenio.cod_centro', $codCentro)
-            //     ->get();
             $empresas = Empresa::all();
             foreach ($empresas as $empresa) {
                 $empresa->convenio = Convenio::where('cod_centro', $codCentro)
@@ -941,7 +938,7 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
 
     /***********************************************************************/
-    #region Gestión de convenios y acuerdos - Anexoa 0 y 0A
+    #region Gestión de convenios y acuerdos - Anexo 0 y 0A
 
     /***********************************************************************/
     #region Anexo 0 y 0A
@@ -1076,22 +1073,26 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Devuelve el centro de estudios asociado a un determinado código de convenio
+     * Devuelve el centro de estudios asociado a un determinado código de convenio.
+     * Contiene también información del director
+     *
      * @param string $codConvenio el código de convenio
      * @return CentroEstudios una colección con la información del centro de estudios
-     *
      * @author @DaniJCoello
      */
     public function getCentroEstudiosFromConvenio(string $codConvenio)
     {
-        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        $centro = CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        $centro->director = $this->getDirectorCentroEstudios($centro->cod);
+
+        return $centro;
     }
 
     /**
      * Devuelve el director de un centro de estudios
+     *
      * @param string $codCentroEstudios el código irrepetible del centro de estudios
      * @return Profesor una colección con la información del director
-     *
      * @author @DaniJCoello
      */
     public function getDirectorCentroEstudios(string $codCentroEstudios)
@@ -1100,46 +1101,56 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Devuelve la empresa asociada a un CIF
+     * Devuelve la empresa asociada a un CIF,
+     * con los datos del representante legal dentro
+     *
      * @param string $cif el CIF de la empresa
      * @return Empresa una colección con la información de la empresa
-     *
      * @author @DaniJCoello
      */
     public function getEmpresaFromCIF(string $cif)
     {
-        return Empresa::where('cif', $cif)->first();
+        $empresa = Empresa::where('cif', $cif)->first();
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+        return $empresa;
     }
 
     /**
-     * Devuelve la empresa asociada a una ID de la base de datos
+     * Devuelve la empresa asociada a una ID de la base de datos,
+     * con los datos del representante legal dentro
+     *
      * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
      * @return Empresa una colección con la información de la empresa
-     *
      * @author @DaniJCoello
      */
     public function getEmpresaFromID(int $id)
     {
-        return Empresa::find($id);
+        $empresa = Empresa::find($id);
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+        return $empresa;
     }
 
     /**
      * Devuelve la empresa asociada a un código de convenio
-     * @param string $codConvenio el código del convenio
-     * @return Empresa una colección con la información de la empresa
+     * La empresa contiene los datos del representante legal
      *
+     * @param string $codConvenio el código del convenio
+     * @return Empresa una colección con la información de la empresa y el representante legal
      * @author @DaniJCoello
      */
     public function getEmpresaFromConvenio(string $codConvenio)
     {
-        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        $empresa = Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+
+        return $empresa;
     }
 
     /**
      * Devuelve el representante legal de una empresa
-     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
-     * @return Empresa una colección con la información de la empresa
      *
+     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
+     * @return Trabajador un objeto con los datos del representante legal
      * @author @DaniJCoello
      */
     public function getRepresentanteLegal(int $id)
@@ -1165,6 +1176,32 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
+     * Devuelve en una response JSON la empresa asociada al ID que se le pasa como argumento,
+     * con los datos de su representante legal dentro
+     *
+     * @param int $id ID único de la empresa
+     * @return response JSON con los datos de la empresa y su representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getEmpresaID(int $id)
+    {
+        return response()->json($this->getEmpresaFromId($id), 200);
+    }
+
+    /**
+     * Devuelve en una response JSON la empresa asociada al ID que se le pasa como argumento,
+     * con los datos de su representante legal dentro
+     *
+     * @param int $id ID único de la empresa
+     * @return response JSON con los datos de la empresa y su representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getEmpresaCIF(string $cif)
+    {
+        return response()->json($this->getEmpresaFromCif($cif), 200);
+    }
+
+    /**
      * @author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
      * al que pertenecen, con ese dato, recogemos los grupos de un centro de estudios desde la tabla
@@ -1176,6 +1213,11 @@ class ControladorTutorFCT extends Controller
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
         $grupos = Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get();
         return response()->json($grupos, 200);
+    }
+
+    public function getCentroEstudiosFromConvenioJSON(string $codConvenio)
+    {
+        return response()->json($this->getCentroEstudiosFromConvenio($codConvenio), 200);
     }
 
     #endregion

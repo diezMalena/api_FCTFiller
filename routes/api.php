@@ -41,12 +41,15 @@ Route::group(['middleware' => ['Cors']], function () {
 Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     /*****************************CRUD EMPRESAS*****************************/
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
+    Route::get('solicitar_empresa/id={id}', [ControladorTutorFCT::class, 'getEmpresaID']);
+    Route::get('solicitar_empresa/cif={cif}', [ControladorTutorFCT::class, 'getEmpresaCIF']);
     Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
     Route::put('update_trabajador', [ControladorTutorFCT::class, 'updateTrabajador']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
     //----Gestión del convenio / acuerdo
+    Route::get('solicitar_centro_estudios/convenio={cod_convenio}', [ControladorTutorFCT::class, 'getCentroEstudiosFromConvenioJSON']);
     Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     /***********************************************************************/
