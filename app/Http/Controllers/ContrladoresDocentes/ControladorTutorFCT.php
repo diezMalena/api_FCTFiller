@@ -791,6 +791,7 @@ class ControladorTutorFCT extends Controller
             foreach ($empresas as $empresa) {
                 $empresa->convenio = Convenio::where('cod_centro', $codCentro)
                     ->where('id_empresa', $empresa->id)->first();
+                $empresa->representante = $this->getRepresentanteLegal($empresa->id);
             }
             return response()->json($empresas, 200);
         } catch (Exception $ex) {
