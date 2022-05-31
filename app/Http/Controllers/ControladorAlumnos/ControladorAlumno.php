@@ -666,20 +666,27 @@ class ControladorAlumno extends Controller
             fclose($flujoAux);
 
 
-            $rutaParaBBDD = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
             $archivoNombreSinExtension = explode('.', $nombreArchivo);
-            $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
-            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+            //Alumno
+            $rutaParaBBDAlumno=$rutaCarpetaAlumno. DIRECTORY_SEPARATOR . $nombreArchivo;
+            $rutaParaBBDDSinExtensionAlumno = $rutaCarpetaAlumno . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
 
+            //Profesor
+            $rutaParaBBDDProfesor = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
+            $rutaParaBBDDSinExtension= $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+
+
+            //Solo busco por una ruta, por que si este anexo existe para el profesor, es por que el alumno ya lo ha creado
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+            //error_log();
             if (count($existeAnexo) == 0) {
-                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
-                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaCarpeta]);
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDDProfesor]);//Profesor
             } else {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
-                    'ruta_anexo' => $rutaParaBBDD,
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtensionAlumno%")->update([//Alumno
+                    'ruta_anexo' => $rutaParaBBDAlumno,
                 ]);
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
-                    'ruta_anexo' => $rutaParaBBDD,
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([//Profesor
+                    'ruta_anexo' => $rutaParaBBDDProfesor,
                 ]);
             }
 
@@ -778,7 +785,7 @@ class ControladorAlumno extends Controller
         $datos = array();
 
         $this->elAlumnoTieneSusAnexosObligatorios($dni_alumno);
-        $Anexos = Anexo::where('ruta_anexo', 'like', "%$dni_alumno%")->get();
+        $Anexos = Anexo::where('ruta_anexo', 'like', "$dni_alumno%")->get();
 
         foreach ($Anexos as $a) {
             //return response($Anexos);
@@ -818,7 +825,7 @@ class ControladorAlumno extends Controller
         if (count($existeAnexo) == 0) {
             $AuxNombre = $dni_alumno . '_' . $fecha->year . '_.docx';
             $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
-            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino, 'habilitado' => 1]);
+            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino, 'habilitado' => 0]);
         }
     }
 

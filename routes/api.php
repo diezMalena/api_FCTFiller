@@ -66,6 +66,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     /*******************************ANEXO II Y IV*******************************/
     Route::post('/rellenarAnexoIIYIV', [ControladorTutorFCT::class, 'rellenarAnexoIIYIV']);
     /**********************************************************************/
+    Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'solicitarAnexosFct']);
 });
 
 /*
