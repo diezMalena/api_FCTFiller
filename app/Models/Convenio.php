@@ -25,8 +25,6 @@ class Convenio extends Model
         'id_empresa',
         'fecha_ini',
         'fecha_fin',
-        'firmado_director',
-        'firmado_empresa',
         'ruta_anexo'
     ];
     protected $table = 'convenio';

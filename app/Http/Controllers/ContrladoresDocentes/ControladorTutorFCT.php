@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Faker\Core\Number;
+use Illuminate\Database\QueryException;
 use Mockery\Undefined;
 use PhpParser\Node\Expr\Cast\Array_;
 use Ramsey\Uuid\Type\Integer;
@@ -950,17 +951,16 @@ class ControladorTutorFCT extends Controller
      * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
      * @return string la ruta en la que se guarda el anexo
      *
-     * @author @DaniJCoello
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> 02/06/22 -> Generación de anexo no automática
      */
-    public function generarAnexo0(string $codConvenio, string $dniTutor)
+    public function generarAnexo0(Request $req)
     {
-        // Primero consigo los datos del centro de estudios asociado al tutor y su director
-        $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
-
-        // Ahora hago lo propio con la empresa en cuestión
-        $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $representante = $this->getRepresentanteLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
+        // Primero consigo  todos los datos que hay que rellenar en el convenio
+        $convenio = new Convenio($req->convenio);
+        $centroEstudios = new CentroEstudios($req->centro);
+        $director = new Profesor($req->director);
+        $empresa = new Empresa($req->empresa);
+        $representante = new Trabajador($req->representante);
 
         // Construyo el array con todos los datos
         $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
@@ -968,14 +968,17 @@ class ControladorTutorFCT extends Controller
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
 
         // Ahora extraigo los datos de fecha
-        $fecha = Carbon::now();
+        $fecha = new Carbon($convenio->fecha_ini);
         $datos['dia'] = $fecha->day;
         $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
         $datos['anio'] = $fecha->year % 100;
-        $datos['cod_convenio'] = $codConvenio;
+        $datos['cod_convenio'] = $convenio->cod_convenio;
 
         // Esta variable se usa sólo para el nombre del archivo
-        $codConvenioAux = str_replace('/', '-', $codConvenio);
+        $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
+
+        // Voy a necesitar el DNI del tutor, así que lo obtengo
+        $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
 
         // Ahora genero el Word en sí
         // Establezco las variables que necesito
@@ -989,7 +992,7 @@ class ControladorTutorFCT extends Controller
         $template->saveAs($rutaDestino);
 
         // Guardo la ruta del archivo en la base de datos
-        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
+        Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $rutaDestino]);
         // Y la devuelvo
         return $rutaDestino;
     }
@@ -1027,29 +1030,42 @@ class ControladorTutorFCT extends Controller
 
     /**
      * Registrar el convenio en la BBDD con los diferentes datos que necesitamos.
+     *
+     * @param Request $req Contiene todos los datos que llegan desde el cliente
+     * @return Response JSON con el código de respuesta del servidor
      * @author Malena
-     * @param string $dniTutor, el dni del tutor que se encuentra logueado.
-     * @param int $id_empresa, el id de la empresa que se registra.
-     * @param boolean $privada true --> empresa privada; false --> empresa pública
-     * @return Convenio convenio entre la empresa y el centro de estudios.
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public function addConvenio(string $dniTutor, int $id_empresa, bool $privada)
+    public function addConvenio(Request $req)
     {
-        //Consigo el centro de estudios a partir del Dni del tutor:
-        $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
-        //Fabrico el codigo del convenio:
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada ? 'C' : 'A');
-        $convenio = Convenio::create([
-            'cod_convenio' => $codConvenio,
-            'cod_centro' => $centroEstudios->cod,
-            'id_empresa' => $id_empresa,
-            'curso_academico_inicio' => '',
-            'curso_academico_fin' => '',
-            'firmado_director' => 0,
-            'firmado_empresa' => 0,
-            'ruta_anexo' => ''
-        ]);
-        return $convenio;
+        try {
+            dd($req);
+            $convenio = Convenio::create($req->convenio);
+            if ($req->subir_anexo) {
+                $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+                $tipoAnexo = $req->empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A';
+                $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
+                $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
+                $archivo = $tipoAnexo . '_' . $codConvenioAux;
+                $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->anexo);
+            } else {
+                $ruta = $this->generarAnexo0($req);
+            }
+            Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $ruta]);
+            Anexo::create([
+                'tipo_anexo' => $req->empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A',
+                'ruta_anexo' => $ruta
+            ]);
+        } catch (QueryException $ex) {
+            // Duplicado de una clave única
+            if ($ex->errorInfo[1] == 1062) {
+                return response()->json($ex->errorInfo[2], 409);
+            } else {
+                return response()->json($ex->errorInfo[2], 400);
+            }
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
     }
 
     #endregion
