@@ -1146,7 +1146,7 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
 
     /***********************************************************************/
-    #region Gestión de gastos de alumno en vista profesor (REVISAR)
+    #region Gestión de gastos de alumno en vista profesor
     public function gestionGastosProfesor(Request $r)
     {
         //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
@@ -1164,33 +1164,34 @@ class ControladorTutorFCT extends Controller
         $gastos = new stdClass();
         $gastos->gastos = [];
         foreach ($dnisAlumnos as $dni) {
-            $gastos->gastos [] = $c->obtenerGastoAlumnoPorDNIAlumno($dni);
+            $gastos->gastos[] = $c->obtenerGastoAlumnoPorDNIAlumno($dni);
         }
 
         $gastos->grupo = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
-        ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
-        ->where([
-            ['profesor.email', '=', $r->user()->email],
-            ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-        ])
-        ->select('tutoria.cod_grupo')->first()->cod_grupo;
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->where([
+                ['profesor.email', '=', $r->user()->email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->select('tutoria.cod_grupo')->first()->cod_grupo;
 
-        $al = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
-        ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
-        ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
-        ->where([
-            ['profesor.email', '=', $r->user()->email],
-            ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-        ])
-        ->whereNotIn('alumno.dni', $dnisAlumnos)
-        ->pluck('alumno.dni')->toArray();
+        $alumnosSinGasto = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->where([
+                ['profesor.email', '=', $r->user()->email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->whereNotIn('alumno.dni', $dnisAlumnos)
+            ->pluck('alumno.dni')->toArray();
 
-        $gastos->alumnosSinGasto = Alumno::whereIn('dni', $al)->get();
+        $gastos->alumnosSinGasto = Alumno::whereIn('dni', $alumnosSinGasto)->get();
 
         return response()->json($gastos, 200);
     }
 
-    public function eliminarAlumnoDeGastos($dni_alumno) {
+    public function eliminarAlumnoDeGastos($dni_alumno)
+    {
         Gasto::where([
             ['dni_alumno', '=', $dni_alumno],
             ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
@@ -1204,6 +1205,28 @@ class ControladorTutorFCT extends Controller
             ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
         ])->delete();
         return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
+    }
+
+    public function nuevoAlumnoGestionGastos(Request $r)
+    {
+        try {
+            Gasto::create([
+                'dni_alumno' => $r->dni,
+                'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+                'tipo_desplazamiento' => '',
+                'total_gastos' => 0,
+                'residencia_alumno' => '',
+                'ubicacion_centro_trabajo' => '',
+                'distancia_centroEd_centroTra' => 0,
+                'distancia_centroEd_residencia' => 0,
+                'distancia_centroTra_residencia' => 0,
+                'dias_transporte_privado' => 0
+            ]);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+
+        return response()->json(['mensaje' => 'Creado correctamente'], 201);
     }
 
     #endregion
