@@ -51,6 +51,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     //----Gestión del convenio / acuerdo
     Route::get('solicitar_centro_estudios/convenio={cod_convenio}', [ControladorTutorFCT::class, 'getCentroEstudiosFromConvenioJSON']);
     Route::post('add_convenio', [ControladorTutorFCT::class, 'addConvenio']);
+    Route::delete('eliminar_convenio/cod={cod}', [ControladorTutorFCT::class, 'deleteConvenio']);
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     /***********************************************************************/
 

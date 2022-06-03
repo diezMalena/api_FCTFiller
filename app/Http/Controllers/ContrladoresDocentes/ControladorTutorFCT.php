@@ -1056,6 +1056,22 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    public function editConvenio(Request $req)
+    {
+    }
+
+    public function deleteConvenio(String $cod)
+    {
+        $codAux = str_replace('-', '/', $cod);
+        try {
+            Anexo::where('ruta_anexo', Convenio::where('cod_convenio', $codAux)->first()->ruta_anexo)->update(['habilitado' => 0]);
+            Convenio::where('cod_convenio', $codAux)->delete();
+            return response()->json(['message' => 'Anulación de convenio correcta'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => $ex->getMessage()], 500);
+        }
+    }
+
     #endregion
     /***********************************************************************/
 
