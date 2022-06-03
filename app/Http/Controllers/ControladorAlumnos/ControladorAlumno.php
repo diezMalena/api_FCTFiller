@@ -686,6 +686,19 @@ class ControladorAlumno extends Controller
      */
     public function gestionGastosAlumno($dni_alumno)
     {
+        $gasto = $this->obtenerGastoAlumnoPorDNIAlumno($dni_alumno);
+        if ($gasto) {
+            return response()->json($gasto, 200);
+        } else {
+            return response()->json([], 204);
+        }
+    }
+
+    /**
+     * Obtiene el registro correspondiente de la tabla Gasto según el DNI del alumno
+     */
+    public function obtenerGastoAlumnoPorDNIAlumno($dni_alumno)
+    {
         $gasto = Gasto::where([
             ['dni_alumno', '=', $dni_alumno],
             ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
@@ -706,9 +719,7 @@ class ControladorAlumno extends Controller
                 ])->get();
                 //Incluimos la URL de la foto del ticket de transporte
                 foreach ($gasto->facturasTransporte as $factura) {
-                $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketTransporte/' . $factura->id . '/' . uniqid();
-
-                    # code...
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketTransporte/' . $factura->id . '/' . uniqid();
                 }
 
                 $gasto->facturasManutencion = FacturaManutencion::where([
@@ -721,13 +732,14 @@ class ControladorAlumno extends Controller
                 $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
                 $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
             }
+            //Incluido para controlar la gestión de los gastos del profesor
+            $alumno = Alumno::where('dni', '=', $dni_alumno)->get()->first();
+            $gasto->nombre_alumno = $alumno->nombre . ' ' . $alumno->apellidos;
 
-            //error_log($gasto);
-
-            return response()->json($gasto, 200);
-        } else {
-            return response()->json([], 204);
+            return $gasto;
         }
+
+        return null;
     }
 
 
@@ -779,7 +791,7 @@ class ControladorAlumno extends Controller
     {
         $imagen_ticket = '';
 
-        if($r->imagen_ticket != null) {
+        if ($r->imagen_ticket != null) {
             $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
         }
 
@@ -805,7 +817,7 @@ class ControladorAlumno extends Controller
     {
         $imagen_ticket = '';
 
-        if($r->imagen_ticket != null) {
+        if ($r->imagen_ticket != null) {
             $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
         }
 
@@ -886,7 +898,8 @@ class ControladorAlumno extends Controller
         return response()->json(['mensaje' => 'Factura actualizada correctamente']);
     }
 
-    public function eliminarFacturaManutencion ($id) {
+    public function eliminarFacturaManutencion($id)
+    {
         try {
             FacturaManutencion::where('id', '=', $id)->delete();
             return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
@@ -895,7 +908,8 @@ class ControladorAlumno extends Controller
         }
     }
 
-    public function eliminarFacturaTransporte ($id) {
+    public function eliminarFacturaTransporte($id)
+    {
         try {
             FacturaTransporte::where('id', '=', $id)->delete();
             return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
@@ -910,7 +924,8 @@ class ControladorAlumno extends Controller
     /**
      * Descarga la imagen del ticket de transporte
      */
-    public function descargarImagenTicketTransporte($id, $guid) {
+    public function descargarImagenTicketTransporte($id, $guid)
+    {
         $pathFoto = FacturaTransporte::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
         if ($pathFoto) {
             return response()->file($pathFoto);
@@ -922,7 +937,8 @@ class ControladorAlumno extends Controller
     /**
      * Descarga la imagen del ticket de manutención
      */
-    public function descargarImagenTicketManutencion($id, $guid) {
+    public function descargarImagenTicketManutencion($id, $guid)
+    {
         $pathFoto = FacturaManutencion::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
         if ($pathFoto) {
             return response()->file($pathFoto);

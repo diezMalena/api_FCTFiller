@@ -73,6 +73,11 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
     /***********************************************************************/
+    /***********************CRUD GASTOS ALUMNOS TUTOR***********************/
+    Route::get('/gestionGastosProfesor', [ControladorTutorFCT::class, 'gestionGastosProfesor']);
+    Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);
+    /***********************************************************************/
+
 });
 
 /*
@@ -133,9 +138,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     /*******************************ANEXO XV*******************************/
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
     /**********************************************************************/
-});
 
-Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
     /******************************ANEXO VI********************************/
     Route::get('/gestionGastosAlumno/{dni_alumno}', [ControladorAlumno::class, 'gestionGastosAlumno']);
     Route::put('/actualizarDatosGastoAlumno', [ControladorAlumno::class, 'actualizarDatosGastoAlumno']);

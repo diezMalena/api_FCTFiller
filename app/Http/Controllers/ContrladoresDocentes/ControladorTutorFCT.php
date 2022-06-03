@@ -15,6 +15,7 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
 use App\Models\Fct;
 use App\Auxiliar\Parametros;
+use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Models\Anexo;
 use App\Models\AuxConvenio;
 use App\Models\AuxCursoAcademico;
@@ -22,8 +23,11 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Gasto;
 use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
@@ -41,6 +45,7 @@ use Mockery\Undefined;
 use PhpParser\Node\Expr\Cast\Array_;
 use Ramsey\Uuid\Type\Integer;
 use Illuminate\Support\Facades\Hash;
+use stdClass;
 
 class ControladorTutorFCT extends Controller
 {
@@ -1135,6 +1140,70 @@ class ControladorTutorFCT extends Controller
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
         $grupos = Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get();
         return response()->json($grupos, 200);
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de gastos de alumno en vista profesor (REVISAR)
+    public function gestionGastosProfesor(Request $r)
+    {
+        //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
+        $dnisAlumnos = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('gasto', 'gasto.dni_alumno', '=', 'alumno.dni')
+            ->where([
+                ['profesor.email', '=', $r->user()->email],
+                ['gasto.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->pluck('alumno.dni');
+
+        $c = new ControladorAlumno();
+        $gastos = new stdClass();
+        $gastos->gastos = [];
+        foreach ($dnisAlumnos as $dni) {
+            $gastos->gastos [] = $c->obtenerGastoAlumnoPorDNIAlumno($dni);
+        }
+
+        $gastos->grupo = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+        ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+        ->where([
+            ['profesor.email', '=', $r->user()->email],
+            ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])
+        ->select('tutoria.cod_grupo')->first()->cod_grupo;
+
+        $al = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+        ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+        ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+        ->where([
+            ['profesor.email', '=', $r->user()->email],
+            ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])
+        ->whereNotIn('alumno.dni', $dnisAlumnos)
+        ->pluck('alumno.dni')->toArray();
+
+        $gastos->alumnosSinGasto = Alumno::whereIn('dni', $al)->get();
+
+        return response()->json($gastos, 200);
+    }
+
+    public function eliminarAlumnoDeGastos($dni_alumno) {
+        Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
     }
 
     #endregion
