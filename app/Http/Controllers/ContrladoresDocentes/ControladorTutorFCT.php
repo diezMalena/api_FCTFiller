@@ -991,20 +991,23 @@ class ControladorTutorFCT extends Controller
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
-        // Guardo la ruta del archivo en la base de datos
-        Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $rutaDestino]);
-        // Y la devuelvo
         return $rutaDestino;
     }
 
     /**
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
+     * // Añadido control de errores
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function descargarAnexo0(Request $req)
     {
         $ruta_anexo = $req->get('ruta_anexo');
-        return response()->download($ruta_anexo);
+        if (file_exists($ruta_anexo)) {
+            return response()->download($ruta_anexo);
+        } else {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
     }
 
     #endregion
@@ -1012,21 +1015,6 @@ class ControladorTutorFCT extends Controller
 
     /***********************************************************************/
     #region Gestión de convenios y acuerdos
-
-    /**
-     * Genera el código de un convenio a partir del código del centro, un autoincremental y la fecha
-     * @param string $codCentroConvenio el código del centro para generar los convenios
-     * @param string $tipo 'C' -> Convenio; 'A' -> Acuerdo
-     * @return string el código del convenio
-     *
-     * @author @DaniJCoello
-     */
-    public function generarCodigoConvenio(string $codCentroConvenio, string $tipo)
-    {
-        $numConvenio = AuxConvenio::create()->id;
-        $codConvenio = $codCentroConvenio . '/' . $tipo . $numConvenio . '/' . Carbon::now()->year % 100;
-        return $codConvenio;
-    }
 
     /**
      * Registrar el convenio en la BBDD con los diferentes datos que necesitamos.
@@ -1039,11 +1027,10 @@ class ControladorTutorFCT extends Controller
     public function addConvenio(Request $req)
     {
         try {
-            dd($req);
             $convenio = Convenio::create($req->convenio);
             if ($req->subir_anexo) {
                 $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
-                $tipoAnexo = $req->empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A';
+                $tipoAnexo = $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A';
                 $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
                 $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
                 $archivo = $tipoAnexo . '_' . $codConvenioAux;
@@ -1053,9 +1040,10 @@ class ControladorTutorFCT extends Controller
             }
             Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $ruta]);
             Anexo::create([
-                'tipo_anexo' => $req->empresa->es_privada == 1 ? 'Anexo0' : 'Anexo0A',
+                'tipo_anexo' => $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A',
                 'ruta_anexo' => $ruta
             ]);
+            return response()->json(['ruta_anexo' => $ruta], 201);
         } catch (QueryException $ex) {
             // Duplicado de una clave única
             if ($ex->errorInfo[1] == 1062) {
