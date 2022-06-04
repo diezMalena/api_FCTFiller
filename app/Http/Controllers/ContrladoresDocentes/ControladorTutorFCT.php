@@ -46,6 +46,8 @@ use PhpParser\Node\Expr\Cast\Array_;
 use Ramsey\Uuid\Type\Integer;
 use Illuminate\Support\Facades\Hash;
 use stdClass;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriterXlsx;
 
 class ControladorTutorFCT extends Controller
 {
@@ -1147,7 +1149,31 @@ class ControladorTutorFCT extends Controller
 
     /***********************************************************************/
     #region Gestión de gastos de alumno en vista profesor
-    public function gestionGastosProfesor(Request $r)
+
+    /**
+     * Calcula la suma de KM realizados por el alumno durante el trayecto (I/V)
+     * en vehículo privado
+     */
+    public function calcularSumaKMVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public function obtenerGestionGastosPorEmailTutor($email)
     {
         //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
         $dnisAlumnos = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
@@ -1155,7 +1181,7 @@ class ControladorTutorFCT extends Controller
             ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
             ->join('gasto', 'gasto.dni_alumno', '=', 'alumno.dni')
             ->where([
-                ['profesor.email', '=', $r->user()->email],
+                ['profesor.email', '=', $email],
                 ['gasto.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
             ])
             ->pluck('alumno.dni');
@@ -1170,7 +1196,7 @@ class ControladorTutorFCT extends Controller
         $gastos->grupo = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
             ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
             ->where([
-                ['profesor.email', '=', $r->user()->email],
+                ['profesor.email', '=', $email],
                 ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
             ])
             ->select('tutoria.cod_grupo')->first()->cod_grupo;
@@ -1179,7 +1205,7 @@ class ControladorTutorFCT extends Controller
             ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
             ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
             ->where([
-                ['profesor.email', '=', $r->user()->email],
+                ['profesor.email', '=', $email],
                 ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
             ])
             ->whereNotIn('alumno.dni', $dnisAlumnos)
@@ -1187,8 +1213,16 @@ class ControladorTutorFCT extends Controller
 
         $gastos->alumnosSinGasto = Alumno::whereIn('dni', $alumnosSinGasto)->get();
 
+        return $gastos;
+    }
+
+
+    public function gestionGastosProfesor(Request $r)
+    {
+        $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
         return response()->json($gastos, 200);
     }
+
 
     public function eliminarAlumnoDeGastos($dni_alumno)
     {
@@ -1227,6 +1261,96 @@ class ControladorTutorFCT extends Controller
         }
 
         return response()->json(['mensaje' => 'Creado correctamente'], 201);
+    }
+
+    public function descargarAnexoVI(Request $r)
+    {
+        $rutaFichero = $this->generarAnexoVI($r->user()->email);
+        if ($rutaFichero) {
+            return response()->download($rutaFichero);
+        } else {
+            return response()->json(['mensaje' => 'No se ha podido descargar el fichero'], 400);
+        }
+    }
+
+    public function generarAnexoVI($email)
+    {
+        $dniTutor = Profesor::where('email', '=', $email)->get()->first()->dni;
+        $pathAnexoVI = public_path() . DIRECTORY_SEPARATOR . $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR;
+        $pathPlantillaAnexo = public_path() . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo6.xlsx';
+
+        $alumnosTutor = $this->obtenerGestionGastosPorEmailTutor($email);
+        for ($i = 0; $i < ceil(count($alumnosTutor->gastos) / 17); $i++) {
+            //Cogemos el array de alummos de 17 en 17, para ir creando
+            //tantos libros de Excel como necesitemos
+            $gastoAlumnos = array_slice($alumnosTutor->gastos, $i, 17);
+            $reader = new ReaderXlsx();
+            $libro = $reader->load($pathPlantillaAnexo);
+            $tabla = $libro->getActiveSheet();
+
+            //Cabecera de la tabla Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+            $cabecera = Profesor::join('centro_estudios', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+            ->join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
+            ->where('profesor.dni', '=', '20a')
+            ->select('centro_estudios.nombre as nombreCentro', 'profesor.nombre', 'profesor.apellidos', 'grupo.nombre_ciclo', 'centro_estudios.localidad', 'centro_estudios.cod', 'centro_estudios.email')
+            ->get()->first();
+
+            $periodo = Auxiliar::obtenerCursoAcademico();
+            $fecha = date("d/m/Y");
+            $horas = '¿sumatorio de horas de los alumnos?';
+
+            $tabla->setCellValue('A7', 'CENTRO DOCENTE: ' . $cabecera->nombreCentro);
+            $tabla->setCellValue('A8', 'TUTOR O TUTORA: ' . $cabecera->nombre . ' ' . $cabecera->apellidos);
+            $tabla->setCellValue('B9', $cabecera->nombre_ciclo);
+            $tabla->setCellValue('F7', $cabecera->localidad);
+            $tabla->setCellValue('J7', $cabecera->cod);
+            $tabla->setCellValue('I8', $periodo);
+            $tabla->setCellValue('K8', $fecha);
+            $tabla->setCellValue('F9', $cabecera->email);
+            $tabla->setCellValue('J9', $horas);
+
+
+
+            //Cuerpo de la tabla
+            $fila = 14;
+            foreach ($gastoAlumnos as $gasto) {
+                $tabla->setCellValue('A' . $fila, $gasto->nombre_alumno);
+                $tabla->setCellValue(($gasto->tipo_desplazamiento == 'Domicilio' ? 'D' : 'C') . $fila, '   x   ');
+                $tabla->setCellValue('E' . $fila, $gasto->sumatorio_gasto_transporte_publico / count($gasto->facturasTransporte));
+                $tabla->setCellValue('F' . $fila, count($gasto->facturasTransporte));
+                $tabla->setCellValue('G' . $fila, $this->calcularSumaKMVehiculoPrivado($gasto));
+                $tabla->setCellValue('H' . $fila, $gasto->dias_transporte_privado);
+                $tabla->setCellValue('I' . $fila, $gasto->sumatorio_gasto_vehiculo_privado);
+                $tabla->setCellValue('J' . $fila, $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico);
+                $tabla->setCellValue('K' . $fila, $gasto->sumatorio_gasto_manutencion);
+                $tabla->setCellValue('L' . $fila, $gasto->total_gastos);
+                $fila++;
+            }
+
+            Auxiliar::existeCarpeta($pathAnexoVI);
+            $writer = new WriterXlsx($libro);
+            $writer->save($pathAnexoVI . 'Anexo6_' . $i . '.xlsx');
+        }
+
+        $rutaDevolver = $pathAnexoVI . 'Anexo6_0.xlsx';
+
+        //Si se ha generado más de un fichero, los comprimimos
+        if (count(glob($pathAnexoVI . '{*.xlsx}', GLOB_BRACE)) > 1) {
+            $rutaRelativaAnexoVI = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6';
+            $rutaZIP = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR . 'Anexo6.zip';
+            $this->montarZip($rutaRelativaAnexoVI, new ZipArchive(), $rutaZIP);
+
+            foreach (glob($pathAnexoVI . '{*.xlsx/*.zip}', GLOB_BRACE) as $a) {
+                if (is_file($a)) {
+                    unlink($a);
+                }
+            }
+
+            $rutaDevolver = public_path($rutaZIP);
+        }
+
+        return $rutaDevolver;
     }
 
     #endregion

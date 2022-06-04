@@ -77,6 +77,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::get('/gestionGastosProfesor', [ControladorTutorFCT::class, 'gestionGastosProfesor']);
     Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);
     Route::post('/nuevoAlumnoGestionGastos', [ControladorTutorFCT::class, 'nuevoAlumnoGestionGastos']);
+    Route::get('/descargarAnexoVI', [ControladorTutorFCT::class, 'descargarAnexoVI']);
     /***********************************************************************/
 
 });

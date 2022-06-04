@@ -242,9 +242,12 @@ class Auxiliar
     }
 
     /**
-     * Borra el fichero según la ruta indicada en $path
+     * Borra el fichero según la ruta indicada en el parámetro $path
      *
      * @param string $path Ruta del fichero a eliminar
+     * @return boolean Devuelve true en caso de haber eliminado correctamente el
+     * fichero indicado en la ruta. Devuelve false si no se ha podido eliminar o ha ocurrido
+     * algún error (la ruta era incorrecta, el fichero no existía,...)
      * @author David Sánchez Barragán
      */
     public static function borrarFichero($path)
@@ -261,7 +264,18 @@ class Auxiliar
     }
 
     /**
-     * Devuelve el server de ejecución del PHP
+     * Comprime el directorio indicado en un fichero ZIP
+     * @param string $rutaAComprimir Carpeta o directorio a comprimir
+     * @param string $nombreFichero Nombre con el que se guardará el fichero comprimido
+     * @return
+     */
+    public static function comprimirDirectorio($rutaAComprimir, $nombreFichero) {
+
+    }
+
+    /**
+     * Devuelve la URL del server de ejecución actual de PHP
+     * @author David Sánchez Barragán
      */
     public static function obtenerURLServidor() {
         return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
