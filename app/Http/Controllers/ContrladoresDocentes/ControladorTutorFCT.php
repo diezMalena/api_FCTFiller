@@ -997,7 +997,7 @@ class ControladorTutorFCT extends Controller
     /**
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
-     * // Añadido control de errores
+     * 03/06/22 - Añadido control de errores
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function descargarAnexo0(Request $req)
@@ -1027,7 +1027,9 @@ class ControladorTutorFCT extends Controller
     public function addConvenio(Request $req)
     {
         try {
+            // Creamos el convenio en su tabla correspondiente
             $convenio = Convenio::create($req->convenio);
+            // Y guardamos o generamos el fichero correspondiente, según el cliente haya o no subido el archivo
             if ($req->subir_anexo) {
                 $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
                 $tipoAnexo = $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A';
@@ -1038,7 +1040,9 @@ class ControladorTutorFCT extends Controller
             } else {
                 $ruta = $this->generarAnexo0($req);
             }
+            // Acutalizamos la ruta en la tabla convenios, que es la unión con la tabla anexos
             Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $ruta]);
+            // Y creamos el registro en la tabla de anexos
             Anexo::create([
                 'tipo_anexo' => $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A',
                 'ruta_anexo' => $ruta
@@ -1056,10 +1060,60 @@ class ControladorTutorFCT extends Controller
         }
     }
 
-    public function editConvenio(Request $req)
+    public function updateConvenio(Request $req)
     {
+        try {
+            // Guardamos el código de convenio original, en caso de que haya cambiado
+            if (array_key_exists('cod_convenio_anterior', $req->convenio)) {
+                $codAnterior = $req->convenio['cod_convenio_anterior'];
+            } else {
+                $codAnterior = $req->convenio['cod_convenio'];
+            }
+            #region Guardado del anexo
+            // Eliminamos el archivo que había antes
+            $rutaAnterior = Convenio::where('cod_convenio', $codAnterior)->first()->ruta_anexo;
+            Auxiliar::borrarFichero(($rutaAnterior));
+            // Y generamos o guardamos (según lo que recibamos del cliente) uno nuevo
+            if ($req->subir_anexo) {
+                $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+                $tipoAnexo = $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A';
+                $codConvenioAux = str_replace('/', '-', $req->convenio['cod_convenio']);
+                $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
+                $archivo = $tipoAnexo . '_' . $codConvenioAux;
+                $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->anexo);
+            } else {
+                $ruta = $this->generarAnexo0($req);
+            }
+            #endregion
+            #region Actualización de la base de datos (Convenio y Anexo)
+            Convenio::where('cod_convenio', $codAnterior)->update([
+                'cod_convenio' => $req->convenio['cod_convenio'],
+                'fecha_ini' => $req->convenio['fecha_ini'],
+                'fecha_fin' => $req->convenio['fecha_fin'],
+                'ruta_anexo' => $ruta
+            ]);
+            Anexo::where('ruta_anexo', $rutaAnterior)->update(['ruta_anexo' => $ruta]);
+            #endregion
+            return response()->json(['ruta_anexo' => $ruta], 201);
+        } catch (QueryException $ex) {
+            // Duplicado de una clave única
+            if ($ex->errorInfo[1] == 1062) {
+                return response()->json($ex->errorInfo[2], 409);
+            } else {
+                return response()->json($ex->errorInfo[2], 400);
+            }
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
     }
 
+    /**
+     * Elimina un convenio de la base de datos y deshabilita el anexo correspondiente
+     *
+     * @param String $cod El código de convenio con las '/' sustituidas por '-'
+     * @return Response JSON con el código de estado HTTP correspondiente
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
     public function deleteConvenio(String $cod)
     {
         $codAux = str_replace('-', '/', $cod);

@@ -247,20 +247,32 @@ class Auxiliar
     }
 
     /**
-     * Borra el fichero según la ruta indicada en $path
+     * Borra el fichero según la ruta indicada en el parámetro $path
      *
      * @param string $path Ruta del fichero a eliminar
+     * @return boolean Devuelve true en caso de haber eliminado correctamente el
+     * fichero indicado en la ruta. Devuelve false si no se ha podido eliminar o ha ocurrido
+     * algún error (la ruta era incorrecta, el fichero no existía,...)
      * @author David Sánchez Barragán
      */
     public static function borrarFichero($path)
     {
-        unlink($path);
+        try {
+            if (file_exists($path)) {
+                unlink($path);
+                return true;
+            }
+            return false;
+        } catch (\Throwable $th) {
+            return false;
+        }
     }
 
     /**
      * Devuelve el server de ejecución del PHP
      */
-    public static function obtenerURLServidor() {
+    public static function obtenerURLServidor()
+    {
         return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
     }
 
