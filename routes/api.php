@@ -27,6 +27,11 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
     Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
     /***********************************************************************/
+    /****************Obtener familias profesionales y ciclos****************/
+    Route::get('/familias_profesionales', [ControladorGenerico::class, 'getFamiliasProfesionales']);
+    Route::get('/ciclos/{familia?}', [ControladorGenerico::class, 'getCiclos']);
+    /***********************************************************************/
+    Route::get('check_duplicado/{elemento}.{campo}={valor}', [ControladorGenerico::class, 'checkDuplicate']);
 });
 
 /*
@@ -37,13 +42,19 @@ Route::group(['middleware' => ['Cors']], function () {
 Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     /*****************************CRUD EMPRESAS*****************************/
     Route::get('solicitar_empresas/profesor={dniProfesor}', [ControladorTutorFCT::class, 'getEmpresasFromProfesor']);
+    Route::get('solicitar_empresa/id={id}', [ControladorTutorFCT::class, 'getEmpresaID']);
+    Route::get('solicitar_empresa/cif={cif}', [ControladorTutorFCT::class, 'getEmpresaCIF']);
     Route::get('solicitar_representante/id={id}', [ControladorTutorFCT::class, 'getRepresentanteLegalResponse']);
     Route::put('update_empresa', [ControladorTutorFCT::class, 'updateEmpresa']);
     Route::put('update_trabajador', [ControladorTutorFCT::class, 'updateTrabajador']);
     Route::delete('delete_empresa/id={id}', [ControladorTutorFCT::class, 'deleteEmpresa']);
     Route::post('addDatosEmpresa', [ControladorTutorFCT::class, 'addDatosEmpresa']);
-    Route::post('addConvenio', [ControladorTutorFCT::class, 'addConvenio']);
+    //----Gestión del convenio / acuerdo
+    Route::get('solicitar_centro_estudios/convenio={cod_convenio}', [ControladorTutorFCT::class, 'getCentroEstudiosFromConvenioJSON']);
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
+    Route::post('add_convenio', [ControladorTutorFCT::class, 'addConvenio']);
+    Route::put('editar_convenio', [ControladorTutorFCT::class, 'updateConvenio']);
+    Route::delete('eliminar_convenio/cod={cod}', [ControladorTutorFCT::class, 'deleteConvenio']);
     /***********************************************************************/
 
     /******************************CRUD ANEXOS******************************/

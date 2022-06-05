@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
 use App\Models\Ciudad;
+use App\Models\Empresa;
+use App\Models\FamiliaProfesional;
+use App\Models\Grupo;
+use App\Models\GrupoFamilia;
 use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
+use App\Models\Trabajador;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
@@ -51,6 +56,9 @@ class ControladorGenerico extends Controller
     /***********************************************************************/
     #region Selects genéricas
 
+    /***********************************************************************/
+    #region Provincias y localidades
+
     /**
      * Obtiene un listado de provincias
      * @return Response objeto JSON con el listado de provincias
@@ -72,6 +80,92 @@ class ControladorGenerico extends Controller
     {
         $listado = Ciudad::where('provincia', $provincia)->distinct()->orderBy('ciudad', 'asc')->get(['ciudad'])->pluck('ciudad');
         return response()->json($listado, 200);
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Ciclos formativos y familias profesionales
+
+    /**
+     * Devuelve todas las familias profesionales registradas en la base de datos
+     *
+     * @return Response JSON con un array de familias profesionales
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getFamiliasProfesionales()
+    {
+        try {
+            if ($familias = FamiliaProfesional::all()) {
+                return response()->json($familias, 200);
+            } else {
+                return response()->json(['message' => 'Sin contenido'], 204);
+            }
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error del servidor'], 500);
+        }
+    }
+
+    /**
+     * Devuelve en una response los ciclos con la información de sus familias profesionales,
+     * filtrados por las mismas si se les pasa como argumento su ID
+     *
+     * @param BigInteger|null $familia ID de la familia profesional por la que se filtra
+     * @return Response JSON con array de ciclos con sus familias integradas
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getCiclos($familia = null)
+    {
+        try {
+            if ($familia) {
+                $ciclos = Grupo::whereIn('cod', GrupoFamilia::select('cod_grupo')->where('id_familia', $familia)->get())->get();
+            } else {
+                $ciclos = Grupo::all();
+            }
+            foreach ($ciclos as $ciclo) {
+                $ciclo->familias = FamiliaProfesional::whereIn('id', GrupoFamilia::select('id_familia')->where('cod_grupo', $ciclo->cod)->get())->get();
+            }
+            return response()->json($ciclos, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error del servidor'], 500);
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Auxiliares
+
+    /**
+     * Comprueba que un registro está duplicado en la base de datos
+     *
+     * @param string $elemento nombre de la tabla de la que se hace comprobación
+     * @param string $campo nombre del campo con el que se hace la comprobación
+     * @param string $valor valor del campo que se comprueba
+     * @return boolean true si el registro está duplicado, false si es único
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function checkDuplicate(string $elemento, string $campo, string $valor)
+    {
+        $duplicado = false;
+        try {
+            switch ($elemento) {
+                case 'empresa':
+                    $duplicado = Empresa::where($campo, $valor)->count() != 0;
+                    break;
+                case 'trabajador':
+                    $duplicado = Trabajador::where($campo, $valor)->count() != 0;
+                    break;
+            }
+            return response()->json($duplicado, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error en la comprobación'], 500);
+        }
     }
 
     #endregion
