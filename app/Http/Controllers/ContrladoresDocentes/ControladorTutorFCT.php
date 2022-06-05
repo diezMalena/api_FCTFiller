@@ -819,7 +819,8 @@ class ControladorTutorFCT extends Controller
                 'localidad' => $req->localidad,
                 'provincia' => $req->provincia,
                 'direccion' => $req->direccion,
-                'cp' => $req->cp
+                'cp' => $req->cp,
+                'es_privada' => $req->es_privada
             ]);
             return response()->json(['title' => 'Empresa actualizada', 'message' => 'Se han actualizado los datos de ' . $nombreEmpresa], 200);
         } catch (Exception $e) {
@@ -908,8 +909,6 @@ class ControladorTutorFCT extends Controller
                 'id_rol' => Parametros::RESPONSABLE_CENTRO,
             ]);
             $this->asignarCiclosEmpresa($empresa->id, $req->ciclos);
-            // $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
-            // $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
             return response()->json(['message' => 'Registro correcto'], 200);
         } catch (Exception $ex) {
             return response()->json(['message' => 'Registro fallido'], 400);
