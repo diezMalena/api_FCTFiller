@@ -54,6 +54,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
     Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
     Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
+     /***********************************************************************/
 });
 
 Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
@@ -66,7 +67,10 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     /*******************************ANEXO II Y IV*******************************/
     Route::post('/rellenarAnexoIIYIV', [ControladorTutorFCT::class, 'rellenarAnexoIIYIV']);
     /**********************************************************************/
-    Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'solicitarAnexosFct']);
+    //----Listar anexos
+    Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexos1']);
+    Route::get('/solicitarAnexosProgramaFormativo/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexosIIYIV']);
+
 });
 
 /*
@@ -124,11 +128,8 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::get('getTutoresResponsables/id={id_empresa}', [ControladorAlumno::class, 'getTutoresResponsables']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
-    /**********************************************************************/
-
-    /*******************************ANEXO XV*******************************/
+    //----AnexoXV
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
-    /**********************************************************************/
 });
 
 /*
@@ -138,14 +139,11 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
 */
 Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function () {
 
-    /******************************CRUD ANEXOS******************************/
+    //----Crud-Anexos
     Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
     Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
-    /***********************************************************************/
-
-    /*******************************SUBIR ANEXO*******************************/
+    //----Subir Anexo Especifico
     Route::post('/subirAnexoEspecifico', [ControladorTutorFCT::class, 'subirAnexoEspecifico']);
-    /**********************************************************************/
 });
 
 Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);

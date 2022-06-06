@@ -583,18 +583,29 @@ class ControladorAlumno extends Controller
 
         try {
             //ARCHIVO
+
+            //Alumno
             $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
             $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
-            Auxiliar::existeCarpeta($rutaCarpeta);
             $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
+            Auxiliar::existeCarpeta($rutaCarpeta);
+
+            //Tutor
             $rutaCarpetaTutor = public_path($dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV');
-            Auxiliar::existeCarpeta($rutaCarpetaTutor);
             $rutaDestinoTutor = $dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
+            Auxiliar::existeCarpeta($rutaCarpetaTutor);
 
             //Al haber llegado aeste punto, asumimos que el anexo se ha completado y por lo tanto, lo habilitamos
             Anexo::where('ruta_anexo', 'like', "%$nombre_archivo")->update([
                 'habilitado' => 1,
             ]);
+
+            //Añadimos el anexo a la base de datos con la ruta del profesor
+            $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "$rutaDestinoTutor")->get();
+
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestinoTutor, 'habilitado' => 1]);
+            }
 
             #region Relleno de datos en Word
             $auxPrefijos = ['alumno', 'ciclo', 'centro', 'familia_profesional'];
@@ -646,7 +657,7 @@ class ControladorAlumno extends Controller
         $rutaCarpeta = $tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . $tipoAnexo;
 
         try {
-            Auxiliar::existeCarpeta($rutaCarpeta);
+
             $flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
             $flujoAux = fopen($rutaCarpetaAlumno . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
 
@@ -666,28 +677,37 @@ class ControladorAlumno extends Controller
             fclose($flujoAux);
 
 
+            //Extension y archivo sin extensión
             $archivoNombreSinExtension = explode('.', $nombreArchivo);
+            $extension = explode('/', mime_content_type($fichero))[1];
+
             //Alumno
-            $rutaParaBBDAlumno=$rutaCarpetaAlumno. DIRECTORY_SEPARATOR . $nombreArchivo;
+            $rutaParaBBDAlumno = $rutaCarpetaAlumno . DIRECTORY_SEPARATOR . $nombreArchivo;
             $rutaParaBBDDSinExtensionAlumno = $rutaCarpetaAlumno . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
 
             //Profesor
             $rutaParaBBDDProfesor = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
-            $rutaParaBBDDSinExtension= $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+            $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
 
 
+            //Base de datos
             //Solo busco por una ruta, por que si este anexo existe para el profesor, es por que el alumno ya lo ha creado
             $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
-            //error_log();
+
+
             if (count($existeAnexo) == 0) {
-                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDDProfesor]);//Profesor
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDDProfesor]); //Profesor
+                $this->firmarAnexo($rutaParaBBDDProfesor, $extension);
             } else {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtensionAlumno%")->update([//Alumno
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtensionAlumno%")->update([ //Alumno
                     'ruta_anexo' => $rutaParaBBDAlumno,
                 ]);
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([//Profesor
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([ //Profesor
                     'ruta_anexo' => $rutaParaBBDDProfesor,
                 ]);
+
+                $this->firmarAnexo($rutaParaBBDAlumno, $extension);
+                $this->firmarAnexo($rutaParaBBDDProfesor, $extension);
             }
 
             //Lo ponemos con su nombre original, en un directorio que queramos
@@ -698,6 +718,20 @@ class ControladorAlumno extends Controller
             return false;
         }
     }
+
+    public function firmarAnexo($rutaParaBBDD, $extension)
+    {
+        if ($extension == 'pdf') {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 1,
+                ]);
+        } else {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 0,
+                ]);
+        }
+    }
+
 
     /***********************************************************************/
     #region Funciones auxiliares para el Anexo XV
@@ -790,7 +824,7 @@ class ControladorAlumno extends Controller
         foreach ($Anexos as $a) {
             //return response($Anexos);
             //Un anexo es habilitado si este esta relleno por completo
-            if(strcmp($a->tipo_anexo, 'Anexo4') != 0 && strcmp($a->tipo_anexo, 'Anexo2') != 0){
+            if (strcmp($a->tipo_anexo, 'Anexo4') != 0 && strcmp($a->tipo_anexo, 'Anexo2') != 0) {
                 $anexoAux = explode('/', $a->ruta_anexo);
                 $datos[] = [
                     'nombre' => $a->tipo_anexo,

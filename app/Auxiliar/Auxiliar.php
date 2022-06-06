@@ -202,6 +202,7 @@ class Auxiliar
         }
     }
 
+
     /**
      * Guarda un fichero en base64 en la carpeta indicada
      * @param string $path Ubicación en la que se desea guardar el fichero
