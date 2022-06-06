@@ -664,7 +664,7 @@ class ControladorTutorFCT extends Controller
     /**
      * Esta funcion nos permite descargar un anexo en concreto
      * @author Laura <lauramorenoramos97@gmail.com>
-     * @param Request $val
+     * @param Request $val: dni_tutor y el codigo es el nombre del archivo. EJ: Anexo1_13_VdG-C3-22_2DAW_2022_.docx
      * @return void
      */
     public function descargarAnexo(Request $val)
