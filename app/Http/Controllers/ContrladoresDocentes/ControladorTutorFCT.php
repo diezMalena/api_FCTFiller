@@ -1298,7 +1298,7 @@ class ControladorTutorFCT extends Controller
 
             $periodo = Auxiliar::obtenerCursoAcademico();
             $fecha = date("d/m/Y");
-            $horas = '¿sumatorio de horas de los alumnos?';
+            $horas = '400';
 
             $tabla->setCellValue('A7', 'CENTRO DOCENTE: ' . $cabecera->nombreCentro);
             $tabla->setCellValue('A8', 'TUTOR O TUTORA: ' . $cabecera->nombre . ' ' . $cabecera->apellidos);

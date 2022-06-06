@@ -726,6 +726,10 @@ class ControladorAlumno extends Controller
                     ['dni_alumno', '=', $dni_alumno],
                     ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
                 ])->get();
+                 //Incluimos la URL de la foto del ticket de transporte
+                 foreach ($gasto->facturasManutencion as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
+                }
 
                 $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
                 $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
@@ -789,21 +793,26 @@ class ControladorAlumno extends Controller
      */
     public function nuevaFacturaTransporte(Request $r)
     {
-        $imagen_ticket = '';
 
-        if ($r->imagen_ticket != null) {
-            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
-        }
 
-        $factura = new FacturaTransporte([
+        $factura = FacturaTransporte::create([
             'dni_alumno' => $r->dni_alumno,
             'curso_academico' => Auxiliar::obtenerCursoAcademico(),
             'fecha' => $r->fecha,
             'importe' => $r->importe,
             'origen' => $r->origen,
             'destino' => $r->destino,
-            'imagen_ticket' => $imagen_ticket,
+            'imagen_ticket' => ''
         ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketTransporte' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
 
         $factura->save();
 
@@ -815,19 +824,22 @@ class ControladorAlumno extends Controller
      */
     public function nuevaFacturaManutencion(Request $r)
     {
-        $imagen_ticket = '';
-
-        if ($r->imagen_ticket != null) {
-            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
-        }
-
-        $factura = new FacturaManutencion([
+        $factura = FacturaManutencion::create([
             'dni_alumno' => $r->dni_alumno,
             'curso_academico' => Auxiliar::obtenerCursoAcademico(),
             'fecha' => $r->fecha,
             'importe' => $r->importe,
-            'imagen_ticket' => $imagen_ticket,
+            'imagen_ticket' => '',
         ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketManutencion' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
 
         $factura->save();
 
@@ -844,12 +856,12 @@ class ControladorAlumno extends Controller
 
         //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
         //se recoge entonces el path original que tuvieran
-        if (!str_contains($r->foto, "descargarImagenTicketTransporte")) {
-            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketTransporte")) {
             $imagen_ticket_anterior = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
             if (strlen($imagen_ticket_anterior) != 0) {
                 Auxiliar::borrarFichero($imagen_ticket_anterior);
             }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
         } else {
             $imagen_ticket = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
         }
@@ -874,15 +886,14 @@ class ControladorAlumno extends Controller
     public function actualizarFacturaManutencion(Request $r)
     {
         $imagen_ticket = '';
-
         //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
         //se recoge entonces el path original que tuvieran
-        if (!str_contains($r->foto, "descargarImagenTicketManutencion")) {
-            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketManutencion")) {
             $imagen_ticket_anterior = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
             if (strlen($imagen_ticket_anterior) != 0) {
                 Auxiliar::borrarFichero($imagen_ticket_anterior);
             }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
         } else {
             $imagen_ticket = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
         }
@@ -1010,22 +1021,15 @@ class ControladorAlumno extends Controller
      */
     public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
     {
-        if (str_contains($residencia_alumno, 'distinta')) {
-            return "Centro educativo";
+        if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
+            if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
+                return "No aplica";
+            } else {
+                return "Centro educativo";
+            }
+        } else {
+            return "Domicilio";
         }
-
-        if (str_contains($ubicacion_centro_trabajo, 'Fuera')) {
-            return "Centro educativo";
-        }
-
-        if (
-            str_contains($residencia_alumno, 'Localidad del centro educativo')
-            && str_contains($ubicacion_centro_trabajo, 'Dentro')
-        ) {
-            return "No aplica";
-        }
-
-        return "Domicilio";
     }
     #endregion
     #endregion

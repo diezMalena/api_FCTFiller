@@ -856,7 +856,7 @@ class ControladorJefatura extends Controller
 
             foreach ($listado as $alumno) {
                 $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
-                $alumno->curriculum = ($alumno->curriculum != null ? 'si' : '');
+                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
             }
 
             return response()->json($listado, 200);
@@ -936,9 +936,10 @@ class ControladorJefatura extends Controller
             ]);
             Auxiliar::addUser($alu, 'alumno');
 
+            $matricula_cod_centro = Auxiliar::obtenerCentroPorDNIProfesor(Profesor::where('email', '=', $r->user()->email)->get()->first()->dni);
             Matricula::create([
                 'cod' => $r->matricula_cod,
-                'cod_centro' => $r->matricula_cod_centro,
+                'cod_centro' => $matricula_cod_centro,
                 'dni_alumno' => $r->dni,
                 'cod_grupo' => $r->matricula_cod_grupo,
                 'curso_academico' => Auxiliar::obtenerCursoAcademico()
@@ -946,11 +947,14 @@ class ControladorJefatura extends Controller
 
             return response()->json(['message' => 'Alumno creado correctamente'], 200);
         } catch (Exception $ex) {
-            if (str_contains($ex->getMessage(), 'Integrity')) {
-                return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
-            } else {
-                return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
-            }
+            // if (str_contains($ex->getMessage(), 'Integrity')) {
+            //     return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
+            // } else {
+            //     return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+            // }
+
+                return response()->json(['mensaje' => $ex->getMessage()], 400);
+
         }
     }
 
@@ -970,21 +974,21 @@ class ControladorJefatura extends Controller
                 //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
                 //se recoge entonces el path original que tuvieran
                 if (!str_contains($r->foto, "descargarFoto")) {
-                    $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
                     $fotoAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
                     if (strlen($fotoAnterior) != 0) {
                         Auxiliar::borrarFichero($fotoAnterior);
                     }
+                    $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
                 } else {
                     $foto = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
                 }
 
                 if (!str_contains($r->curriculum, "descargarCurriculum")) {
-                    $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
                     $cvAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
                     if (strlen($cvAnterior) != 0) {
                         Auxiliar::borrarFichero($cvAnterior);
                     }
+                    $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
                 } else {
                     $curriculum = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
                 }
