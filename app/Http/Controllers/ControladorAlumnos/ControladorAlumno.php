@@ -24,6 +24,9 @@ use Exception;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
+use App\Models\Gasto;
 use App\Models\GrupoFamilia;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -851,4 +854,366 @@ class ControladorAlumno extends Controller
     /***********************************************************************/
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
+    #region Resumen de gastos del alumno - Anexo VI
+    #region CRUD Tickets transporte
+
+    /**
+     * Obtiene todos los datos para la pantalla de gestión de gastos, en el perfil de alumno:
+     * - Objeto clase Gasto del alumno
+     * - Lista de facturas de tranporte
+     * - Lista de facturas de manutención
+     * @param string $dni_alumno DNI del alumno
+     * @return Response Respuesta con la información del alumno, según su DNI y el curso académico actual
+     */
+    public function gestionGastosAlumno($dni_alumno)
+    {
+        $gasto = $this->obtenerGastoAlumnoPorDNIAlumno($dni_alumno);
+        if ($gasto) {
+            return response()->json($gasto, 200);
+        } else {
+            return response()->json([], 204);
+        }
+    }
+
+    /**
+     * Obtiene el registro correspondiente de la tabla Gasto según el DNI del alumno
+     */
+    public function obtenerGastoAlumnoPorDNIAlumno($dni_alumno)
+    {
+        $gasto = Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->get()->first();
+        if ($gasto) {
+            if ($gasto->tipo_desplazamiento == "No aplica") {
+                $gasto->facturasTransporte = [];
+                $gasto->facturasManutencion = [];
+
+                $gasto->sumatorio_gasto_vehiculo_privado = 0;
+                $gasto->sumatorio_gasto_transporte_publico = 0;
+                $gasto->sumatorio_gasto_manutencion = 0;
+                $gasto->total_gastos = 0;
+            } else {
+                $gasto->facturasTransporte = FacturaTransporte::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                //Incluimos la URL de la foto del ticket de transporte
+                foreach ($gasto->facturasTransporte as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketTransporte/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->facturasManutencion = FacturaManutencion::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                 //Incluimos la URL de la foto del ticket de transporte
+                 foreach ($gasto->facturasManutencion as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
+                $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
+                $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
+                $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+            }
+            //Incluido para controlar la gestión de los gastos del profesor
+            $alumno = Alumno::where('dni', '=', $dni_alumno)->get()->first();
+            $gasto->nombre_alumno = $alumno->nombre . ' ' . $alumno->apellidos;
+
+            return $gasto;
+        }
+
+        return null;
+    }
+
+
+
+
+    /**
+     * Actualiza la información en la tabla Gasto según el objeto recibido
+     * @param Request $r Request con forma de objeto Gasto
+     * @return Response Respuesta HTTP estándar
+     */
+    public function actualizarDatosGastoAlumno(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
+            'residencia_alumno' => $r->residencia_alumno,
+            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
+            'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
+            'distancia_centroEd_residencia' => $r->distancia_centroEd_residencia,
+            'distancia_centroTra_residencia' => $r->distancia_centroTra_residencia
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     * Actualiza el campo dias_transporte_privado del modelo Gasto
+     * @param Request $r Request que incluye el dni del alumno a actualizar y el número de días
+     * @return Response Código HTTP estándar
+     */
+    public function actualizarDiasVehiculoPrivado(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'dias_transporte_privado' => $r->dias_transporte_privado
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaTransporte(Request $r)
+    {
+
+
+        $factura = FacturaTransporte::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => ''
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketTransporte' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaManutencion(Request $r)
+    {
+        $factura = FacturaManutencion::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => '',
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketManutencion' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaTransporte(Request $r)
+    {
+        $imagen_ticket = '';
+
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketTransporte")) {
+            $imagen_ticket_anterior = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaTransporte::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaManutencion(Request $r)
+    {
+        $imagen_ticket = '';
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketManutencion")) {
+            $imagen_ticket_anterior = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaManutencion::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    public function eliminarFacturaManutencion($id)
+    {
+        try {
+            FacturaManutencion::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+
+    public function eliminarFacturaTransporte($id)
+    {
+        try {
+            FacturaTransporte::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+    #endregion
+
+    #region Funciones auxiliares CRUD Anexo VI:
+
+    /**
+     * Descarga la imagen del ticket de transporte
+     */
+    public function descargarImagenTicketTransporte($id, $guid)
+    {
+        $pathFoto = FacturaTransporte::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Descarga la imagen del ticket de manutención
+     */
+    public function descargarImagenTicketManutencion($id, $guid)
+    {
+        $pathFoto = FacturaManutencion::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
+     * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
+     * @return float Cálculo del importe correspondiente.
+     */
+    public function calcularGastoVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO  * $gasto->dias_transporte_privado;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO * $gasto->dias_transporte_privado;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de transporte público
+     * @param string $dni_alumno DNI del alumno
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoTransportePublico($dni_alumno)
+    {
+        return FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de manutención
+     * @param string $dni_alumno DNI del alumno.
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoManutencion($dni_alumno)
+    {
+        return FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Obtiene el tipo de desplazamiento (necesario para el Anexo VI)
+     * según los parámetros recibidos en la función.
+     * @param string $residencia_alumno Residencia del alumno (Localidad del centro educativo/Localidad distinta a la del centro educativo)
+     * @param string $ubicacion_centro_trabajo Ubicación del centro de trabajo (Dentro del núcleo urbano/Fuera del núcleo urbano/En otra localidad)
+     * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
+     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo,
+     * No aplica-> no se tiene derecho a gastos de manutencion.
+     */
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
+    {
+        if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
+            if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
+                return "No aplica";
+            } else {
+                return "Centro educativo";
+            }
+        } else {
+            return "Domicilio";
+        }
+    }
+    #endregion
+    #endregion
 }

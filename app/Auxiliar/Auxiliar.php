@@ -220,7 +220,7 @@ class Auxiliar
                 self::existeCarpeta($path);
 
                 //Obtenemos la extensión del fichero:
-                $extension = explode('/', mime_content_type($fichero))[1];
+                $extension = explode('.', explode('/', mime_content_type($fichero))[1])[0];
                 //Abrimos el flujo de escritura para guardar el fichero
                 $flujo = fopen($path . DIRECTORY_SEPARATOR .  $nombreFichero . '.' . $extension, 'wb');
 
@@ -269,7 +269,18 @@ class Auxiliar
     }
 
     /**
-     * Devuelve el server de ejecución del PHP
+     * Comprime el directorio indicado en un fichero ZIP
+     * @param string $rutaAComprimir Carpeta o directorio a comprimir
+     * @param string $nombreFichero Nombre con el que se guardará el fichero comprimido
+     * @return
+     */
+    public static function comprimirDirectorio($rutaAComprimir, $nombreFichero) {
+
+    }
+
+    /**
+     * Devuelve la URL del server de ejecución actual de PHP
+     * @author David Sánchez Barragán
      */
     public static function obtenerURLServidor()
     {
