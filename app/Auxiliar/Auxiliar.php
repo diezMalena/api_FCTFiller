@@ -2,6 +2,7 @@
 
 namespace App\Auxiliar;
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\Alumno;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
@@ -165,12 +166,16 @@ class Auxiliar
             $usuario->roles = $roles;
         } else {
             $usuario = Profesor::where('email', '=', $user->email)
-                ->select(['email', 'nombre', 'apellidos', 'dni'])
+                ->select(['email', 'nombre', 'apellidos', 'dni', 'cod_centro_estudios'])
                 ->first();
             $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
                 ->select('id_rol')
                 ->get();
             $usuario->roles = $roles;
+            //DJC Cambio 28-05-2022: añadido objeto de centro de estudios al profesor. Lo siento por la ñapa
+            $usuario->centro = CentroEstudios::find($usuario->cod_centro_estudios);
+            $controller = new ControladorTutorFCT();
+            $usuario->centro->director = $controller->getDirectorCentroEstudios($usuario->cod_centro_estudios);
         }
         $usuario->tipo = $user->tipo;
         return $usuario;
@@ -242,20 +247,32 @@ class Auxiliar
     }
 
     /**
-     * Borra el fichero según la ruta indicada en $path
+     * Borra el fichero según la ruta indicada en el parámetro $path
      *
      * @param string $path Ruta del fichero a eliminar
+     * @return boolean Devuelve true en caso de haber eliminado correctamente el
+     * fichero indicado en la ruta. Devuelve false si no se ha podido eliminar o ha ocurrido
+     * algún error (la ruta era incorrecta, el fichero no existía,...)
      * @author David Sánchez Barragán
      */
     public static function borrarFichero($path)
     {
-        unlink($path);
+        try {
+            if (file_exists($path)) {
+                unlink($path);
+                return true;
+            }
+            return false;
+        } catch (\Throwable $th) {
+            return false;
+        }
     }
 
     /**
      * Devuelve el server de ejecución del PHP
      */
-    public static function obtenerURLServidor() {
+    public static function obtenerURLServidor()
+    {
         return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
     }
 
@@ -303,7 +320,7 @@ class Auxiliar
             if ($user = User::where('email', $email)->first()) {
                 return $user;
             } else {
-                return 404; // Not Found
+                return 204; // No Content
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error
@@ -355,7 +372,7 @@ class Auxiliar
             if ($delete > 0) {
                 return 200; // OK
             } else if ($delete == 0) {
-                return 404; // Not Fount
+                return 204; // Not Found
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error
