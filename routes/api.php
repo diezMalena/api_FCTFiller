@@ -27,6 +27,18 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
     Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
     /***********************************************************************/
+
+    /********************Gestión de Notificaciones**************************/
+    Route::post('/getNotificaciones', [ControladorGenerico::class, 'getNotificaciones']);
+    Route::post('/generarNotificaciones', [ControladorGenerico::class, 'generarNotificaciones']);
+    Route::post('/getNotificacionesHeader', [ControladorGenerico::class, 'getNotificacionesHeader']);
+    Route::post('/countNotificaciones', [ControladorGenerico::class, 'countNotificaciones']);
+    Route::put('/cambiarLeido', [ControladorGenerico::class, 'cambiarLeido']);
+
+
+
+
+    /***********************************************************************/
 });
 
 /*
