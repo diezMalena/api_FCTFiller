@@ -16,6 +16,8 @@ use App\Models\Seguimiento;
 use App\Models\Trabajador;
 use App\Models\Matricula;
 use App\Models\Anexo;
+use App\Models\Semana;
+use App\Models\Notificacion;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
@@ -23,6 +25,9 @@ use ZipArchive;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
+use App\Models\Gasto;
 use App\Models\GrupoFamilia;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -31,6 +36,9 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Illuminate\Support\Facades\Storage;
+
+
 
 class ControladorAlumno extends Controller
 {
@@ -99,18 +107,27 @@ class ControladorAlumno extends Controller
     public function addJornada(Request $req)
     {
         $jornada = $req->get('jornada');
-
-        $fct = $this->buscarId_fct($req->get('dni_alumno'));
+        $dni_alumno = $req->get('dni_alumno');
+        $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
         $jornada['id_fct'] = $id_fct;
 
-        $ultimoOrden = $this->encontrarUltimoOrden($id_fct);
-        if ($ultimoOrden[0]->orden_jornada == null) {
+        $ultimoOrden = $this->encontrarUltimoOrden($id_fct)[0]->orden_jornada;
+        if ($ultimoOrden == null) {
             $jornada['orden_jornada'] = 1;
         } else {
-            $jornada['orden_jornada'] = $ultimoOrden[0]->orden_jornada + 1;
+            $jornada['orden_jornada'] = $ultimoOrden + 1;
         }
         $seguimiento = Seguimiento::create($jornada);
+
+        if (($ultimoOrden + 1) % 5 == 0) {
+            //Es el último día de la semana:
+            $jornadas = $this->ultimaJornada($dni_alumno);
+            $semana = Semana::create([
+                'id_fct' => $id_fct,
+                'id_quinto_dia' => $jornadas[0]->id,
+            ]);
+        }
     }
 
     /**
@@ -118,11 +135,14 @@ class ControladorAlumno extends Controller
      * con su empresa asignada.
      * @param $dni_alumno del alumno que inicia sesion, $id_empresa de la que tiene asignada dicho alumno.
      * @author Malena.
-     * @return $jornadas, array de jornadas que tiene el alumno añadidas en la BBDD.
+     * @return $semanas, array de semanas que tiene el alumno.
      */
     public function devolverJornadas(Request $req)
     {
-        $dni_alumno = $dni_alumno = $req->get('dni');
+        //este array tendrá dentro las jornadas divididas de 5 en 5 para organizarlas en semanas.
+        $semanas = []; //Array de semanas
+        $semana = []; //Array de jornadas
+        $dni_alumno = $req->get('dni');
 
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
@@ -131,11 +151,35 @@ class ControladorAlumno extends Controller
             ->select('seguimiento.id AS id_jornada', 'seguimiento.orden_jornada AS orden_jornada', 'seguimiento.fecha_jornada AS fecha_jornada', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
-            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->orderBy('seguimiento.orden_jornada', 'ASC')
             ->get();
 
-        return response()->json($jornadas, 200);
+
+        for ($i = 0; $i < count($jornadas); $i++) {
+            $semana[] = $jornadas[$i];
+            if (count($semana) == 5 || $i == count($jornadas) - 1) {
+                $semanas[] = $semana;
+                $semana = [];
+            }
+        }
+        return response()->json($semanas, 200);
     }
+
+
+
+    public function devolverSemanas(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+
+        $semanas = Semana::where('id_fct', '=', $id_fct)
+            ->orderBy('id_quinto_dia', 'DESC')
+            ->get();
+
+        return response()->json($semanas, 200);
+    }
+
 
     /**
      * Método que recibe una jornada editada y la actualiza en la BBDD.
@@ -269,35 +313,18 @@ class ControladorAlumno extends Controller
         $dni_alumno = $req->get('dni');
         $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
         try {
-            $datos_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+            $mail_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
                 ->where('trabajador.dni', '=', $dni_tutor)
-                ->select('trabajador.dni AS dni_tutor', 'trabajador.nombre AS nombre_tutor')
+                ->select('trabajador.email AS email')
                 ->first();
+
+            $email_tutor = $mail_tutor->email;
             //Recojo el id_empresa:
             $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
-            return response()->json([$datos_tutor, $id_empresa], 200);
+            return response()->json([$email_tutor, $id_empresa], 200);
         } catch (Exception $e) {
             return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que recoge todos los tutores y responsables de una empresa, para que el alumno pueda
-     * elegir un tutor nuevo.
-     * @author Malena
-     */
-    public function getTutoresResponsables(string $id_empresa)
-    {
-        try {
-            $arrayTutores = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
-                ->where('trabajador.id_empresa', '=', $id_empresa)
-                ->select('trabajador.dni AS dni', 'trabajador.nombre AS nombre')
-                ->get();
-            return response()->json($arrayTutores, 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error, los tutores no se han enviado.'], 450);
         }
     }
 
@@ -308,10 +335,20 @@ class ControladorAlumno extends Controller
     public function actualizarTutorEmpresa(Request $req)
     {
         try {
-            $dni_tutor_nuevo = $req->get('dni_tutor_nuevo');
+            $mail_tutor_nuevo = $req->get('mail_tutor_nuevo');
             $dni_alumno = $req->get('dni_alumno');
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+
+            //Tenemos el mail del nuevo tutor, tenemos que coger su dni para poder actualizarlo en la tabla FCT:
+            $dni_tutor_nuevo = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.id_empresa', '=', $id_empresa)
+                ->where('trabajador.email', '=', $mail_tutor_nuevo)
+                ->select('trabajador.dni AS dni')
+                ->first();
+
             Fct::where('dni_alumno', $dni_alumno)->update([
-                'dni_tutor_empresa' => $dni_tutor_nuevo,
+                'dni_tutor_empresa' => $dni_tutor_nuevo->dni,
             ]);
             return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
         } catch (Exception $e) {
@@ -321,6 +358,46 @@ class ControladorAlumno extends Controller
 
     #endregion
     /***********************************************************************/
+
+
+
+    /***********************************************************************/
+    #region Recoger alumnos asociados a un tutor
+
+    public function getAlumnosAsociados(Request $req)
+    {
+        //dni_tutor puede ser tanto de instituto como de empresa
+        $dni = $req->dni_tutor;
+        $esTutorEstudios = Profesor::where('dni', '=', $dni)
+            ->select('dni')
+            ->first();
+
+        $alumnosAsociados = [];
+        //Si encontramos un tutor_estudios con ese dni, sacamos sus alumnos asociados,
+        //Sino, querrá decir que el dni pertenecerá a un tutor de la empresa, y se le mostrarán sus correspondientes alumnos.
+        if ($esTutorEstudios != null) {
+            $alumnosAsociados = Alumno::join('matricula', 'alumno.dni', '=', 'matricula.dni_alumno')
+                ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+                ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+                ->where('tutoria.dni_profesor', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
+        } else {
+            $alumnosAsociados = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+                ->where('fct.dni_tutor_empresa', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
+        }
+
+        return response()->json($alumnosAsociados, 200);
+    }
+
+
+    #endregion
+    /***********************************************************************/
+
+
+
 
     /***********************************************************************/
     #region Generación y descarga del Anexo III
@@ -332,6 +409,7 @@ class ControladorAlumno extends Controller
     public function generarAnexo3(Request $req)
     {
         $dni_alumno = $req->get('dni');
+        $id_quinto_dia = $req->get('id_quinto_dia');
 
         //Primero, vamos a sacar el centro donde está el alumno:
         $centro = $this->centroDelAlumno($dni_alumno);
@@ -350,7 +428,7 @@ class ControladorAlumno extends Controller
         //Sacamos los registros que necesitamos de la tabla FCT:
         $fct = $this->getDatosFct($dni_alumno);
         //Cogemos las ultimas 5 jornadas, para ponerlas en el documento:
-        $jornadas = $this->las5UltimasJornadas($dni_alumno);
+        $jornadas = $this->las5UltimasJornadas($dni_alumno, $id_quinto_dia);
 
         //Construyo el array con todos los datos y ss correspondientes prefijos.
         $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional', 'ciclo', 'empresa', 'tutor_empresa', 'fct'];
@@ -382,7 +460,88 @@ class ControladorAlumno extends Controller
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
+
+        /*Cuando se genere un nuevo Word, las firmas de los 3 implicados se pondrán a 0 dado que se entiende que al generar un Word nuevo, es porque el
+        alumno ha cambiado algún campo y hay que firmarlo y subirlo nuevo.*/
+
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+        $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
+            ->where('id_quinto_dia', '=', $id_quinto_dia)
+            ->update([
+                'firmado_alumno' => 0,
+                'firmado_tutor_estudios' => 0,
+                'firmado_tutor_empresa' => 0,
+            ]);
+
         return response()->download(public_path($rutaDestino));
+    }
+
+
+    public function hayDocumento(Request $req)
+    {
+        $ruta_hoja = Semana::where('id_fct', '=', $req->id_fct)
+            ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+            ->select('ruta_hoja')
+            ->first();
+        return response()->json($ruta_hoja, 200);
+    }
+
+
+    public function descargarAnexo3(Request $req)
+    {
+        return response()->download(public_path($req->ruta_hoja));
+    }
+
+    /**
+     *
+     */
+    public function subirAnexo3(Request $req)
+    {
+        try {
+            $dni = $req->dni;
+            $rutaDestino = public_path() . DIRECTORY_SEPARATOR . $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
+            if (strpos($req->file_name, ".pdf")) {
+                $replaced = Str::replace('.pdf', '', $req->file_name);
+            }
+            $subida = Auxiliar::guardarFichero($rutaDestino, $replaced, $req->file);
+            $ruta_hoja = $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded' . DIRECTORY_SEPARATOR . $req->file_name;
+
+            $rol_dni_alumno = Alumno::select('dni')
+                ->where('dni', '=', $dni)
+                ->first();
+
+            if ($rol_dni_alumno == null) {
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_tutor_estudios' => 1
+                    ]);
+                //Vamos a poner en leido la notificacion de una semana en concreto porque el tutor del instituto ya lo ha firmado
+                $sacarId_semana = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->select('id')
+                    ->first();
+
+                $notificacion_id_semana = Notificacion::where('semana', '=', $sacarId_semana->id)
+                    ->update([
+                        'leido' => 1,
+                    ]);
+            } else {
+                //en este caso, firma el alumno y si ha marcado el check, firmará tambien el tutor de la empresa
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_alumno' => 1,
+                        'firmado_tutor_empresa' => $req->firmado_tutor_empresa
+                    ]);
+            }
+            return response()->json(['message' => 'Documento subido correctamente.'], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, el documento no se ha subido.'], 450);
+        }
     }
 
     /***********************************************************************/
@@ -521,20 +680,45 @@ class ControladorAlumno extends Controller
      * @return array $jornadas
      * @author Malena
      */
-    public function las5UltimasJornadas(string $dni_alumno)
+    public function las5UltimasJornadas(string $dni_alumno, $id_quinto_dia)
     {
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
 
+        $quinto_dia = Seguimiento::where('id', '=', $id_quinto_dia)
+            ->first();
+
         $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
+            ->where('seguimiento.orden_jornada', '<=', $quinto_dia->orden_jornada)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
             ->take(5)
             ->get();
 
+
         return $jornadas;
+    }
+
+    /**
+     * Método que recoge la última jornada añadida.
+     */
+    public function ultimaJornada($dni_alumno)
+    {
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+
+        $jornada = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->where('fct.dni_alumno', '=', $dni_alumno)
+            ->where('fct.id_empresa', '=', $id_empresa)
+            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->take(1)
+            ->get();
+
+
+        return $jornada;
     }
 
     /**
@@ -549,6 +733,7 @@ class ControladorAlumno extends Controller
             ->first();
         return $tutor_empresa;
     }
+
 
     #endregion
     /***********************************************************************/
@@ -763,7 +948,6 @@ class ControladorAlumno extends Controller
      */
     public static function getNombreCicloAlumno($dni_alumno)
     {
-
         $nombre_ciclo = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->select('grupo.nombre_ciclo')
             ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
@@ -914,4 +1098,364 @@ class ControladorAlumno extends Controller
     }
     #endregion
     /***********************************************************************/
+    #region Resumen de gastos del alumno - Anexo VI
+    #region CRUD Tickets transporte
+
+    /**
+     * Obtiene todos los datos para la pantalla de gestión de gastos, en el perfil de alumno:
+     * - Objeto clase Gasto del alumno
+     * - Lista de facturas de tranporte
+     * - Lista de facturas de manutención
+     * @param string $dni_alumno DNI del alumno
+     * @return Response Respuesta con la información del alumno, según su DNI y el curso académico actual
+     */
+    public function gestionGastosAlumno($dni_alumno)
+    {
+        $gasto = $this->obtenerGastoAlumnoPorDNIAlumno($dni_alumno);
+        if ($gasto) {
+            return response()->json($gasto, 200);
+        } else {
+            return response()->json([], 204);
+        }
+    }
+
+    /**
+     * Obtiene el registro correspondiente de la tabla Gasto según el DNI del alumno
+     */
+    public function obtenerGastoAlumnoPorDNIAlumno($dni_alumno)
+    {
+        $gasto = Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->get()->first();
+        if ($gasto) {
+            if ($gasto->tipo_desplazamiento == "No aplica") {
+                $gasto->facturasTransporte = [];
+                $gasto->facturasManutencion = [];
+
+                $gasto->sumatorio_gasto_vehiculo_privado = 0;
+                $gasto->sumatorio_gasto_transporte_publico = 0;
+                $gasto->sumatorio_gasto_manutencion = 0;
+                $gasto->total_gastos = 0;
+            } else {
+                $gasto->facturasTransporte = FacturaTransporte::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                //Incluimos la URL de la foto del ticket de transporte
+                foreach ($gasto->facturasTransporte as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketTransporte/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->facturasManutencion = FacturaManutencion::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                 //Incluimos la URL de la foto del ticket de transporte
+                 foreach ($gasto->facturasManutencion as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
+                $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
+                $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
+                $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+            }
+            //Incluido para controlar la gestión de los gastos del profesor
+            $alumno = Alumno::where('dni', '=', $dni_alumno)->get()->first();
+            $gasto->nombre_alumno = $alumno->nombre . ' ' . $alumno->apellidos;
+
+            return $gasto;
+        }
+
+        return null;
+    }
+
+
+
+
+    /**
+     * Actualiza la información en la tabla Gasto según el objeto recibido
+     * @param Request $r Request con forma de objeto Gasto
+     * @return Response Respuesta HTTP estándar
+     */
+    public function actualizarDatosGastoAlumno(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
+            'residencia_alumno' => $r->residencia_alumno,
+            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
+            'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
+            'distancia_centroEd_residencia' => $r->distancia_centroEd_residencia,
+            'distancia_centroTra_residencia' => $r->distancia_centroTra_residencia
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     * Actualiza el campo dias_transporte_privado del modelo Gasto
+     * @param Request $r Request que incluye el dni del alumno a actualizar y el número de días
+     * @return Response Código HTTP estándar
+     */
+    public function actualizarDiasVehiculoPrivado(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'dias_transporte_privado' => $r->dias_transporte_privado
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaTransporte(Request $r)
+    {
+
+
+        $factura = FacturaTransporte::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => ''
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketTransporte' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaManutencion(Request $r)
+    {
+        $factura = FacturaManutencion::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => '',
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketManutencion' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaTransporte(Request $r)
+    {
+        $imagen_ticket = '';
+
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketTransporte")) {
+            $imagen_ticket_anterior = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaTransporte::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaManutencion(Request $r)
+    {
+        $imagen_ticket = '';
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketManutencion")) {
+            $imagen_ticket_anterior = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaManutencion::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    public function eliminarFacturaManutencion($id)
+    {
+        try {
+            FacturaManutencion::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+
+    public function eliminarFacturaTransporte($id)
+    {
+        try {
+            FacturaTransporte::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+    #endregion
+
+    #region Funciones auxiliares CRUD Anexo VI:
+
+    /**
+     * Descarga la imagen del ticket de transporte
+     */
+    public function descargarImagenTicketTransporte($id, $guid)
+    {
+        $pathFoto = FacturaTransporte::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Descarga la imagen del ticket de manutención
+     */
+    public function descargarImagenTicketManutencion($id, $guid)
+    {
+        $pathFoto = FacturaManutencion::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
+     * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
+     * @return float Cálculo del importe correspondiente.
+     */
+    public function calcularGastoVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO  * $gasto->dias_transporte_privado;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO * $gasto->dias_transporte_privado;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de transporte público
+     * @param string $dni_alumno DNI del alumno
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoTransportePublico($dni_alumno)
+    {
+        return FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de manutención
+     * @param string $dni_alumno DNI del alumno.
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoManutencion($dni_alumno)
+    {
+        return FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Obtiene el tipo de desplazamiento (necesario para el Anexo VI)
+     * según los parámetros recibidos en la función.
+     * @param string $residencia_alumno Residencia del alumno (Localidad del centro educativo/Localidad distinta a la del centro educativo)
+     * @param string $ubicacion_centro_trabajo Ubicación del centro de trabajo (Dentro del núcleo urbano/Fuera del núcleo urbano/En otra localidad)
+     * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
+     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo,
+     * No aplica-> no se tiene derecho a gastos de manutencion.
+     */
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
+    {
+        if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
+            if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
+                return "No aplica";
+            } else {
+                return "Centro educativo";
+            }
+        } else {
+            return "Domicilio";
+        }
+    }
+    #endregion
+    #endregion
 }

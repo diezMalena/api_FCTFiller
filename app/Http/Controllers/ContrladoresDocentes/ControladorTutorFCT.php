@@ -23,8 +23,11 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Gasto;
 use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
@@ -39,10 +42,14 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Faker\Core\Number;
+use Illuminate\Database\QueryException;
 use Mockery\Undefined;
 use PhpParser\Node\Expr\Cast\Array_;
 use Ramsey\Uuid\Type\Integer;
 use Illuminate\Support\Facades\Hash;
+use stdClass;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriterXlsx;
 
 class ControladorTutorFCT extends Controller
 {
@@ -112,20 +119,22 @@ class ControladorTutorFCT extends Controller
             ->get();
 
         foreach ($empresas as  $empresa) {
-            //Aquí rocojo el nombre del responsable de esa empresa
+            //Aquí rocojo el responsable de esa empresa. Si no hay, se saca al representante legal, que va a estar sí o sí
             $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
-                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
+                ->where([['rol_trabajador_asignado.id_rol', Parametros::RESPONSABLE_CENTRO], ['empresa.id', $empresa->id]])
                 ->select('trabajador.nombre')
-                ->get()[0]->nombre;
-            $empresa->nombre_responsable = $responsable;
-            //Aquí rocojo el dni del responsable de esa empresa
-            $dni_responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
-                ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
-                ->where([['rol_trabajador_asignado.id_rol', 2], ['empresa.id', $empresa->id]])
-                ->select('trabajador.dni')
-                ->get()[0]->dni;
-            $empresa->dni_responsable = $dni_responsable;
+                ->first();
+            //Por si acaso la empresa no tiene un responsable asignado, ponemos al representante legal
+            if (!$responsable) {
+                $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                    ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
+                    ->where([['rol_trabajador_asignado.id_rol', Parametros::REPRESENTANTE_LEGAL], ['empresa.id', $empresa->id]])
+                    ->select('trabajador.nombre')
+                    ->first();
+            }
+            $empresa->nombre_responsable = $responsable->nombre;
+            $empresa->dni_responsable = $responsable->dni;
             //Aquí rocojo los alumnos asociados a esa empresa
             $alumnos = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
                 ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
@@ -166,8 +175,8 @@ class ControladorTutorFCT extends Controller
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
                 Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
-                $trabajador = Trabajador::find($empresa['dni_responsable']);
-                Auxiliar::updateUser($trabajador, $trabajador->email);
+                // $trabajador = Trabajador::find($empresa['dni_responsable']);
+                // Auxiliar::updateUser($trabajador, $trabajador->email);
                 $alumnos = $empresa['alumnos'];
                 foreach ($alumnos as $alumno) {
                     Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
@@ -887,19 +896,27 @@ class ControladorTutorFCT extends Controller
     #region CRUD de empresas
 
     /**
-     * Devuelve las empresas asociadas a un profesor mediante los convenios con su centro de estudios
+     * Devuelve todas las empresas del sistema con un atributo booleano 'convenio',
+     * que adquiere true cuando hay convenio entre el centro del profesor y la empresa
      *
      * @param string $dniProfesor el DNI del profesor
-     * @return response JSON con la colección de empresas asociadas
-     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> @DaniJCoello
+     * @return response JSON con la colección de empresas
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function getEmpresasFromProfesor(string $dniProfesor)
     {
-        $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
-        $empresas = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
-            ->where('convenio.cod_centro', $codCentro)
-            ->get();
-        return response()->json($empresas, 200);
+        try {
+            $codCentro = Profesor::find($dniProfesor)->cod_centro_estudios;
+            $empresas = Empresa::all();
+            foreach ($empresas as $empresa) {
+                $empresa->convenio = Convenio::where('cod_centro', $codCentro)
+                    ->where('id_empresa', $empresa->id)->first();
+                $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+            }
+            return response()->json($empresas, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Fallo al obtener las empresas'], 400);
+        }
     }
 
     /**
@@ -921,7 +938,8 @@ class ControladorTutorFCT extends Controller
                 'localidad' => $req->localidad,
                 'provincia' => $req->provincia,
                 'direccion' => $req->direccion,
-                'cp' => $req->cp
+                'cp' => $req->cp,
+                'es_privada' => $req->es_privada
             ]);
             return response()->json(['title' => 'Empresa actualizada', 'message' => 'Se han actualizado los datos de ' . $nombreEmpresa], 200);
         } catch (Exception $e) {
@@ -984,9 +1002,12 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Recoge los datos que se envía desde el cliente, y añade estos a sus correspondientes tablas.
-     * También, se generará el Anexo0 al añadir las empresas.
+     * Registra una empresa y su representante en la base de datos,
+     * así como los ciclos de interés para la empresa
+     *
+     * @return Response JSON con la respuesta del servidor: 200 -> OK, 400 -> error
      * @author @Malena
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function addDatosEmpresa(Request $req)
     {
@@ -994,18 +1015,42 @@ class ControladorTutorFCT extends Controller
             $empresa = Empresa::create($req->empresa);
             $repre_aux = $req->representante;
             $repre_aux["id_empresa"] = $empresa->id;
-            $repre_aux["password"] = Hash::make($repre_aux["password"]);
+            $repre_aux["password"] = Hash::make("superman");
             $representante = Trabajador::create($repre_aux);
             Auxiliar::addUser($representante, "trabajador");
             RolTrabajadorAsignado::create([
                 'dni' => $representante->dni,
-                'id_rol' => 1,
+                'id_rol' => Parametros::REPRESENTANTE_LEGAL,
             ]);
-            $convenio = $this->addConvenio($req->dni, $empresa->id, $empresa->es_privada);
-            $rutaAnexo = $this->generarAnexo0($convenio->cod_convenio, $req->dni);
-            return response()->json(['message' => 'Registro correcto', 'ruta_anexo' => $rutaAnexo], 200);
+            //Metemos al representante legal como responsable del centro para que haya alguno en la asignación
+            RolTrabajadorAsignado::create([
+                'dni' => $representante->dni,
+                'id_rol' => Parametros::RESPONSABLE_CENTRO,
+            ]);
+            $this->asignarCiclosEmpresa($empresa->id, $req->ciclos);
+            return response()->json(['message' => 'Registro correcto'], 200);
         } catch (Exception $ex) {
             return response()->json(['message' => 'Registro fallido'], 400);
+        }
+    }
+
+    /**
+     * Registra la asignación de ciclos de interés para una empresa dada
+     *
+     * @param int $idEmpresa ID de la empresa
+     * @param array[string] $codCiclos array con los códigos de los ciclos de interés para la empresa
+     * @return void|Response Si hay error, JSON con una respuesta de error
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function asignarCiclosEmpresa($idEmpresa, $codCiclos)
+    {
+        try {
+            EmpresaGrupo::where('id_empresa', $idEmpresa)->delete();
+            foreach ($codCiclos as $cod) {
+                EmpresaGrupo::create(['id_empresa' => $idEmpresa, 'cod_grupo' => $cod]);
+            }
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Fallo al asignar los grupos'], 400);
         }
     }
 
@@ -1013,7 +1058,7 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
 
     /***********************************************************************/
-    #region Gestión de convenios y acuerdos - Anexoa 0 y 0A
+    #region Gestión de convenios y acuerdos - Anexo 0 y 0A
 
     /***********************************************************************/
     #region Anexo 0 y 0A
@@ -1024,17 +1069,16 @@ class ControladorTutorFCT extends Controller
      * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
      * @return string la ruta en la que se guarda el anexo
      *
-     * @author @DaniJCoello
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com> 02/06/22 -> Generación de anexo no automática
      */
-    public function generarAnexo0(string $codConvenio, string $dniTutor)
+    public function generarAnexo0(Request $req)
     {
-        // Primero consigo los datos del centro de estudios asociado al tutor y su director
-        $centroEstudios = $this->getCentroEstudiosFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $director = $this->getDirectorCentroEstudios($centroEstudios->cod)->makeHidden('created_at', 'updated_at', 'password');
-
-        // Ahora hago lo propio con la empresa en cuestión
-        $empresa = $this->getEmpresaFromConvenio($codConvenio)->makeHidden('created_at', 'updated_at');
-        $representante = $this->getRepresentanteLegal($empresa->id)->makeHidden('created_at', 'updated_at', 'password');
+        // Primero consigo  todos los datos que hay que rellenar en el convenio
+        $convenio = new Convenio($req->convenio);
+        $centroEstudios = new CentroEstudios($req->centro);
+        $director = new Profesor($req->director);
+        $empresa = new Empresa($req->empresa);
+        $representante = new Trabajador($req->representante);
 
         // Construyo el array con todos los datos
         $auxPrefijos = ['director', 'centro', 'representante', 'empresa'];
@@ -1042,14 +1086,17 @@ class ControladorTutorFCT extends Controller
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
 
         // Ahora extraigo los datos de fecha
-        $fecha = Carbon::now();
+        $fecha = new Carbon($convenio->fecha_ini);
         $datos['dia'] = $fecha->day;
         $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
         $datos['anio'] = $fecha->year % 100;
-        $datos['cod_convenio'] = $codConvenio;
+        $datos['cod_convenio'] = $convenio->cod_convenio;
 
         // Esta variable se usa sólo para el nombre del archivo
-        $codConvenioAux = str_replace('/', '-', $codConvenio);
+        $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
+
+        // Voy a necesitar el DNI del tutor, así que lo obtengo
+        $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
 
         // Ahora genero el Word en sí
         // Establezco las variables que necesito
@@ -1062,20 +1109,23 @@ class ControladorTutorFCT extends Controller
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
-        // Guardo la ruta del archivo en la base de datos
-        Convenio::where('cod_convenio', $codConvenio)->update(['ruta_anexo' => $rutaDestino]);
-        // Y la devuelvo
         return $rutaDestino;
     }
 
     /**
      * Descarga el anexo 0 obteniendo la ruta donde se encuentra el anexo.
      * @author Malena.
+     * 03/06/22 - Añadido control de errores
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function descargarAnexo0(Request $req)
     {
         $ruta_anexo = $req->get('ruta_anexo');
-        return response()->download($ruta_anexo);
+        if (file_exists($ruta_anexo)) {
+            return response()->download($ruta_anexo);
+        } else {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
     }
 
     #endregion
@@ -1085,45 +1135,113 @@ class ControladorTutorFCT extends Controller
     #region Gestión de convenios y acuerdos
 
     /**
-     * Genera el código de un convenio a partir del código del centro, un autoincremental y la fecha
-     * @param string $codCentroConvenio el código del centro para generar los convenios
-     * @param string $tipo 'C' -> Convenio; 'A' -> Acuerdo
-     * @return string el código del convenio
+     * Registrar el convenio en la BBDD con los diferentes datos que necesitamos.
      *
-     * @author @DaniJCoello
+     * @param Request $req Contiene todos los datos que llegan desde el cliente
+     * @return Response JSON con el código de respuesta del servidor
+     * @author Malena
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public function generarCodigoConvenio(string $codCentroConvenio, string $tipo)
+    public function addConvenio(Request $req)
     {
-        $numConvenio = AuxConvenio::create()->id;
-        $codConvenio = $codCentroConvenio . '/' . $tipo . $numConvenio . '/' . Carbon::now()->year % 100;
-        return $codConvenio;
+        try {
+            // Creamos el convenio en su tabla correspondiente
+            $convenio = Convenio::create($req->convenio);
+            // Y guardamos o generamos el fichero correspondiente, según el cliente haya o no subido el archivo
+            if ($req->subir_anexo) {
+                $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+                $tipoAnexo = $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A';
+                $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
+                $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
+                $archivo = $tipoAnexo . '_' . $codConvenioAux;
+                $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->anexo);
+            } else {
+                $ruta = $this->generarAnexo0($req);
+            }
+            // Acutalizamos la ruta en la tabla convenios, que es la unión con la tabla anexos
+            Convenio::where('cod_convenio', $convenio->cod_convenio)->update(['ruta_anexo' => $ruta]);
+            // Y creamos el registro en la tabla de anexos
+            Anexo::create([
+                'tipo_anexo' => $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A',
+                'ruta_anexo' => $ruta
+            ]);
+            return response()->json(['ruta_anexo' => $ruta], 201);
+        } catch (QueryException $ex) {
+            // Duplicado de una clave única
+            if ($ex->errorInfo[1] == 1062) {
+                return response()->json($ex->errorInfo[2], 409);
+            } else {
+                return response()->json($ex->errorInfo[2], 400);
+            }
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
+    public function updateConvenio(Request $req)
+    {
+        try {
+            // Guardamos el código de convenio original, en caso de que haya cambiado
+            if (array_key_exists('cod_convenio_anterior', $req->convenio)) {
+                $codAnterior = $req->convenio['cod_convenio_anterior'];
+            } else {
+                $codAnterior = $req->convenio['cod_convenio'];
+            }
+            #region Guardado del anexo
+            // Eliminamos el archivo que había antes
+            $rutaAnterior = Convenio::where('cod_convenio', $codAnterior)->first()->ruta_anexo;
+            Auxiliar::borrarFichero(($rutaAnterior));
+            // Y generamos o guardamos (según lo que recibamos del cliente) uno nuevo
+            if ($req->subir_anexo) {
+                $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+                $tipoAnexo = $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A';
+                $codConvenioAux = str_replace('/', '-', $req->convenio['cod_convenio']);
+                $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
+                $archivo = $tipoAnexo . '_' . $codConvenioAux;
+                $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->anexo);
+            } else {
+                $ruta = $this->generarAnexo0($req);
+            }
+            #endregion
+            #region Actualización de la base de datos (Convenio y Anexo)
+            Convenio::where('cod_convenio', $codAnterior)->update([
+                'cod_convenio' => $req->convenio['cod_convenio'],
+                'fecha_ini' => $req->convenio['fecha_ini'],
+                'fecha_fin' => $req->convenio['fecha_fin'],
+                'ruta_anexo' => $ruta
+            ]);
+            Anexo::where('ruta_anexo', $rutaAnterior)->update(['ruta_anexo' => $ruta]);
+            #endregion
+            return response()->json(['ruta_anexo' => $ruta], 201);
+        } catch (QueryException $ex) {
+            // Duplicado de una clave única
+            if ($ex->errorInfo[1] == 1062) {
+                return response()->json($ex->errorInfo[2], 409);
+            } else {
+                return response()->json($ex->errorInfo[2], 400);
+            }
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
     }
 
     /**
-     * Registrar el convenio en la BBDD con los diferentes datos que necesitamos.
-     * @author Malena
-     * @param string $dniTutor, el dni del tutor que se encuentra logueado.
-     * @param int $id_empresa, el id de la empresa que se registra.
-     * @param boolean $privada true --> empresa privada; false --> empresa pública
-     * @return Convenio convenio entre la empresa y el centro de estudios.
+     * Elimina un convenio de la base de datos y deshabilita el anexo correspondiente
+     *
+     * @param String $cod El código de convenio con las '/' sustituidas por '-'
+     * @return Response JSON con el código de estado HTTP correspondiente
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public function addConvenio(string $dniTutor, int $id_empresa, bool $privada)
+    public function deleteConvenio(String $cod)
     {
-        //Consigo el centro de estudios a partir del Dni del tutor:
-        $centroEstudios = $this->getCentroEstudiosFromProfesor($dniTutor);
-        //Fabrico el codigo del convenio:
-        $codConvenio = $this->generarCodigoConvenio($centroEstudios->cod_centro_convenio, $privada ? 'C' : 'A');
-        $convenio = Convenio::create([
-            'cod_convenio' => $codConvenio,
-            'cod_centro' => $centroEstudios->cod,
-            'id_empresa' => $id_empresa,
-            'curso_academico_inicio' => '',
-            'curso_academico_fin' => '',
-            'firmado_director' => 0,
-            'firmado_empresa' => 0,
-            'ruta_anexo' => ''
-        ]);
-        return $convenio;
+        $codAux = str_replace('-', '/', $cod);
+        try {
+            Anexo::where('ruta_anexo', Convenio::where('cod_convenio', $codAux)->first()->ruta_anexo)->update(['habilitado' => 0]);
+            Convenio::where('cod_convenio', $codAux)->delete();
+            return response()->json(['message' => 'Anulación de convenio correcta'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => $ex->getMessage()], 500);
+        }
     }
 
     #endregion
@@ -1148,22 +1266,26 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Devuelve el centro de estudios asociado a un determinado código de convenio
+     * Devuelve el centro de estudios asociado a un determinado código de convenio.
+     * Contiene también información del director
+     *
      * @param string $codConvenio el código de convenio
      * @return CentroEstudios una colección con la información del centro de estudios
-     *
      * @author @DaniJCoello
      */
     public function getCentroEstudiosFromConvenio(string $codConvenio)
     {
-        return CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        $centro = CentroEstudios::find(Convenio::where('cod_convenio', $codConvenio)->first()->cod_centro);
+        $centro->director = $this->getDirectorCentroEstudios($centro->cod);
+
+        return $centro;
     }
 
     /**
      * Devuelve el director de un centro de estudios
+     *
      * @param string $codCentroEstudios el código irrepetible del centro de estudios
      * @return Profesor una colección con la información del director
-     *
      * @author @DaniJCoello
      */
     public function getDirectorCentroEstudios(string $codCentroEstudios)
@@ -1172,46 +1294,56 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
-     * Devuelve la empresa asociada a un CIF
+     * Devuelve la empresa asociada a un CIF,
+     * con los datos del representante legal dentro
+     *
      * @param string $cif el CIF de la empresa
      * @return Empresa una colección con la información de la empresa
-     *
      * @author @DaniJCoello
      */
     public function getEmpresaFromCIF(string $cif)
     {
-        return Empresa::where('cif', $cif)->first();
+        $empresa = Empresa::where('cif', $cif)->first();
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+        return $empresa;
     }
 
     /**
-     * Devuelve la empresa asociada a una ID de la base de datos
+     * Devuelve la empresa asociada a una ID de la base de datos,
+     * con los datos del representante legal dentro
+     *
      * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
      * @return Empresa una colección con la información de la empresa
-     *
      * @author @DaniJCoello
      */
     public function getEmpresaFromID(int $id)
     {
-        return Empresa::find($id);
+        $empresa = Empresa::find($id);
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+        return $empresa;
     }
 
     /**
      * Devuelve la empresa asociada a un código de convenio
-     * @param string $codConvenio el código del convenio
-     * @return Empresa una colección con la información de la empresa
+     * La empresa contiene los datos del representante legal
      *
+     * @param string $codConvenio el código del convenio
+     * @return Empresa una colección con la información de la empresa y el representante legal
      * @author @DaniJCoello
      */
     public function getEmpresaFromConvenio(string $codConvenio)
     {
-        return Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        $empresa = Empresa::find(Convenio::where('cod_convenio', $codConvenio)->first()->id_empresa);
+        $empresa->representante = $this->getRepresentanteLegal($empresa->id);
+
+        return $empresa;
     }
 
     /**
      * Devuelve el representante legal de una empresa
-     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
-     * @return Empresa una colección con la información de la empresa
      *
+     * @param int $id la ID autonumérica de la empresa en la base de datos de la aplicación
+     * @return Trabajador un objeto con los datos del representante legal
      * @author @DaniJCoello
      */
     public function getRepresentanteLegal(int $id)
@@ -1237,6 +1369,33 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
+     * Devuelve en una response JSON la empresa asociada al ID que se le pasa como argumento,
+     * con los datos de su representante legal dentro
+     *
+     * @param int $id ID único de la empresa
+     * @return response JSON con los datos de la empresa y su representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getEmpresaID(int $id)
+    {
+        return response()->json($this->getEmpresaFromId($id), 200);
+    }
+
+    /**
+     * Devuelve en una response JSON la empresa asociada al ID que se le pasa como argumento,
+     * con los datos de su representante legal dentro
+     *
+     * @param int $id ID único de la empresa
+     * @return response JSON con los datos de la empresa y su representante legal
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function getEmpresaCIF(string $cif)
+    {
+        return response()->json($this->getEmpresaFromCif($cif), 200);
+    }
+
+    /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * En esta funcion, enviamos el dni del director/jefe estudios para recoger el centro de estudios
      * al que pertenecen, con ese dato, recogemos los grupos de un centro de estudios desde la tabla
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del
@@ -1248,6 +1407,220 @@ class ControladorTutorFCT extends Controller
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
         $grupos = Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get();
         return response()->json($grupos, 200);
+    }
+
+    public function getCentroEstudiosFromConvenioJSON(string $codConvenio)
+    {
+        return response()->json($this->getCentroEstudiosFromConvenio($codConvenio), 200);
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de gastos de alumno en vista profesor
+
+    /**
+     * Calcula la suma de KM realizados por el alumno durante el trayecto (I/V)
+     * en vehículo privado
+     */
+    public function calcularSumaKMVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public function obtenerGestionGastosPorEmailTutor($email)
+    {
+        //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
+        $dnisAlumnos = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('gasto', 'gasto.dni_alumno', '=', 'alumno.dni')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['gasto.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->pluck('alumno.dni');
+
+        $c = new ControladorAlumno();
+        $gastos = new stdClass();
+        $gastos->gastos = [];
+        foreach ($dnisAlumnos as $dni) {
+            $gastos->gastos[] = $c->obtenerGastoAlumnoPorDNIAlumno($dni);
+        }
+
+        $gastos->grupo = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->select('tutoria.cod_grupo')->first()->cod_grupo;
+
+        $alumnosSinGasto = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->whereNotIn('alumno.dni', $dnisAlumnos)
+            ->pluck('alumno.dni')->toArray();
+
+        $gastos->alumnosSinGasto = Alumno::whereIn('dni', $alumnosSinGasto)->get();
+
+        return $gastos;
+    }
+
+
+    public function gestionGastosProfesor(Request $r)
+    {
+        $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
+        return response()->json($gastos, 200);
+    }
+
+
+    public function eliminarAlumnoDeGastos($dni_alumno)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
+    }
+
+    public function nuevoAlumnoGestionGastos(Request $r)
+    {
+        try {
+            Gasto::create([
+                'dni_alumno' => $r->dni,
+                'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+                'tipo_desplazamiento' => '',
+                'total_gastos' => 0,
+                'residencia_alumno' => '',
+                'ubicacion_centro_trabajo' => '',
+                'distancia_centroEd_centroTra' => 0,
+                'distancia_centroEd_residencia' => 0,
+                'distancia_centroTra_residencia' => 0,
+                'dias_transporte_privado' => 0
+            ]);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+
+        return response()->json(['mensaje' => 'Creado correctamente'], 201);
+    }
+
+    public function descargarAnexoVI(Request $r)
+    {
+        $rutaFichero = $this->generarAnexoVI($r->user()->email);
+        if ($rutaFichero) {
+            return response()->download($rutaFichero);
+        } else {
+            return response()->json(['mensaje' => 'No se ha podido descargar el fichero'], 400);
+        }
+    }
+
+    public function generarAnexoVI($email)
+    {
+        $dniTutor = Profesor::where('email', '=', $email)->get()->first()->dni;
+        $pathAnexoVI = public_path() . DIRECTORY_SEPARATOR . $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR;
+        $pathPlantillaAnexo = public_path() . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo6.xlsx';
+
+        $alumnosTutor = $this->obtenerGestionGastosPorEmailTutor($email);
+        for ($i = 0; $i < ceil(count($alumnosTutor->gastos) / 17); $i++) {
+            //Cogemos el array de alummos de 17 en 17, para ir creando
+            //tantos libros de Excel como necesitemos
+            $gastoAlumnos = array_slice($alumnosTutor->gastos, $i, 17);
+            $reader = new ReaderXlsx();
+            $libro = $reader->load($pathPlantillaAnexo);
+            $tabla = $libro->getActiveSheet();
+
+            //Cabecera de la tabla Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+            $cabecera = Profesor::join('centro_estudios', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+            ->join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
+            ->where('profesor.dni', '=', '20a')
+            ->select('centro_estudios.nombre as nombreCentro', 'profesor.nombre', 'profesor.apellidos', 'grupo.nombre_ciclo', 'centro_estudios.localidad', 'centro_estudios.cod', 'centro_estudios.email')
+            ->get()->first();
+
+            $periodo = Auxiliar::obtenerCursoAcademico();
+            $fecha = date("d/m/Y");
+            $horas = '400';
+
+            $tabla->setCellValue('A7', 'CENTRO DOCENTE: ' . $cabecera->nombreCentro);
+            $tabla->setCellValue('A8', 'TUTOR O TUTORA: ' . $cabecera->nombre . ' ' . $cabecera->apellidos);
+            $tabla->setCellValue('B9', $cabecera->nombre_ciclo);
+            $tabla->setCellValue('F7', $cabecera->localidad);
+            $tabla->setCellValue('J7', $cabecera->cod);
+            $tabla->setCellValue('I8', $periodo);
+            $tabla->setCellValue('K8', $fecha);
+            $tabla->setCellValue('F9', $cabecera->email);
+            $tabla->setCellValue('J9', $horas);
+
+
+
+            //Cuerpo de la tabla
+            $fila = 14;
+            foreach ($gastoAlumnos as $gasto) {
+                $tabla->setCellValue('A' . $fila, $gasto->nombre_alumno);
+                $tabla->setCellValue(($gasto->tipo_desplazamiento == 'Domicilio' ? 'D' : 'C') . $fila, '   x   ');
+                $tabla->setCellValue('E' . $fila, $gasto->sumatorio_gasto_transporte_publico / count($gasto->facturasTransporte));
+                $tabla->setCellValue('F' . $fila, count($gasto->facturasTransporte));
+                $tabla->setCellValue('G' . $fila, $this->calcularSumaKMVehiculoPrivado($gasto));
+                $tabla->setCellValue('H' . $fila, $gasto->dias_transporte_privado);
+                $tabla->setCellValue('I' . $fila, $gasto->sumatorio_gasto_vehiculo_privado);
+                $tabla->setCellValue('J' . $fila, $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico);
+                $tabla->setCellValue('K' . $fila, $gasto->sumatorio_gasto_manutencion);
+                $tabla->setCellValue('L' . $fila, $gasto->total_gastos);
+                $fila++;
+            }
+
+            Auxiliar::existeCarpeta($pathAnexoVI);
+            $writer = new WriterXlsx($libro);
+            $writer->save($pathAnexoVI . 'Anexo6_' . $i . '.xlsx');
+        }
+
+        $rutaDevolver = $pathAnexoVI . 'Anexo6_0.xlsx';
+
+        //Si se ha generado más de un fichero, los comprimimos
+        if (count(glob($pathAnexoVI . '{*.xlsx}', GLOB_BRACE)) > 1) {
+            $rutaRelativaAnexoVI = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6';
+            $rutaZIP = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR . 'Anexo6.zip';
+            $this->montarZip($rutaRelativaAnexoVI, new ZipArchive(), $rutaZIP);
+
+            foreach (glob($pathAnexoVI . '{*.xlsx/*.zip}', GLOB_BRACE) as $a) {
+                if (is_file($a)) {
+                    unlink($a);
+                }
+            }
+
+            $rutaDevolver = public_path($rutaZIP);
+        }
+
+        return $rutaDevolver;
     }
 
     #endregion

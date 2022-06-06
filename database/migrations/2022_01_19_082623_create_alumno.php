@@ -45,5 +45,6 @@ class CreateAlumno extends Migration
     public function down()
     {
         //
+        Schema::dropIfExists('alumno');
     }
 }
