@@ -17,6 +17,7 @@ use App\Models\Trabajador;
 use App\Models\Matricula;
 use App\Models\Anexo;
 use App\Models\Semana;
+use App\Models\Notificacion;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
@@ -129,7 +130,7 @@ class ControladorAlumno extends Controller
      * con su empresa asignada.
      * @param $dni_alumno del alumno que inicia sesion, $id_empresa de la que tiene asignada dicho alumno.
      * @author Malena.
-     * @return $jornadas, array de jornadas que tiene el alumno añadidas en la BBDD.
+     * @return $semanas, array de semanas que tiene el alumno.
      */
     public function devolverJornadas(Request $req)
     {
@@ -312,7 +313,7 @@ class ControladorAlumno extends Controller
                 ->where('trabajador.dni', '=', $dni_tutor)
                 ->select('trabajador.email AS email')
                 ->first();
-            error_log($mail_tutor->email);
+
             $email_tutor = $mail_tutor->email;
             //Recojo el id_empresa:
             $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
@@ -369,18 +370,18 @@ class ControladorAlumno extends Controller
         $alumnosAsociados = [];
         //Si encontramos un tutor_estudios con ese dni, sacamos sus alumnos asociados,
         //Sino, querrá decir que el dni pertenecerá a un tutor de la empresa, y se le mostrarán sus correspondientes alumnos.
-        if($esTutorEstudios != null){
+        if ($esTutorEstudios != null) {
             $alumnosAsociados = Alumno::join('matricula', 'alumno.dni', '=', 'matricula.dni_alumno')
-            ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
-            ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
-            ->where('tutoria.dni_profesor', '=', $dni)
-            ->select('alumno.dni AS dni','alumno.nombre AS nombre')
-            ->get();
-        }else{
+                ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+                ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+                ->where('tutoria.dni_profesor', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
+        } else {
             $alumnosAsociados = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
-            ->where('fct.dni_tutor_empresa', '=', $dni)
-            ->select('alumno.dni AS dni','alumno.nombre AS nombre')
-            ->get();
+                ->where('fct.dni_tutor_empresa', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
         }
 
         return response()->json($alumnosAsociados, 200);
@@ -460,7 +461,6 @@ class ControladorAlumno extends Controller
 
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
-        error_log($id_fct);
         $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
             ->where('id_quinto_dia', '=', $id_quinto_dia)
             ->update([
@@ -507,38 +507,32 @@ class ControladorAlumno extends Controller
                 ->first();
 
             if ($rol_dni_alumno == null) {
-                $rol_dni_tutor = Profesor::select('dni')
-                    ->where('dni', '=', $dni)
-                    ->first();
-                if ($rol_dni_tutor == null) {
-                    $rol_dni_tutor_empresa = Trabajador::select('dni')
-                        ->where('dni', '=', $dni)
-                        ->first();
-                    if ($rol_dni_tutor_empresa != null) {
-                        $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
-                            ->where('id_quinto_dia', '=', $req->id_quinto_dia)
-                            ->update([
-                                'ruta_hoja' => $ruta_hoja,
-                                'firmado_tutor_empresa' => 1
-                            ]);
-                    }
-                } else {
-                    $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
-                        ->where('id_quinto_dia', '=', $req->id_quinto_dia)
-                        ->update([
-                            'ruta_hoja' => $ruta_hoja,
-                            'firmado_tutor_estudios' => 1
-                        ]);
-                }
-            } else {
                 $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
                     ->where('id_quinto_dia', '=', $req->id_quinto_dia)
                     ->update([
                         'ruta_hoja' => $ruta_hoja,
-                        'firmado_alumno' => 1
+                        'firmado_tutor_estudios' => 1
+                    ]);
+                //Vamos a poner en leido la notificacion de una semana en concreto porque el tutor del instituto ya lo ha firmado
+                $sacarId_semana = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->select('id')
+                    ->first();
+
+                $notificacion_id_semana = Notificacion::where('semana', '=', $sacarId_semana->id)
+                    ->update([
+                        'leido' => 1,
+                    ]);
+            } else {
+                //en este caso, firma el alumno y si ha marcado el check, firmará tambien el tutor de la empresa
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_alumno' => 1,
+                        'firmado_tutor_empresa' => $req->firmado_tutor_empresa
                     ]);
             }
-
             return response()->json(['message' => 'Documento subido correctamente.'], 200);
         } catch (Exception $e) {
             return response()->json(['message' => 'Error, el documento no se ha subido.'], 450);
