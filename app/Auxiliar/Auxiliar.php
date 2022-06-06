@@ -4,14 +4,21 @@ namespace App\Auxiliar;
 
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\Alumno;
+use App\Models\Grupo;
 use App\Models\AuxCursoAcademico;
+use App\Models\GrupoFamilia;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
+use App\Models\Matricula;
+use App\Models\Tutoria;
+use App\Models\RolEmpresa;
+use App\Models\Fct;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use App\Models\User;
 use Exception;
+use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -199,6 +206,7 @@ class Auxiliar
             mkdir($ruta, 0777, true);
         }
     }
+
 
     /**
      * Guarda un fichero en base64 en la carpeta indicada
@@ -424,4 +432,11 @@ class Auxiliar
 
     #endregion
     /***********************************************************************/
+
+    public static function templateProcessorAndSetValues($rutaOrigen, $rutaDestino, $datos)
+    {
+        $template = new TemplateProcessor($rutaOrigen);
+        $template->setValues($datos);
+        $template->saveAs($rutaDestino);
+    }
 }
