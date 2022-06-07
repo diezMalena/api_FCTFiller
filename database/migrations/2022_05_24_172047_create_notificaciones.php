@@ -18,7 +18,7 @@ class CreateNotificaciones extends Migration
             $table->string('email');
             $table->string('mensaje');
             $table->integer('leido');
-            $table->integer('semana');
+            $table->unsignedBigInteger('semana');
             $table->timestamps();
 
             $table->foreign('email')->references('email')->on('users');
