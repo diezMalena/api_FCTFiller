@@ -457,15 +457,13 @@ class ControladorTutorFCT extends Controller
             if(count($id_empresa) > 0){
                 $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
-            }else{
-                $empresa_nombre= ' ';
             }
 
             //FECHA
             $fechaAux = explode(':', $a->created_at);
             $fechaAux = explode(' ', $fechaAux[0]);
 
-            if (count($empresa_nombre) == 0) {
+            if ($empresa_nombre) {
                 $datos[] = [
                     'nombre' => $rutaAux[1],
                     'codigo' => $rutaAux[2],
@@ -507,15 +505,14 @@ class ControladorTutorFCT extends Controller
             if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
-            } else {
-                $empresa_nombre=' ';
             }
+
             //FECHA
             $fechaAux = explode(':', $a->created_at);
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            if (count($empresa_nombre) == 0) {
+            if ($empresa_nombre) {
                 $datos[] = [
                     'nombre' => 'Anexo1',
                     'codigo' => $nombreArchivo,
@@ -558,9 +555,7 @@ class ControladorTutorFCT extends Controller
             if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
             }
-            else{
-                $empresa_nombre = ' ';
-            }
+
             //DNI alumno
             $dniAlumno = explode('_', $a->ruta_anexo);
             $dniAlumno = $dniAlumno[1];
@@ -570,7 +565,7 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            if (count($empresa_nombre) == 0) {
+            if ($empresa_nombre) {
                 $datos[] = [
                     'nombre' => $rutaAux[1],
                     'codigo' => $rutaAux[2],
