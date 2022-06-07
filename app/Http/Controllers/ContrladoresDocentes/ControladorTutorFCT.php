@@ -453,7 +453,13 @@ class ControladorTutorFCT extends Controller
             $convenioAux = str_replace('-', DIRECTORY_SEPARATOR, $convenioAux[0]);
 
             $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
-            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
+
+            if(count($id_empresa) > 0){
+                $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
+
+            }else{
+                $empresa_nombre= ' ';
+            }
 
             //FECHA
             $fechaAux = explode(':', $a->created_at);
@@ -498,8 +504,12 @@ class ControladorTutorFCT extends Controller
             $id_empresa = explode('_', $rutaAux[2]);
             $id_empresa = $id_empresa[1];
 
+            if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
+            } else {
+                $empresa_nombre=' ';
+            }
             //FECHA
             $fechaAux = explode(':', $a->created_at);
             $fechaAux = explode(' ', $fechaAux[0]);
@@ -545,8 +555,12 @@ class ControladorTutorFCT extends Controller
             $id_empresa = explode('_', $rutaAux[2]);
             $id_empresa = $id_empresa[2];
 
+            if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
-
+            }
+            else{
+                $empresa_nombre = ' ';
+            }
             //DNI alumno
             $dniAlumno = explode('_', $a->ruta_anexo);
             $dniAlumno = $dniAlumno[1];
