@@ -21,17 +21,22 @@ use App\Models\Notificacion;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
+use ZipArchive;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
+use App\Models\Gasto;
 use App\Models\GrupoFamilia;
+use Illuminate\Support\Str;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 
 
@@ -743,16 +748,19 @@ class ControladorAlumno extends Controller
     #region Acuerdo de confidencialidad - Anexo XV
 
     /**
-     * @author LauraM <lauramorenoramos97@gmail.com>
      * Esta funcion nos permite rellenar el AnexoXV
-     * @param Request $req, este req contiene el dni del alumno
+     * @param Request $req, este req contiene el dni del alumno y el nombre del archivo que esta en base de datos, para
+     * que coincida el nombre con el del documento que se va a crear
      * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
      */
     public function rellenarAnexoXV(Request $req)
     {
 
         $fecha = Carbon::now();
         $dni_alumno = $req->get('dni');
+        $dni_tutor = $this->getDniTutorDelAlumno($dni_alumno);
+        $nombre_archivo = $req->get('cod_anexo');
         $nombre_alumno = $this->getNombreAlumno($dni_alumno);
         $nombre_ciclo = $this->getNombreCicloAlumno($dni_alumno);
         $centro_estudios = $this->getCentroEstudiosYLocalidad($dni_alumno);
@@ -760,30 +768,52 @@ class ControladorAlumno extends Controller
 
         try {
             //ARCHIVO
+
+            //Alumno
             $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
             $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
             Auxiliar::existeCarpeta($rutaCarpeta);
-            $AuxNombre = $dni_alumno . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_.docx';
-            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
 
-            $datos = [
-                'alumno_nombre' => $nombre_alumno->nombre . ' ' . $nombre_alumno->apellidos,
-                'alumno_dni' => $dni_alumno,
-                'alumno_curso' => '2º',
-                'alumno_ciclo' => $nombre_ciclo[0]->nombre_ciclo,
-                'nombre_centro' => $centro_estudios[0]->nombre,
-                'ciudad' => $centro_estudios[0]->localidad,
-                'familia_profesional' => $familia_profesional[0]->descripcion,
+            //Tutor
+            $rutaCarpetaTutor = public_path($dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV');
+            $rutaDestinoTutor = $dni_tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . $nombre_archivo;
+            Auxiliar::existeCarpeta($rutaCarpetaTutor);
+
+            //Al haber llegado aeste punto, asumimos que el anexo se ha completado y por lo tanto, lo habilitamos
+            Anexo::where('ruta_anexo', 'like', "%$nombre_archivo")->update([
+                'habilitado' => 1,
+            ]);
+
+            //Añadimos el anexo a la base de datos con la ruta del profesor
+            $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "$rutaDestinoTutor")->get();
+
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestinoTutor, 'habilitado' => 1]);
+            }
+
+            #region Relleno de datos en Word
+            $auxPrefijos = ['alumno', 'ciclo', 'centro', 'familia_profesional'];
+            $auxDatos = [$nombre_alumno, $nombre_ciclo[0], $centro_estudios[0], $familia_profesional[0]];
+            $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+            $datos = $datos +  [
                 'dia' => $fecha->day,
                 'mes' => Parametros::MESES[$fecha->month],
-                'year' => $fecha->year
+                'year' => $fecha->year,
+                'dni' => $dni_alumno,
+                'curso' => '2º'
+
             ];
 
             $template = new TemplateProcessor($rutaOriginal);
             $template->setValues($datos);
             $template->saveAs($rutaDestino);
+            $template = new TemplateProcessor($rutaOriginal);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestinoTutor);
+            #endregion
 
-            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino]);
             return response()->download(public_path($rutaDestino));
         } catch (Exception $e) {
             return response()->json([
@@ -792,17 +822,113 @@ class ControladorAlumno extends Controller
         }
     }
 
+    /**
+     * Esta funcion es llamada por la función original subirAnexoEspecifico, como el Anexo15 tiene muchas mas cosas
+     * teniendo en cuenta que necesitamos guardar todo en la base de datos, referenciando al tutor
+     * y guardarlo tambien en la carpeta del tutor, esta función añade todo lo necesario para ello.
+     * Para una explicación extensa de que hace subirAnexoXV acudir a subirAnexoEspecifico.
+     *
+     * @param [type] $dni el dni del alumno
+     * @param [type] $tipoAnexo el tipo de anexo
+     * @param [type] $nombreArchivo el nombre del archivo
+     * @param [type] $fichero el fichero en cuestión que se va a subir
+     * @param [type] $rutaCarpetaAlumno la ruta de la carpeta asociada al alumno $dniAlumno/AnexoXV en este ccaso
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public function subirAnexoXV($dni, $tipoAnexo, $nombreArchivo, $fichero, $rutaCarpetaAlumno)
+    {
+        $tutor = $this->getDniTutorDelAlumno($dni);
+        $rutaCarpeta = $tutor[0]->dni_profesor . DIRECTORY_SEPARATOR . $tipoAnexo;
+
+        try {
+
+            $flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
+            $flujoAux = fopen($rutaCarpetaAlumno . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
+
+            //Dividimos el string en comas
+            // $datos[ 0 ] == "data:type/extension;base64"
+            // $datos[ 1 ] == <actual base64 file>
+
+            $datos = explode(',', $fichero);
+
+            if (count($datos) > 1) {
+                fwrite($flujo, base64_decode($datos[1]));
+                fwrite($flujoAux, base64_decode($datos[1]));
+            } else {
+                return false;
+            }
+            fclose($flujo);
+            fclose($flujoAux);
+
+
+            //Extension y archivo sin extensión
+            $archivoNombreSinExtension = explode('.', $nombreArchivo);
+            $extension = explode('/', mime_content_type($fichero))[1];
+
+            //Alumno
+            $rutaParaBBDAlumno = $rutaCarpetaAlumno . DIRECTORY_SEPARATOR . $nombreArchivo;
+            $rutaParaBBDDSinExtensionAlumno = $rutaCarpetaAlumno . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+
+            //Profesor
+            $rutaParaBBDDProfesor = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
+            $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+
+
+            //Base de datos
+            //Solo busco por una ruta, por que si este anexo existe para el profesor, es por que el alumno ya lo ha creado
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+
+
+            if (count($existeAnexo) == 0) {
+                Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDDProfesor]); //Profesor
+                $this->firmarAnexo($rutaParaBBDDProfesor, $extension);
+            } else {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtensionAlumno%")->update([ //Alumno
+                    'ruta_anexo' => $rutaParaBBDAlumno,
+                ]);
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([ //Profesor
+                    'ruta_anexo' => $rutaParaBBDDProfesor,
+                ]);
+
+                $this->firmarAnexo($rutaParaBBDAlumno, $extension);
+                $this->firmarAnexo($rutaParaBBDDProfesor, $extension);
+            }
+
+            //Lo ponemos con su nombre original, en un directorio que queramos
+            //El anexoXV es especial, hay que almacenarlo en dos sitios
+            $fichero->move(public_path($rutaCarpetaAlumno), $nombreArchivo);
+            $fichero->move(public_path($rutaCarpeta), $nombreArchivo);
+        } catch (\Throwable $th) {
+            return false;
+        }
+    }
+
+    public function firmarAnexo($rutaParaBBDD, $extension)
+    {
+        if ($extension == 'pdf') {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 1,
+                ]);
+        } else {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 0,
+                ]);
+        }
+    }
+
+
     /***********************************************************************/
     #region Funciones auxiliares para el Anexo XV
 
     /**
-     * @author LauraM <lauramorenoramos97@gmail.com>
      * Esta funcion nos permite obtener la descripcion de la tabla familia profesional a través del
      * nombre del ciclo
      * @param [type] $nombreCiclo, es el nombre del ciclo
      * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
      */
-    public function getDescripcionFamiliaProfesional($nombreCiclo)
+    public static function getDescripcionFamiliaProfesional($nombreCiclo)
     {
 
         $familia_profesional = GrupoFamilia::join('grupo', 'grupo.cod', '=', 'grupo_familia.cod_grupo')
@@ -815,14 +941,13 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     * @author LauraM <lauramorenoramos97@gmail.com>
      * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
      * @param [type] $dni_alumno, es el dni del alumno
      * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
      */
-    public function getNombreCicloAlumno($dni_alumno)
+    public static function getNombreCicloAlumno($dni_alumno)
     {
-
         $nombre_ciclo = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->select('grupo.nombre_ciclo')
             ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
@@ -830,14 +955,26 @@ class ControladorAlumno extends Controller
         return $nombre_ciclo;
     }
 
+    public static function getDniTutorDelAlumno($dni_alumno)
+    {
+
+        $tutor = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+            ->select('tutoria.dni_profesor')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)
+            ->get();
+
+        return $tutor;
+    }
+
     /**
-     *@author LauraM <lauramorenoramos97@gmail.com>
      *Nos permite obtener el centro de estudios y la localidad al que este
      *pertenece a través del dni de un alumno
      * @param [type] $dni_alumno
      * @return void
+     *@author Laura <lauramorenoramos97@gmail.com>
      */
-    public function getCentroEstudiosYLocalidad($dni_alumno)
+    public static function getCentroEstudiosYLocalidad($dni_alumno)
     {
 
         $centro_estudios = Matricula::join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
@@ -851,4 +988,474 @@ class ControladorAlumno extends Controller
     /***********************************************************************/
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
+    #region Anexos Alumnos
+
+    /**
+     * Esta funcion nos permite ver los anexos de un alumno
+     * @param Request $req, este req contiene el dni del alumno
+     * @return void
+     * @author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function listaAnexosAlumno($dni_alumno)
+    {
+        $datos = array();
+
+        $this->elAlumnoTieneSusAnexosObligatorios($dni_alumno);
+        $Anexos = Anexo::where('ruta_anexo', 'like', "$dni_alumno%")->get();
+
+        foreach ($Anexos as $a) {
+            //return response($Anexos);
+            //Un anexo es habilitado si este esta relleno por completo
+            if (strcmp($a->tipo_anexo, 'Anexo4') != 0 && strcmp($a->tipo_anexo, 'Anexo2') != 0) {
+                $anexoAux = explode('/', $a->ruta_anexo);
+                $datos[] = [
+                    'nombre' => $a->tipo_anexo,
+                    'relleno' => $a->habilitado,
+                    'codigo' => $anexoAux[2],
+                    'fecha' => $a->created_at
+                ];
+            }
+        }
+        return response()->json($datos, 200);
+    }
+
+    /**
+     * Si el alumno no tiene los anexos obligatorios en base de datos, estos se crearan en ella como deshabilitados
+     * , de manera que si el alumno acaba de entrar por primera vez a la aplicacion, le apareceran los anexos
+     * que debería tener en su crud de anexos y le aparecera si estan o no rellenos (habilitados o deshabilitados)
+     * una vez completados, o sea, rellenos por el usuario, se habilitaran.
+     *
+     * @param [type] $dni_alumno
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com
+     */
+    public function elAlumnoTieneSusAnexosObligatorios($dni_alumno)
+    {
+
+        $fecha = Carbon::now();
+
+        //AnexoXV
+        //comprobamos que el anexo no exista para añadirlo a la tabla, sino se duplicaran
+        //los registros
+        $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "%$dni_alumno%")->get();
+        if (count($existeAnexo) == 0) {
+            $AuxNombre = $dni_alumno . '_' . $fecha->year . '_.docx';
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
+            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino, 'habilitado' => 0]);
+        }
+    }
+
+    /**
+     * Esta funcion permite descargar todos los anexos del crud de anexos del alumno
+     * @param Request $val
+     * @return void
+     *@author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public function descargarTodoAlumnos(Request $req)
+    {
+        $zip = new ZipArchive;
+        $AuxNombre = Str::random(7);
+        $dni = $req->get('dni_alumno');
+        $habilitado = 1;
+
+        $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
+
+        $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip, $habilitado);
+
+        return response()->download(public_path($nombreZip));
+    }
+    /**
+     * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos de Alumnos
+     * Miramos los anexos de la carpeta de anexos del alumno, buscamos ese anexo habilitado
+     * si este existe en el directorio, en tal caso se añade al zip
+     * @author Laura <lauramorenoramos97@gmail.com>
+     * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
+     * @param ZipArchive $zip , el zip donde se almacenaran los archivos
+     * @param String $nombreZip, el nombre que tendrá el zip
+     * @return void
+     */
+    public function montarZipCrud(String $dni_alumno, ZipArchive $zip, String $nombreZip, $habilitado)
+    {
+        $files = File::files(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV'));
+        if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
+            #region Anexo XV
+            foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
+                $nombreAux = basename($value);
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+
+
+                if (count($existeAnexo) > 0) {
+                    $zip->addFile($value, $nombreAux);
+                }
+            }
+            #endregion
+            $zip->close();
+        }
+        return $nombreZip;
+    }
+    #endregion
+    /***********************************************************************/
+    #region Resumen de gastos del alumno - Anexo VI
+    #region CRUD Tickets transporte
+
+    /**
+     * Obtiene todos los datos para la pantalla de gestión de gastos, en el perfil de alumno:
+     * - Objeto clase Gasto del alumno
+     * - Lista de facturas de tranporte
+     * - Lista de facturas de manutención
+     * @param string $dni_alumno DNI del alumno
+     * @return Response Respuesta con la información del alumno, según su DNI y el curso académico actual
+     */
+    public function gestionGastosAlumno($dni_alumno)
+    {
+        $gasto = $this->obtenerGastoAlumnoPorDNIAlumno($dni_alumno);
+        if ($gasto) {
+            return response()->json($gasto, 200);
+        } else {
+            return response()->json([], 204);
+        }
+    }
+
+    /**
+     * Obtiene el registro correspondiente de la tabla Gasto según el DNI del alumno
+     */
+    public function obtenerGastoAlumnoPorDNIAlumno($dni_alumno)
+    {
+        $gasto = Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->get()->first();
+        if ($gasto) {
+            if ($gasto->tipo_desplazamiento == "No aplica") {
+                $gasto->facturasTransporte = [];
+                $gasto->facturasManutencion = [];
+
+                $gasto->sumatorio_gasto_vehiculo_privado = 0;
+                $gasto->sumatorio_gasto_transporte_publico = 0;
+                $gasto->sumatorio_gasto_manutencion = 0;
+                $gasto->total_gastos = 0;
+            } else {
+                $gasto->facturasTransporte = FacturaTransporte::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                //Incluimos la URL de la foto del ticket de transporte
+                foreach ($gasto->facturasTransporte as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketTransporte/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->facturasManutencion = FacturaManutencion::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->get();
+                 //Incluimos la URL de la foto del ticket de transporte
+                 foreach ($gasto->facturasManutencion as $factura) {
+                    $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
+                }
+
+                $gasto->sumatorio_gasto_vehiculo_privado = $this->calcularGastoVehiculoPrivado($gasto);
+                $gasto->sumatorio_gasto_transporte_publico = $this->calcularGastoTransportePublico($dni_alumno);
+                $gasto->sumatorio_gasto_manutencion = $this->calcularGastoManutencion($dni_alumno);
+                $gasto->total_gastos = $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico + $gasto->sumatorio_gasto_manutencion;
+            }
+            //Incluido para controlar la gestión de los gastos del profesor
+            $alumno = Alumno::where('dni', '=', $dni_alumno)->get()->first();
+            $gasto->nombre_alumno = $alumno->nombre . ' ' . $alumno->apellidos;
+
+            return $gasto;
+        }
+
+        return null;
+    }
+
+
+
+
+    /**
+     * Actualiza la información en la tabla Gasto según el objeto recibido
+     * @param Request $r Request con forma de objeto Gasto
+     * @return Response Respuesta HTTP estándar
+     */
+    public function actualizarDatosGastoAlumno(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
+            'residencia_alumno' => $r->residencia_alumno,
+            'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
+            'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
+            'distancia_centroEd_residencia' => $r->distancia_centroEd_residencia,
+            'distancia_centroTra_residencia' => $r->distancia_centroTra_residencia
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     * Actualiza el campo dias_transporte_privado del modelo Gasto
+     * @param Request $r Request que incluye el dni del alumno a actualizar y el número de días
+     * @return Response Código HTTP estándar
+     */
+    public function actualizarDiasVehiculoPrivado(Request $r)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $r->dni_alumno],
+            ['curso_academico', '=', $r->curso_academico]
+        ])->update([
+            'dias_transporte_privado' => $r->dias_transporte_privado
+        ]);
+
+        return response()->json(['mensaje' => 'Gasto actualizado correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaTransporte(Request $r)
+    {
+
+
+        $factura = FacturaTransporte::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => ''
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketTransporte' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     *
+     */
+    public function nuevaFacturaManutencion(Request $r)
+    {
+        $factura = FacturaManutencion::create([
+            'dni_alumno' => $r->dni_alumno,
+            'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => '',
+        ]);
+
+        $imagen_ticket = '';
+        $pathFoto = public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno;
+        $nombreFichero = 'ticketManutencion' . $factura->id;
+        if ($r->imagen_ticket != null) {
+            $imagen_ticket = Auxiliar::guardarFichero($pathFoto, $nombreFichero, $r->imagen_ticket);
+        }
+
+        $factura->imagen_ticket = $imagen_ticket;
+
+        $factura->save();
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaTransporte(Request $r)
+    {
+        $imagen_ticket = '';
+
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketTransporte")) {
+            $imagen_ticket_anterior = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketTransporte' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaTransporte::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaTransporte::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'origen' => $r->origen,
+            'destino' => $r->destino,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    /**
+     * Actualización de los datos de la factura de transporte recibida por la Request
+     * @author David Sánchez Barragán
+     */
+    public function actualizarFacturaManutencion(Request $r)
+    {
+        $imagen_ticket = '';
+        //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
+        //se recoge entonces el path original que tuvieran
+        if (!str_contains($r->imagen_ticket, "descargarImagenTicketManutencion")) {
+            $imagen_ticket_anterior = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+            if (strlen($imagen_ticket_anterior) != 0) {
+                Auxiliar::borrarFichero($imagen_ticket_anterior);
+            }
+            $imagen_ticket = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni_alumno, 'ticketManutencion' . $r->id, $r->imagen_ticket);
+        } else {
+            $imagen_ticket = FacturaManutencion::where('id', '=', $r->id)->get()->first()->imagen_ticket;
+        }
+
+        FacturaManutencion::where([
+            ['id', '=', $r->id]
+        ])->update([
+            'fecha' => $r->fecha,
+            'importe' => $r->importe,
+            'imagen_ticket' => $imagen_ticket == null ? ' ' : $imagen_ticket,
+        ]);
+
+        return response()->json(['mensaje' => 'Factura actualizada correctamente']);
+    }
+
+    public function eliminarFacturaManutencion($id)
+    {
+        try {
+            FacturaManutencion::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+
+    public function eliminarFacturaTransporte($id)
+    {
+        try {
+            FacturaTransporte::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Factura eliminada correctamente'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+    }
+    #endregion
+
+    #region Funciones auxiliares CRUD Anexo VI:
+
+    /**
+     * Descarga la imagen del ticket de transporte
+     */
+    public function descargarImagenTicketTransporte($id, $guid)
+    {
+        $pathFoto = FacturaTransporte::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Descarga la imagen del ticket de manutención
+     */
+    public function descargarImagenTicketManutencion($id, $guid)
+    {
+        $pathFoto = FacturaManutencion::where('id', '=', $id)->select('imagen_ticket')->get()->first()->imagen_ticket;
+        if ($pathFoto) {
+            return response()->file($pathFoto);
+        } else {
+            return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
+        }
+    }
+
+    /**
+     * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
+     * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
+     * @return float Cálculo del importe correspondiente.
+     */
+    public function calcularGastoVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO  * $gasto->dias_transporte_privado;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2 * Parametros::COEFICIENTE_KM_VEHICULO_PRIVADO * $gasto->dias_transporte_privado;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de transporte público
+     * @param string $dni_alumno DNI del alumno
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoTransportePublico($dni_alumno)
+    {
+        return FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Devuelve el total del importe de los tickets de manutención
+     * @param string $dni_alumno DNI del alumno.
+     * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
+     */
+    public function calcularGastoManutencion($dni_alumno)
+    {
+        return FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+        ])->sum('importe');
+    }
+
+    /**
+     * Obtiene el tipo de desplazamiento (necesario para el Anexo VI)
+     * según los parámetros recibidos en la función.
+     * @param string $residencia_alumno Residencia del alumno (Localidad del centro educativo/Localidad distinta a la del centro educativo)
+     * @param string $ubicacion_centro_trabajo Ubicación del centro de trabajo (Dentro del núcleo urbano/Fuera del núcleo urbano/En otra localidad)
+     * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
+     * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo,
+     * No aplica-> no se tiene derecho a gastos de manutencion.
+     */
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
+    {
+        if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
+            if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
+                return "No aplica";
+            } else {
+                return "Centro educativo";
+            }
+        } else {
+            return "Domicilio";
+        }
+    }
+    #endregion
+    #endregion
 }

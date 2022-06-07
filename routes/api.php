@@ -3,6 +3,7 @@
 use App\Http\Controllers\ContrladoresDocentes\ControladorJefatura;
 use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
+use App\Http\Controllers\ControladorEmpresas\ControladorResponCentro;
 use App\Http\Controllers\ControladorGenerico;
 use Illuminate\Support\Facades\Route;
 
@@ -24,8 +25,15 @@ Route::group(['middleware' => ['Cors']], function () {
 */
 Route::group(['middleware' => ['Cors']], function () {
     /*********************Obtener provincias y ciudades*********************/
-    Route::get('/listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
-    Route::get('/listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
+    Route::get('listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
+    Route::get('listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
+    /***********************************************************************/
+    /****************************CRUD Alumnos*******************************/
+    Route::get('descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
+    /***********************************************************************/
+    /**************** CRUD Factura Transporte y Manutencion ****************/
+    Route::get('descargarImagenTicketTransporte/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketTransporte']);
+    Route::get('descargarImagenTicketManutencion/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketManutencion']);
     /***********************************************************************/
 
     /********************Gestión de Notificaciones**************************/
@@ -71,15 +79,12 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
 
     /******************************CRUD ANEXOS******************************/
     Route::post('/relleno', [ControladorTutorFCT::class, 'rellenarAnexo1']);
-    Route::get('/listarAnexos/{dni}', [ControladorTutorFCT::class, 'verAnexos']);
+    Route::get('/listarAnexos/{dni}/{habilitado}', [ControladorTutorFCT::class, 'verAnexos']);
     Route::get('/listarGrupos/{dni}', [ControladorTutorFCT::class, 'verGrupos']);
-    Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
-    Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
     Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
     Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
     Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
-    Route::get('/listarHistorial/{dni}', [ControladorTutorFCT::class, 'verHistorialAnexos']);
-    /***********************************************************************/
+     /***********************************************************************/
 });
 
 Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
@@ -89,6 +94,19 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::get('/solicitarNombreCiclo/{dni}', [ControladorTutorFCT::class, 'solicitarNombreCiclo']);
     Route::post('/actualizarEmpresaAsignadaAlumno', [ControladorTutorFCT::class, 'actualizarEmpresaAsignadaAlumno']);
     /***********************************************************************/
+    /*******************************ANEXO II Y IV*******************************/
+    Route::post('/rellenarAnexoIIYIV', [ControladorTutorFCT::class, 'rellenarAnexoIIYIV']);
+    /**********************************************************************/
+    //----Listar anexos
+    Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexos1']);
+    Route::get('/solicitarAnexosProgramaFormativo/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexosIIYIV']);
+    /***********************CRUD GASTOS ALUMNOS TUTOR***********************/
+    Route::get('/gestionGastosProfesor', [ControladorTutorFCT::class, 'gestionGastosProfesor']);
+    Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);
+    Route::post('/nuevoAlumnoGestionGastos', [ControladorTutorFCT::class, 'nuevoAlumnoGestionGastos']);
+    Route::get('/descargarAnexoVI', [ControladorTutorFCT::class, 'descargarAnexoVI']);
+    /***********************************************************************/
+
 });
 
 /*
@@ -119,10 +137,10 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
     Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
     Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
     Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
-    Route::get('/descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
-    Route::get('/descargarCurriculum/{dni}/{guid}', [ControladorJefatura::class, 'descargarCurriculum']);
+    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
     /************************************************************************/
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -150,9 +168,28 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () 
     Route::post('/devolverSemanas', [ControladorAlumno::class, 'devolverSemanas']);
     Route::post('/updateJornada', [ControladorAlumno::class, 'updateJornada']);
     Route::post('/recogerJornadas', [ControladorAlumno::class, 'recogerJornadas']);
+    Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
+    Route::get('/listaAnexosAlumno/{dni}', [ControladorAlumno::class, 'listaAnexosAlumno']);
+    Route::post('/descargarTodoAlumnos', [ControladorAlumno::class, 'descargarTodoAlumnos']);
     //----Gestión del tutor de la empresa
     Route::post('recogerTutorEmpresa', [ControladorAlumno::class, 'recogerTutorEmpresa']);
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
+    //----AnexoXV
+    Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Rutas a las que pueden acceder cualquier docente y alumno
+|--------------------------------------------------------------------------
+*/
+Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function () {
+
+    //----Crud-Anexos
+    Route::post('/descargarAnexo', [ControladorTutorFCT::class, 'descargarAnexo']);
+    Route::post('/descargarTodo', [ControladorTutorFCT::class, 'descargarTodo']);
+    //----Subir Anexo Especifico
+    Route::post('/subirAnexoEspecifico', [ControladorTutorFCT::class, 'subirAnexoEspecifico']);
     /**********************************************************************/
     //Gestión de hoja de seguimiento:
     Route::post('/generarAnexo3', [ControladorAlumno::class, 'generarAnexo3']);
@@ -162,4 +199,19 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () 
     /**********************************************************************/
 
     Route::post('/getAlumnosAsociados', [ControladorAlumno::class, 'getAlumnosAsociados']);
+
+    /******************************ANEXO VI********************************/
+    Route::get('/gestionGastosAlumno/{dni_alumno}', [ControladorAlumno::class, 'gestionGastosAlumno']);
+    Route::put('/actualizarDatosGastoAlumno', [ControladorAlumno::class, 'actualizarDatosGastoAlumno']);
+    Route::put('/actualizarDiasVehiculoPrivado', [ControladorAlumno::class, 'actualizarDiasVehiculoPrivado']);
+    Route::put('/actualizarFacturaTransporte', [ControladorAlumno::class, 'actualizarFacturaTransporte']);
+    Route::post('/nuevaFacturaTransporte', [ControladorAlumno::class, 'nuevaFacturaTransporte']);
+    Route::delete('/eliminarFacturaTransporte/{id}', [ControladorAlumno::class, 'eliminarFacturaTransporte']);
+    Route::put('/actualizarFacturaManutencion', [ControladorAlumno::class, 'actualizarFacturaManutencion']);
+    Route::post('/nuevaFacturaManutencion', [ControladorAlumno::class, 'nuevaFacturaManutencion']);
+    Route::delete('/eliminarFacturaManutencion/{id}', [ControladorAlumno::class, 'eliminarFacturaManutencion']);
+    /**********************************************************************/
 });
+
+
+Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);

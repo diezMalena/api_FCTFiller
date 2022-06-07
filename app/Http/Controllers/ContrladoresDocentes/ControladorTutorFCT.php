@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ContrladoresDocentes;
 
 use App\Auxiliar\Auxiliar;
+use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
@@ -22,8 +23,11 @@ use App\Models\CentroEstudios;
 use App\Models\Convenio;
 use App\Models\Empresa;
 use App\Models\Profesor;
+use App\Models\Gasto;
 use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
+use App\Models\FacturaManutencion;
+use App\Models\FacturaTransporte;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
@@ -34,6 +38,7 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use App\Models\Tutoria;
 use Faker\Core\Number;
@@ -42,6 +47,9 @@ use Mockery\Undefined;
 use PhpParser\Node\Expr\Cast\Array_;
 use Ramsey\Uuid\Type\Integer;
 use Illuminate\Support\Facades\Hash;
+use stdClass;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriterXlsx;
 
 class ControladorTutorFCT extends Controller
 {
@@ -202,9 +210,9 @@ class ControladorTutorFCT extends Controller
     #region Anexo I - Generación y gestión
 
     /**
-     * @author LauraM <lauramorenoramos97@gmail.com>
-     * A esta funcion le pasas el dni del tutor, con esa dni, busca las rutas de sus anexos en la tabla FCT
+     * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla FCT
      * y borra esos anexos
+     *@author LauraM <lauramorenoramos97@gmail.com>
      */
     public function borrarAnexosTablaFCT($dni_tutor)
     {
@@ -214,16 +222,22 @@ class ControladorTutorFCT extends Controller
         $anexosCreados = FCT::select('ruta_anexo')->where('ruta_anexo', 'like', "$dni_tutor%")->get();
 
         foreach ($anexosCreados as $a) {
-            $anexosArr[] = $a->ruta_anexo . '.docx';
+            $anexosArr[] = $a->ruta_anexo;
         }
 
         $anexosArr = array_unique($anexosArr);
 
         foreach ($anexosArr as $a) {
-            unlink(public_path($a));
+            if (file_exists(public_path($a))) {
+                unlink(public_path($a));
+            }
         }
     }
 
+    /**
+     * A esta funcion le pasas el dni del tutor, con ese dni, busca las rutas de sus anexos en la tabla Anexos
+     * y borra esos anexos, que esten habilitados
+     */
     public function borrarAnexosTablaAnexos($tipoAnexo, $dni_tutor)
     {
 
@@ -240,6 +254,7 @@ class ControladorTutorFCT extends Controller
     public function rellenarAnexo1(Request $val)
     {
         $dni_tutor = $val->get('dni_tutor');
+
         //Borro todos los anexos de la tabla Anexos que sean inservibles
         $this->borrarAnexosTablaAnexos('Anexo1', $dni_tutor);
         $grupo = Tutoria::select('cod_grupo')->where('dni_profesor', $dni_tutor)->get();
@@ -265,7 +280,7 @@ class ControladorTutorFCT extends Controller
                     //Codigo del centro
                     $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->get();
                     //Numero de Convenio
-                    $num_convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
+                    $convenio = Convenio::select('cod_convenio')->where('id_empresa', '=', $id->id_empresa)->where('cod_centro', '=', $cod_centro[0]->cod_centro_estudios)->get();
                     //Nombre del ciclo
                     $nombre_ciclo = Grupo::select('nombre_ciclo')->where('cod', $grupo[0]->cod_grupo)->get();
                     //Codigo Ciclo
@@ -273,7 +288,7 @@ class ControladorTutorFCT extends Controller
 
                     //ARCHIVO
                     $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo1';
-                    $convenioAux = str_replace('/', '-', $num_convenio[0]->cod_convenio);
+                    $convenioAux = str_replace('/', '-', $convenio[0]->cod_convenio);
                     $AuxNombre = '_' . $id->id_empresa . '_' . $convenioAux . '_' . $cod_ciclo[0]->cod . '_' . $fecha->year . '_';
                     $rutaDestino = $dni_tutor  . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . 'Anexo1' . $AuxNombre;
                     $template = new TemplateProcessor($rutaOriginal . '.docx');
@@ -285,20 +300,18 @@ class ControladorTutorFCT extends Controller
                         Anexo::create(['tipo_anexo' => 'Anexo1', 'ruta_anexo' => $rutaDestino . '.docx']);
                     }
 
-                    //Nombre de la empresa
-                    $nombre_empresa = Empresa::select('nombre')->where('id', $id->id_empresa)->get();
+                    //Nombre de la empresa y Direccion
+                    $nombre_empresa = Empresa::select('nombre', 'direccion')->where('id', $id->id_empresa)->get();
                     //Nombre del centro
                     $nombre_centro = CentroEstudios::select('nombre')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
-                    //Direccion del centro
-                    $dir_centro = Empresa::select('direccion')->where('id', $id->id_empresa)->get();
                     //Año del curso
-                    $curso_anio = Convenio::select('curso_academico_inicio')->where('cod_convenio', $num_convenio[0]->cod_convenio)->get();
+                    $curso_anio = Convenio::select('curso_academico_inicio')->where('cod_convenio', $convenio[0]->cod_convenio)->get();
                     //Nombre del tutor
-                    $nombre_tutor = Profesor::select('nombre')->where('dni', $dni_tutor)->get();
+                    $nombre_tutor = Profesor::select('nombre', 'apellidos')->where('dni', $dni_tutor)->get();
                     //Responsable de la empresa
                     $responsable_empresa = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
-                        ->select('trabajador.nombre')
+                        ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
                         ->get();
@@ -306,14 +319,14 @@ class ControladorTutorFCT extends Controller
                     //representante del centro de trabajo
                     $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
-                        ->select('trabajador.nombre')
+                        ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
                         ->get();
 
                     //Directora
                     $directora = Profesor::join('rol_profesor_asignado', 'rol_profesor_asignado.dni', '=', 'profesor.dni')
-                        ->select('profesor.nombre')
+                        ->select('profesor.nombre', 'profesor.apellidos')
                         ->where('profesor.cod_centro_estudios', '=', $cod_centro[0]->cod_centro_estudios)
                         ->where('rol_profesor_asignado.id_rol', '=', Parametros::DIRECTOR)
                         ->get();
@@ -322,45 +335,43 @@ class ControladorTutorFCT extends Controller
                     $ciudad_centro_estudios = CentroEstudios::select('localidad')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
                     #endregion
 
+                    #Estilo tabla
+                    $styleTable = array('borderSize' => 6, 'borderColor' => '888888', 'cellMargin' => 40);
+
                     #region Construcción de la tabla
                     $table = new Table(array('unit' => TblWidth::TWIP));
                     $table->addRow();
-                    $table->addCell(1500)->addText('APELLIDOS Y NOMBRE');
-                    $table->addCell(1500)->addText('D.N.I');
-                    $table->addCell(1500)->addText('LOCALIDAD DE RESIDENCIA DEL ALUMNO/A (**)');
-                    $table->addCell(1500)->addText('HORARIO DIARIO');
-                    $table->addCell(1500)->addText('NUMERO HORAS');
-                    $table->addCell(1500)->addText('FECHA DE COMIENZO');
-                    $table->addCell(1500)->addText('FECHA DE FINALIZACION');
+                    $table->addCell(1500, $styleTable)->addText('APELLIDOS Y NOMBRE');
+                    $table->addCell(1500, $styleTable)->addText('D.N.I');
+                    $table->addCell(1500, $styleTable)->addText('LOCALIDAD DE RESIDENCIA DEL ALUMNO/A (**)');
+                    $table->addCell(1500, $styleTable)->addText('HORARIO DIARIO');
+                    $table->addCell(1500, $styleTable)->addText('NUMERO HORAS');
+                    $table->addCell(1500, $styleTable)->addText('FECHA DE COMIENZO');
+                    $table->addCell(1500, $styleTable)->addText('FECHA DE FINALIZACION');
                     foreach ($alumnos as $a) {
                         $table->addRow();
-                        $table->addCell(1500)->addText($a->apellidos . ' ' . $a->nombre);
-                        $table->addCell(1500)->addText($a->dni);
-                        $table->addCell(1500)->addText($a->localidad);
-                        $table->addCell(1500)->addText($a->horario);
-                        $table->addCell(1500)->addText($a->num_horas);
-                        $table->addCell(1500)->addText($a->fecha_ini);
-                        $table->addCell(1500)->addText($a->fecha_fin);
+                        $table->addCell(1500, $styleTable)->addText($a->apellidos . ' ' . $a->nombre);
+                        $table->addCell(1500, $styleTable)->addText($a->dni);
+                        $table->addCell(1500, $styleTable)->addText($a->localidad);
+                        $table->addCell(1500, $styleTable)->addText($a->horario);
+                        $table->addCell(1500, $styleTable)->addText($a->num_horas);
+                        $table->addCell(1500, $styleTable)->addText($a->fecha_ini);
+                        $table->addCell(1500, $styleTable)->addText($a->fecha_fin);
                     }
                     #endregion
 
                     #region Relleno de datos en Word
-                    $datos = [
-                        'num_convenio' => $num_convenio[0]->cod_convenio,
+                    $auxPrefijos = ['convenio', 'centro', 'empresa', 'ciclo', 'responsable', 'centro', 'directora', 'representante', 'tutor'];
+                    $auxDatos = [$convenio[0], $nombre_centro[0], $nombre_empresa[0], $nombre_ciclo[0], $responsable_empresa[0], $ciudad_centro_estudios[0], $directora[0], $representante_centro[0], $nombre_tutor[0]];
+
+                    $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+                    $datos = $datos +  [
+                        'anio.curso' => $curso_anio[0]->curso_academico_inicio,
                         'dia' => $fecha->day,
                         'mes' => Parametros::MESES[$fecha->month],
                         'year' => $fecha->year,
-                        'nombre_centro' => $nombre_centro[0]->nombre,
-                        'nombre_empresa' => $nombre_empresa[0]->nombre,
-                        'dir_centro' => $dir_centro[0]->direccion,
-                        'nombre_tutor' => $nombre_tutor[0]->nombre,
-                        'ciudad_centro' => $ciudad_centro_estudios[0]->localidad,
-                        'anio_curso' => $curso_anio[0]->curso_academico_inicio,
-                        'ciclo_nombre' =>  $nombre_ciclo[0]->nombre_ciclo,
-                        'responsable_empresa' => $responsable_empresa[0]->nombre,
-                        'directora' => $directora[0]->nombre,
-                        'representante_centro' => $representante_centro[0]->nombre,
                     ];
+
 
                     $rutaCarpeta = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1');
                     Auxiliar::existeCarpeta($rutaCarpeta);
@@ -416,16 +427,18 @@ class ControladorTutorFCT extends Controller
     /***********************************************************************/
     #region CRUD de anexos
 
+
     /**
-     * Esta funcion devuelve los anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
-     *
-     * @param Request $val
+     * Esta funcion devuelve los anexos de un tutor, ya sean historicos o no
+     * sacando lo que va a mostrar de la tabla Anexos
+     * @param [type] $dni_tutor es el dni del tutor
+     * @param [type] $habilitado, indica si vamos a sacar anexos habilitados, o no(historicos)
      * @return void
+     * @author Laura <lauramorenoramos97@gmail.com>
      */
-    public function verAnexos($dni_tutor)
+    public function verAnexos($dni_tutor, $habilitado)
     {
         $datos = array();
-        $habilitado = 1;
 
         #region ANEXO 0 - 0A
         $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
@@ -450,21 +463,22 @@ class ControladorTutorFCT extends Controller
                 'nombre' => $rutaAux[1],
                 'codigo' => $rutaAux[2],
                 'empresa' => $empresa_nombre[0]->nombre,
+                'alumno' => ' ',
                 'firma_empresa' => $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
         }
+
         #endregion
         #region Anexo I
         $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
 
         foreach ($Anexos1 as $a) {
-
             //Esto sirve para poner las barras segun el so que se este usando
             $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
             $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
-
             $nombreArchivo = $rutaAux[2];
 
             //Para sacar el id de la empresa
@@ -482,14 +496,160 @@ class ControladorTutorFCT extends Controller
                 'nombre' => 'Anexo1',
                 'codigo' => $nombreArchivo,
                 'empresa' => $empresa_nombre[0]->nombre,
+                'alumno' => ' ',
                 'firma_empresa' =>  $a->firmado_empresa,
                 'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
                 'created_at' => $fechaAux[0]
             ];
-            #endregion
         }
+        #endregion
+
+        #region Anexo II Y IV
+        $AnexosIIYIV = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo2', 'Anexo4'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
+
+        foreach ($AnexosIIYIV as $a) {
+
+            //Esto sirve para poner las barras segun el so que se este usando
+            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+            $nombreArchivo = $rutaAux[2];
+
+            //Empresa ID y Nombre
+            $id_empresa = explode('_', $rutaAux[2]);
+            $id_empresa = $id_empresa[2];
+
+            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
+
+            //DNI alumno
+            $dniAlumno = explode('_', $a->ruta_anexo);
+            $dniAlumno = $dniAlumno[1];
+
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
+            //meter ese nombre en un array asociativo
+            $datos[] = [
+                'nombre' => $rutaAux[1],
+                'codigo' => $rutaAux[2],
+                'empresa' => $empresa_nombre[0]->nombre,
+                'alumno' => $dniAlumno,
+                'firma_empresa' =>  $a->firmado_empresa,
+                'firma_centro' => $a->firmado_director,
+                'firma_alumno' => 0,
+                'created_at' => $fechaAux[0]
+            ];
+        }
+        #endregion
+
+        #region Anexo XV
+        $AnexosXV = Anexo::select('tipo_anexo', 'firmado_alumno', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
+
+        foreach ($AnexosXV as $a) {
+
+            //Esto sirve para poner las barras segun el so que se este usando
+            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+
+            //DNI alumno
+            $dniAlumno = explode('_', $a->ruta_anexo);
+            $dniAlumno = $dniAlumno[1];
+
+            $nombreArchivo = $rutaAux[2];
+
+            //FECHA
+            $fechaAux = explode(':', $a->created_at);
+            $fechaAux = explode(' ', $fechaAux[0]);
+
+            //meter ese nombre en un array asociativo
+            $datos[] = [
+                'nombre' => 'AnexoXV',
+                'codigo' => $nombreArchivo,
+                'empresa' => ' ',
+                'alumno' => $dniAlumno,
+                'firma_empresa' => 0,
+                'firma_centro' => 0,
+                'firma_alumno' => $a->firmado_alumno,
+                'created_at' => $fechaAux[0]
+            ];
+        }
+
+        #endregion
         return response()->json($datos, 200);
     }
+
+    /***********************************************************************/
+    #region listar anexos
+    /**
+     * Esta función nos permite obtener los Anexos1 de la tabla FCT para proporcionarsela
+     * a la vista FCT y así poder descargar los anexos filtrando por id_empresa
+     * también nos facilita poder subir los anexos con el nombre correspondiente de archivo.
+     * @author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function listarAnexos1($dni_tutor)
+    {
+
+        $datos = array();
+        $Anexos1 = FCT::select('ruta_anexo', 'id_empresa')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
+
+        if (count($Anexos1) > 0) {
+            foreach ($Anexos1 as $a) {
+
+                $empresa = Empresa::select('nombre')->where('id', '=', $a->id_empresa)->get();
+                $nombreArchivo = explode(DIRECTORY_SEPARATOR, $a->ruta_anexo);
+
+                $datos[] = [
+                    'id_empresa' => $empresa[0]->nombre,
+                    'codigo' => $nombreArchivo[2]
+                ];
+            }
+
+            return response()->json($datos, 200);
+        } else {
+            return response()->json($datos, 204);
+        }
+    }
+
+    /**
+     * Esta función nos permite obtener los Anexos2 y 4 de la tabla Anexo para proporcionarsela
+     * a la vista AnexosII y IV y así poder descargar los anexos y subirlos con un nombre adecuado.
+     * @author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function listarAnexosIIYIV($dni_tutor)
+    {
+
+        $datos = array();
+        $AnexosIIYIV = Anexo::where('ruta_anexo', 'like', "$dni_tutor%")->whereIn('tipo_anexo', ['Anexo2', 'Anexo4'])->distinct()->get();
+
+        if (count($AnexosIIYIV) > 0) {
+            foreach ($AnexosIIYIV as $a) {
+                if (file_exists($a->ruta_anexo)) {
+                    //Desgloso la ruta por la barra para extraer el nombre del archivo
+                    $nombreArchivo = explode(DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                    //Saco el dni del alumno desglosando el nombre del archivo por la _ y obtengo su nombre y apellidos
+                    $alumno_dni = explode('_', $nombreArchivo[2]);
+                    $alumno_dni = $alumno_dni[1];
+                    $alumno_nombre = Alumno::select('nombre', 'apellidos')->where('dni', '=', $alumno_dni)->get();
+
+
+                    $datos[] = [
+                        'tipo_anexo' => $a->tipo_anexo,
+                        'codigo' => $nombreArchivo[2],
+                        'alumno_dni' => $alumno_dni,
+                        'alumno_nombre' => $alumno_nombre[0]->nombre . ' ' . $alumno_nombre[0]->apellidos
+                    ];
+                }
+            }
+
+            return response()->json($datos, 200);
+        } else {
+            return response()->json($datos, 204);
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
 
     /**
      * @author Laura <lauramorenoramos97@gmail.com>
@@ -513,7 +673,7 @@ class ControladorTutorFCT extends Controller
     /**
      * Esta funcion nos permite descargar un anexo en concreto
      * @author Laura <lauramorenoramos97@gmail.com>
-     * @param Request $val
+     * @param Request $val: dni_tutor y el codigo es el nombre del archivo. EJ: Anexo1_13_VdG-C3-22_2DAW_2022_.docx
      * @return void
      */
     public function descargarAnexo(Request $val)
@@ -523,21 +683,14 @@ class ControladorTutorFCT extends Controller
         $codAux = explode("_", $cod_anexo);
         $rutaOriginal = '';
 
-        if ($codAux[0] == 'Anexo1') {
-            $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
-            $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
-        } else {
-            if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
-                $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
-                $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
-            }
-        }
+        $rutaOriginal = public_path($dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
+        $rutaOriginal  = str_replace('/', DIRECTORY_SEPARATOR, $rutaOriginal);
 
         return Response::download($rutaOriginal);
     }
 
     /**
-     * Esta funcion te permite eliminar un fichero de una carpeta
+     * Esta funcion te permite eliminar un fichero de una carpeta y de la base de datos
      * @author Laura <lauramorenoramos97@gmail.com>
      * @param Request $val
      * @return void
@@ -545,15 +698,17 @@ class ControladorTutorFCT extends Controller
     public function eliminarAnexo($dni_tutor, $cod_anexo)
     {
         $codAux = explode("_", $cod_anexo);
+        Anexo::where('ruta_anexo', 'like', "%$cod_anexo")->delete();
         if ($codAux[0] == 'Anexo1') {
             //Eliminar un fichero
+            FCT::where('ruta_anexo', 'like', "%$cod_anexo")->delete();
             unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1' . DIRECTORY_SEPARATOR . $cod_anexo);
         } else {
             if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
                 unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
-                Convenio::where('ruta_anexo', 'like', "%$cod_anexo")->update([
-                    'ruta_anexo' => '',
-                ]);
+                Convenio::where('ruta_anexo', 'like', "%$cod_anexo")->delete();
+            } else {
+                unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo);
             }
         }
         return response()->json(['message' => 'Archivo eliminado'], 200);
@@ -621,6 +776,7 @@ class ControladorTutorFCT extends Controller
     }
 
     /**
+     * @author Laura <lauramorenoramos97@gmail.com>
      * Esta funcion permite descargar todos los anexos del crud de anexos del tutor, menos el 3
      *
      * @param Request $val
@@ -655,18 +811,7 @@ class ControladorTutorFCT extends Controller
     {
         $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
-            #region Anexo I
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
 
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
             #region Anexo 0
             $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0'));
             foreach ($files as $value) {
@@ -689,85 +834,59 @@ class ControladorTutorFCT extends Controller
                 }
             }
             #endregion
+
+            #region Anexo I
+            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
+            foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
+                $nombreAux = basename($value);
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+
+                if (count($existeAnexo) > 0) {
+                    $zip->addFile($value, $nombreAux);
+                }
+            }
+            #endregion
+            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'));
+            #region Anexo II
+            foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
+                $nombreAux = basename($value);
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo2')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+
+                if (count($existeAnexo) > 0) {
+                    $zip->addFile($value, $nombreAux);
+                }
+            }
+            #endregion
+            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo4'));
+            #region Anexo IV
+            foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
+                $nombreAux = basename($value);
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo4')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+
+                if (count($existeAnexo) > 0) {
+                    $zip->addFile($value, $nombreAux);
+                }
+            }
+            #endregion
+
+            #region Anexo XV
+            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'AnexoXV'));
+            foreach ($files as $value) {
+                //El nombreAux es el nombre del anexo completo
+                $nombreAux = basename($value);
+                $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+
+                if (count($existeAnexo) > 0) {
+                    $zip->addFile($value, $nombreAux);
+                }
+            }
+            #endregion
             $zip->close();
         }
         return $nombreZip;
-    }
-
-
-    /**
-     * Esta funcion devuelve el historial de anexos de un tutor, sacando lo que va a mostrar de la tabla Anexos
-     *
-     * @param Request $val
-     * @return void
-     */
-    public function verHistorialAnexos($dni_tutor)
-    {
-        $datos = array();
-        $habilitado = 0;
-
-        #region Anexo 0 - 0A
-        $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
-
-        foreach ($Anexos0 as $a) {
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
-
-            $convenioAux = $rutaAux[2];
-            $convenioAux = explode('_', $convenioAux);
-            $convenioAux = explode('.', $convenioAux[1]);
-            $convenioAux = str_replace('-', DIRECTORY_SEPARATOR, $convenioAux[0]);
-
-            $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
-            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
-
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            $datos[] = [
-                'nombre' => $rutaAux[1],
-                'codigo' => $rutaAux[2],
-                'empresa' => $empresa_nombre[0]->nombre,
-                'firma_empresa' => $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director,
-                'created_at' => $fechaAux[0]
-            ];
-        }
-        #endregion
-        #region Anexo I
-        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
-
-        foreach ($Anexos1 as $a) {
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
-
-            $nombreArchivo = $rutaAux[2];
-
-            //Para sacar el id de la empresa
-            $id_empresa = explode('_', $rutaAux[2]);
-            $id_empresa = $id_empresa[1];
-
-            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
-
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            //meter ese nombre en un array asociativo
-            $datos[] = [
-                'nombre' => 'Anexo1',
-                'codigo' => $nombreArchivo,
-                'empresa' => $empresa_nombre[0]->nombre,
-                'firma_empresa' =>  $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director,
-                'created_at' => $fechaAux[0]
-            ];
-        }
-        #endregion
-        return response()->json($datos, 200);
     }
 
     #endregion
@@ -1281,6 +1400,7 @@ class ControladorTutorFCT extends Controller
      * al que pertenecen, con ese dato, recogemos los grupos de un centro de estudios desde la tabla
      * Tutorias, ya que esto tiene la finalidad de recoger los grupos de los distintos tutores del
      * centro para devolverlos y poder ver sus anexos en otra funcion.
+     * @author Laura <lauramorenoramos97@gmail.com>
      */
     public function verGrupos($dni)
     {
@@ -1294,6 +1414,535 @@ class ControladorTutorFCT extends Controller
         return response()->json($this->getCentroEstudiosFromConvenio($codConvenio), 200);
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de gastos de alumno en vista profesor
+
+    /**
+     * Calcula la suma de KM realizados por el alumno durante el trayecto (I/V)
+     * en vehículo privado
+     */
+    public function calcularSumaKMVehiculoPrivado($gasto)
+    {
+        if (str_contains($gasto->ubicacion_centro_trabajo, 'Dentro')) {
+            return 0;
+        } else {
+            if ($gasto->distancia_centroTra_residencia < $gasto->distancia_centroEd_residencia) {
+                return 0;
+            } else {
+                if (str_contains($gasto->residencia_alumno, 'distinta')) {
+                    return ($gasto->distancia_centroTra_residencia - $gasto->distancia_centroEd_residencia) * 2;
+                } else {
+                    return $gasto->distancia_centroEd_centroTra * 2;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public function obtenerGestionGastosPorEmailTutor($email)
+    {
+        //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
+        $dnisAlumnos = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->join('gasto', 'gasto.dni_alumno', '=', 'alumno.dni')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['gasto.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->pluck('alumno.dni');
+
+        $c = new ControladorAlumno();
+        $gastos = new stdClass();
+        $gastos->gastos = [];
+        foreach ($dnisAlumnos as $dni) {
+            $gastos->gastos[] = $c->obtenerGastoAlumnoPorDNIAlumno($dni);
+        }
+
+        $gastos->grupo = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->select('tutoria.cod_grupo')->first()->cod_grupo;
+
+        $alumnosSinGasto = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->join('alumno', 'alumno.dni', '=', 'matricula.dni_alumno')
+            ->where([
+                ['profesor.email', '=', $email],
+                ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])
+            ->whereNotIn('alumno.dni', $dnisAlumnos)
+            ->pluck('alumno.dni')->toArray();
+
+        $gastos->alumnosSinGasto = Alumno::whereIn('dni', $alumnosSinGasto)->get();
+
+        return $gastos;
+    }
+
+
+    public function gestionGastosProfesor(Request $r)
+    {
+        $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
+        return response()->json($gastos, 200);
+    }
+
+
+    public function eliminarAlumnoDeGastos($dni_alumno)
+    {
+        Gasto::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaManutencion::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        FacturaTransporte::where([
+            ['dni_alumno', '=', $dni_alumno],
+            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()],
+        ])->delete();
+        return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
+    }
+
+    public function nuevoAlumnoGestionGastos(Request $r)
+    {
+        try {
+            Gasto::create([
+                'dni_alumno' => $r->dni,
+                'curso_academico' => Auxiliar::obtenerCursoAcademico(),
+                'tipo_desplazamiento' => '',
+                'total_gastos' => 0,
+                'residencia_alumno' => '',
+                'ubicacion_centro_trabajo' => '',
+                'distancia_centroEd_centroTra' => 0,
+                'distancia_centroEd_residencia' => 0,
+                'distancia_centroTra_residencia' => 0,
+                'dias_transporte_privado' => 0
+            ]);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error'], 500);
+        }
+
+        return response()->json(['mensaje' => 'Creado correctamente'], 201);
+    }
+
+    public function descargarAnexoVI(Request $r)
+    {
+        $rutaFichero = $this->generarAnexoVI($r->user()->email);
+        if ($rutaFichero) {
+            return response()->download($rutaFichero);
+        } else {
+            return response()->json(['mensaje' => 'No se ha podido descargar el fichero'], 400);
+        }
+    }
+
+    public function generarAnexoVI($email)
+    {
+        $dniTutor = Profesor::where('email', '=', $email)->get()->first()->dni;
+        $pathAnexoVI = public_path() . DIRECTORY_SEPARATOR . $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR;
+        $pathPlantillaAnexo = public_path() . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo6.xlsx';
+
+        $alumnosTutor = $this->obtenerGestionGastosPorEmailTutor($email);
+        for ($i = 0; $i < ceil(count($alumnosTutor->gastos) / 17); $i++) {
+            //Cogemos el array de alummos de 17 en 17, para ir creando
+            //tantos libros de Excel como necesitemos
+            $gastoAlumnos = array_slice($alumnosTutor->gastos, $i, 17);
+            $reader = new ReaderXlsx();
+            $libro = $reader->load($pathPlantillaAnexo);
+            $tabla = $libro->getActiveSheet();
+
+            //Cabecera de la tabla Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
+            $cabecera = Profesor::join('centro_estudios', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+            ->join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
+            ->where('profesor.dni', '=', '20a')
+            ->select('centro_estudios.nombre as nombreCentro', 'profesor.nombre', 'profesor.apellidos', 'grupo.nombre_ciclo', 'centro_estudios.localidad', 'centro_estudios.cod', 'centro_estudios.email')
+            ->get()->first();
+
+            $periodo = Auxiliar::obtenerCursoAcademico();
+            $fecha = date("d/m/Y");
+            $horas = '400';
+
+            $tabla->setCellValue('A7', 'CENTRO DOCENTE: ' . $cabecera->nombreCentro);
+            $tabla->setCellValue('A8', 'TUTOR O TUTORA: ' . $cabecera->nombre . ' ' . $cabecera->apellidos);
+            $tabla->setCellValue('B9', $cabecera->nombre_ciclo);
+            $tabla->setCellValue('F7', $cabecera->localidad);
+            $tabla->setCellValue('J7', $cabecera->cod);
+            $tabla->setCellValue('I8', $periodo);
+            $tabla->setCellValue('K8', $fecha);
+            $tabla->setCellValue('F9', $cabecera->email);
+            $tabla->setCellValue('J9', $horas);
+
+
+
+            //Cuerpo de la tabla
+            $fila = 14;
+            foreach ($gastoAlumnos as $gasto) {
+                $tabla->setCellValue('A' . $fila, $gasto->nombre_alumno);
+                $tabla->setCellValue(($gasto->tipo_desplazamiento == 'Domicilio' ? 'D' : 'C') . $fila, '   x   ');
+                $tabla->setCellValue('E' . $fila, $gasto->sumatorio_gasto_transporte_publico / count($gasto->facturasTransporte));
+                $tabla->setCellValue('F' . $fila, count($gasto->facturasTransporte));
+                $tabla->setCellValue('G' . $fila, $this->calcularSumaKMVehiculoPrivado($gasto));
+                $tabla->setCellValue('H' . $fila, $gasto->dias_transporte_privado);
+                $tabla->setCellValue('I' . $fila, $gasto->sumatorio_gasto_vehiculo_privado);
+                $tabla->setCellValue('J' . $fila, $gasto->sumatorio_gasto_vehiculo_privado + $gasto->sumatorio_gasto_transporte_publico);
+                $tabla->setCellValue('K' . $fila, $gasto->sumatorio_gasto_manutencion);
+                $tabla->setCellValue('L' . $fila, $gasto->total_gastos);
+                $fila++;
+            }
+
+            Auxiliar::existeCarpeta($pathAnexoVI);
+            $writer = new WriterXlsx($libro);
+            $writer->save($pathAnexoVI . 'Anexo6_' . $i . '.xlsx');
+        }
+
+        $rutaDevolver = $pathAnexoVI . 'Anexo6_0.xlsx';
+
+        //Si se ha generado más de un fichero, los comprimimos
+        if (count(glob($pathAnexoVI . '{*.xlsx}', GLOB_BRACE)) > 1) {
+            $rutaRelativaAnexoVI = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6';
+            $rutaZIP = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo6' . DIRECTORY_SEPARATOR . 'Anexo6.zip';
+            $this->montarZip($rutaRelativaAnexoVI, new ZipArchive(), $rutaZIP);
+
+            foreach (glob($pathAnexoVI . '{*.xlsx/*.zip}', GLOB_BRACE) as $a) {
+                if (is_file($a)) {
+                    unlink($a);
+                }
+            }
+
+            $rutaDevolver = public_path($rutaZIP);
+        }
+
+        return $rutaDevolver;
+    }
+
+    #endregion
+    /***********************************************************************/
+
+
+    /***********************************************************************/
+    #region Funciones auxiliares - response
+
+    /**
+     * A esta funcion, le pasas el tipo de anexo, el dni del usuario , el fichero a subir y el nombre de fichero
+     * y te sube el documento al servidor a la carpeta que corresponde.
+     * Hace varias comprobaciones antes, como por ejemplo, si la carpeta a la que vas a subir el
+     * archivo existe, si no existe, la crea.
+     * Tambien comprueba que el archivo exista en bbdd , si no existe, lo crea, pero si existe,
+     * no replicará información
+     *
+     * @param Request $req
+     * @return void
+     *@author Laura <lauramorenoramos97@gmail.com>
+     */
+    public function subirAnexoEspecifico(Request $req)
+    {
+        //Controlador
+        $controlador = new ControladorAlumno();
+
+        //Request
+        $fichero = $req->get('file');
+        $dni = $req->get('dni');
+        $tipoAnexo = $req->get('tipoAnexo');
+        $nombreArchivo = $req->get('nombreArchivo');
+
+        //Archivos
+        $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipoAnexo;
+
+
+        if ($tipoAnexo == 'AnexoXV') {
+            //Con el AnexoXV hay que hacer cosas especiales solo para el
+            $controlador->subirAnexoXV($dni, $tipoAnexo, $nombreArchivo, $fichero, $rutaCarpeta);
+        } else {
+            try {
+
+                //Comprobamos que existe la carpeta donde lo vamos a depositar, y sino existe, se crea
+                Auxiliar::existeCarpeta($rutaCarpeta);
+
+                //Abrimos el flujo de escritura para guardar el fichero
+                $flujo = fopen($rutaCarpeta . DIRECTORY_SEPARATOR .  $nombreArchivo, 'wb');
+
+                //Dividimos el string en comas
+                // $datos[ 0 ] == "data:type/extension;base64"
+                // $datos[ 1 ] == <actual base64 file>
+
+                $datos = explode(',', $fichero);
+
+                if (count($datos) > 1) {
+                    fwrite($flujo, base64_decode($datos[1]));
+                } else {
+                    return false;
+                }
+                fclose($flujo);
+
+                //También hay que añadir dicho anexo a la base de datos, pero no, sin antes comprobar si existe, por que sino, se duplicarian los datos,
+                //lo buscamos sin extension, por que si existe, se actualizara con la nueva ruta y si no existe,
+                //se crea, asi si es un .pdf u otra extension se actualiza
+                $extension = explode('/', mime_content_type($fichero))[1];
+                $rutaParaBBDD = $rutaCarpeta . DIRECTORY_SEPARATOR . $nombreArchivo;
+                $archivoNombreSinExtension = explode('.', $nombreArchivo);
+                $rutaParaBBDDSinExtension = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivoNombreSinExtension[0];
+                $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
+
+
+                //Excluyo Anexos2 y 4 por que esto ya lo hacen ellos de manera especifica en su propia función
+                if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx' && $nombreArchivo != 'Anexo2.pdf' && $nombreArchivo != 'Anexo4.pdf') {
+                    if (count($existeAnexo) == 0) {
+                        Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
+
+                        //Firma
+                        $this->firmarAnexo($dni, $rutaParaBBDD, $extension);
+                    } else {
+
+                        Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                            'ruta_anexo' => $rutaParaBBDD,
+                        ]);
+
+                        //Añadidos a BBDD especiales
+                        if ($tipoAnexo == 'Anexo1') {
+                            FCT::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                                'ruta_anexo' => $rutaParaBBDD,
+                            ]);
+                        } else {
+                            if ($tipoAnexo == 'Anexo0' || $tipoAnexo == 'Anexo0A') {
+                                Convenio::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
+                                    'ruta_anexo' => $rutaParaBBDD,
+                                ]);
+                            }
+                        }
+
+                        //Firma
+                        $this->firmarAnexo($dni, $rutaParaBBDD, $extension);
+                    }
+                }
+
+                //Lo ponemos con su nombre original, en un directorio que queramos
+                $fichero->move(public_path($rutaCarpeta), $nombreArchivo);
+            } catch (\Throwable $th) {
+                return false;
+            }
+        }
+    }
+
+    public function firmarAnexo($dni, $rutaParaBBDD, $extension)
+    {
+        $alumno = Alumno::where('dni', '=', $dni)->get();
+        $profesor = Profesor::where('dni', '=', $dni)->get();
+        $empresa = Trabajador::where('dni', '=', $dni)->get();
+
+        if ($extension == 'pdf') {
+            if (count($alumno) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 1,
+                ]);
+            }
+
+            if (count($profesor) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_director' => 1,
+                ]);
+            }
+
+            if (count($empresa) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_empresa' => 1,
+                ]);
+            }
+        } else {
+            if (count($alumno) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_alumno' => 0,
+                ]);
+            }
+            if (count($profesor) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_director' => 0,
+                ]);
+            }
+            if (count($empresa) > 0) {
+                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                    'firmado_empresa' => 0,
+                ]);
+            }
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+
+    /***********************************************************************/
+    #region Anexo II Y IV - Programa formativo
+    /**
+     * Esta funcion nos permite rellenar el Anexo II Y IV
+     * @param Request $val->get(dni_tutor) es el dni del tutor
+     * @return void
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public function rellenarAnexoIIYIV(Request $val)
+    {
+
+        //Controlador
+        $controlador = new ControladorAlumno();
+
+        //Request
+        $dni_tutor = $val->get('dni_tutor');
+        $nombreDocumentoDefecto = $val->get('anexo');
+
+        //zip
+        $fecha = Carbon::now();
+        $zip = new ZipArchive;
+        $AuxNombre = $dni_tutor . '_' . $fecha->day . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . $fecha->format('_h_i_s_A');
+        $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
+
+
+        //Resto variables relleno Anexo
+        if (strcmp($nombreDocumentoDefecto, 'Anexo4.docx') == 0 || strcmp($nombreDocumentoDefecto, 'Anexo4.pdf') == 0) {
+            $tipo_anexo = 'Anexo4';
+        } else {
+            $tipo_anexo = 'Anexo2';
+        }
+        $centro_estudios_tutor = Tutoria::select('cod_centro')->where('dni_profesor', '=', $dni_tutor)->get();
+        $centro = CentroEstudios::select('nombre', 'cif')->where('cod', '=', $centro_estudios_tutor[0]->cod_centro)->get();
+        $tutor = Profesor::select('nombre', 'apellidos')->where('dni', '=', $dni_tutor)->get();
+        $ciclo_nombre = $this->getNombreCicloTutor($dni_tutor);
+        $familia_profesional_descripcion = ControladorAlumno::getDescripcionFamiliaProfesional($ciclo_nombre[0]->nombre_ciclo);
+        $alumnos_del_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
+
+
+        //Rutas
+        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo));
+        $rutaOriginal = $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo . DIRECTORY_SEPARATOR . $nombreDocumentoDefecto;
+
+        //Control de archivos
+        $this->borrarAnexosIIYIV($dni_tutor, $alumnos_del_tutor, $tipo_anexo);
+
+        foreach ($alumnos_del_tutor as $a) {
+            $alumno = Alumno::select('nombre', 'apellidos')->where('dni', '=', $a->dni_alumno)->get();
+            $empresa_nombre = $controlador->getNombreEmpresa($a->dni_alumno);
+            $id_empresa = Empresa::select('id')->where('nombre', '=', $empresa_nombre->nombre)->get();
+            $tutor_empresa = $this->getNombreYApellidoTutorEmpresa($a->dni_alumno);
+            $fct = $controlador->getDatosFct($a->dni_alumno);
+            $rutaDestino = $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo . DIRECTORY_SEPARATOR . $tipo_anexo . '_' . $a->dni_alumno . '_' . $id_empresa[0]->id . '_' . $fecha->year . '_.docx';
+
+            $auxPrefijos = ['centro', 'tutor', 'empresa', 'tutor_empresa', 'alumno', 'familia_profesional', 'ciclo'];
+            $auxDatos = [$centro[0], $tutor[0], $empresa_nombre, $tutor_empresa, $alumno[0], $familia_profesional_descripcion[0], $ciclo_nombre[0]];
+            $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+            $datos = $datos +  [
+                'dia' => $fecha->day,
+                'mes' => Parametros::MESES[$fecha->month],
+                'year' => $fecha->year,
+                'fct.fecha_ini' => $fct->fecha_ini,
+                'fct.fecha_fin' => $fct->fecha_fin,
+                'fct.horas' => $fct->horas,
+                'fct.departamento' => $fct->departamento
+            ];
+
+            //Esto nos permite modificar un archivo con datos nuevos
+            Auxiliar::templateProcessorAndSetValues($rutaOriginal, $rutaDestino, $datos);
+
+            //Base de datos
+            $existeAnexo = Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('ruta_anexo', 'like', "%$tipo_anexo%$a->dni_alumno%")->get();
+
+            //if (count($existeAnexo) == 0) {
+            Anexo::create(['tipo_anexo' => $tipo_anexo, 'ruta_anexo' => $rutaDestino]);
+            // } else {
+            //    Anexo::where('ruta_anexo', '=', "%$tipo_anexo%$a->dni_alumno%")->update(['ruta_anexo' => $rutaDestino . '.docx']);
+            // }
+        }
+        $nombreZip = $this->montarZip($dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo, $zip, $nombreZip);
+        unlink(public_path() . DIRECTORY_SEPARATOR . $dni_tutor . DIRECTORY_SEPARATOR . $tipo_anexo . DIRECTORY_SEPARATOR . $nombreDocumentoDefecto);
+        return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Esta funcion ha sido creada con la finalidad de limpiar los anexos 2 y 4 relaccionados con ciertos alumnos, tanto de base de datos
+     * como de sus carpetas, con el fin de evitar problemas futuros, como por ejemplo, que se cambie la asignación
+     * de empresa-alumno y un alumno ya no pertenezca a una empresa, sino a  otra. Por lo tanto se replicaria su
+     * anexo para dos empresas distintas lo cual no sería correcto.
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function borrarAnexosIIYIV($dni_tutor, $alumnos_del_tutor, $tipo_anexo)
+    {
+        //Base de datos
+        foreach ($alumnos_del_tutor as $a) {
+            $AnexosTutor = Anexo::select('ruta_anexo')->where('habilitado', '=', 1)->where('ruta_anexo', 'like', "$dni_tutor%$a->dni_alumno%")->where('tipo_anexo', '=', $tipo_anexo)->get();
+            Anexo::where('tipo_anexo', '=', $tipo_anexo)->where('habilitado', '=', 1)->where('ruta_anexo', 'like', "$dni_tutor%$a->dni_alumno%")->delete();
+
+            foreach ($AnexosTutor as $anexo) {
+                if (file_exists(public_path($anexo->ruta_anexo))) {
+                    unlink(public_path($anexo->ruta_anexo));
+                }
+            }
+        }
+
+
+        //Carpetas
+    }
+
+
+    /***********************************************************************/
+    #region Funciones auxiliares para el Anexo II y IV
+
+    /**
+     * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el tutor
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return void $nombre_ciclo, devuelveel nombre del ciclo
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function getNombreCicloTutor($dni_tutor)
+    {
+
+        $nombre_ciclo = Tutoria::join('grupo', 'grupo.cod', '=', 'tutoria.cod_grupo')
+            ->select('grupo.nombre_ciclo')
+            ->where('tutoria.dni_profesor', '=', $dni_tutor)->get();
+
+        return $nombre_ciclo;
+    }
+
+    /**
+     * Esta funcion nos permite obtener el nombre y el apellido del tutor de la empresa
+     * @param [type] $dni_tutor, es el dni del tutor
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function getNombreYApellidoTutorEmpresa($dni_alumno)
+    {
+
+        $tutor_empresa = Trabajador::join('fct', 'trabajador.dni', '=', 'fct.dni_tutor_empresa')
+            ->select('trabajador.nombre', 'trabajador.apellidos')
+            ->where('fct.dni_alumno', '=', $dni_alumno)
+            ->first();
+
+        return $tutor_empresa;
+    }
+
+    /**
+     * Esta funcion nos permite obtener el nombre del los alumnos tutorizados por un tutor
+     *que van a FCT
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return $nombre_ciclo, devuelveel nombre del ciclo
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     */
+    public static function getAlumnosQueVanAFct($dni_tutor)
+    {
+        $alumnosVanFct =  Tutoria::join('matricula', 'tutoria.cod_centro', '=', 'matricula.cod_centro')
+            ->join('fct', 'matricula.dni_alumno', '=', 'fct.dni_alumno')
+            ->where('tutoria.dni_profesor', '=', $dni_tutor)
+            ->select('matricula.dni_alumno')
+            ->get();
+
+        return $alumnosVanFct;
+    }
+
+    #endregion
+    /***********************************************************************/
     #endregion
     /***********************************************************************/
 }
