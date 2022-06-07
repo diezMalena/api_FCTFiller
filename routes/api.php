@@ -96,10 +96,10 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     /***********************************************************************/
     /*******************************ANEXO II Y IV*******************************/
     Route::post('/rellenarAnexoIIYIV', [ControladorTutorFCT::class, 'rellenarAnexoIIYIV']);
+    Route::get('/solicitarAnexosProgramaFormativo/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexosIIYIV']);
     /**********************************************************************/
     //----Listar anexos
     Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexos1']);
-    Route::get('/solicitarAnexosProgramaFormativo/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexosIIYIV']);
     /***********************CRUD GASTOS ALUMNOS TUTOR***********************/
     Route::get('/gestionGastosProfesor', [ControladorTutorFCT::class, 'gestionGastosProfesor']);
     Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);

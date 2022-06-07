@@ -459,16 +459,29 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(':', $a->created_at);
             $fechaAux = explode(' ', $fechaAux[0]);
 
-            $datos[] = [
-                'nombre' => $rutaAux[1],
-                'codigo' => $rutaAux[2],
-                'empresa' => $empresa_nombre[0]->nombre,
-                'alumno' => ' ',
-                'firma_empresa' => $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director,
-                'firma_alumno' => 0,
-                'created_at' => $fechaAux[0]
-            ];
+            if (count($empresa_nombre) == 0) {
+                $datos[] = [
+                    'nombre' => $rutaAux[1],
+                    'codigo' => $rutaAux[2],
+                    'empresa' => ' ',
+                    'alumno' => ' ',
+                    'firma_empresa' => $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            } else {
+                $datos[] = [
+                    'nombre' => $rutaAux[1],
+                    'codigo' => $rutaAux[2],
+                    'empresa' => $empresa_nombre[0]->nombre,
+                    'alumno' => ' ',
+                    'firma_empresa' => $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            }
         }
 
         #endregion
@@ -492,16 +505,29 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            $datos[] = [
-                'nombre' => 'Anexo1',
-                'codigo' => $nombreArchivo,
-                'empresa' => $empresa_nombre[0]->nombre,
-                'alumno' => ' ',
-                'firma_empresa' =>  $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director,
-                'firma_alumno' => 0,
-                'created_at' => $fechaAux[0]
-            ];
+            if (count($empresa_nombre) == 0) {
+                $datos[] = [
+                    'nombre' => 'Anexo1',
+                    'codigo' => $nombreArchivo,
+                    'empresa' => ' ',
+                    'alumno' => ' ',
+                    'firma_empresa' =>  $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            } else {
+                $datos[] = [
+                    'nombre' => 'Anexo1',
+                    'codigo' => $nombreArchivo,
+                    'empresa' => $empresa_nombre[0]->nombre,
+                    'alumno' => ' ',
+                    'firma_empresa' =>  $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            }
         }
         #endregion
 
@@ -530,16 +556,29 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            $datos[] = [
-                'nombre' => $rutaAux[1],
-                'codigo' => $rutaAux[2],
-                'empresa' => $empresa_nombre[0]->nombre,
-                'alumno' => $dniAlumno,
-                'firma_empresa' =>  $a->firmado_empresa,
-                'firma_centro' => $a->firmado_director,
-                'firma_alumno' => 0,
-                'created_at' => $fechaAux[0]
-            ];
+            if (count($empresa_nombre) == 0) {
+                $datos[] = [
+                    'nombre' => $rutaAux[1],
+                    'codigo' => $rutaAux[2],
+                    'empresa' => ' ',
+                    'alumno' => $dniAlumno,
+                    'firma_empresa' =>  $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            } else {
+                $datos[] = [
+                    'nombre' => $rutaAux[1],
+                    'codigo' => $rutaAux[2],
+                    'empresa' => $empresa_nombre[0]->nombre,
+                    'alumno' => $dniAlumno,
+                    'firma_empresa' =>  $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            }
         }
         #endregion
 
@@ -1560,11 +1599,11 @@ class ControladorTutorFCT extends Controller
 
             //Cabecera de la tabla Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
             $cabecera = Profesor::join('centro_estudios', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
-            ->join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
-            ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
-            ->where('profesor.dni', '=', '20a')
-            ->select('centro_estudios.nombre as nombreCentro', 'profesor.nombre', 'profesor.apellidos', 'grupo.nombre_ciclo', 'centro_estudios.localidad', 'centro_estudios.cod', 'centro_estudios.email')
-            ->get()->first();
+                ->join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+                ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
+                ->where('profesor.dni', '=', '20a')
+                ->select('centro_estudios.nombre as nombreCentro', 'profesor.nombre', 'profesor.apellidos', 'grupo.nombre_ciclo', 'centro_estudios.localidad', 'centro_estudios.cod', 'centro_estudios.email')
+                ->get()->first();
 
             $periodo = Auxiliar::obtenerCursoAcademico();
             $fecha = date("d/m/Y");
@@ -1693,7 +1732,7 @@ class ControladorTutorFCT extends Controller
 
 
                 //Excluyo Anexos2 y 4 por que esto ya lo hacen ellos de manera especifica en su propia función
-                if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx' && $nombreArchivo != 'Anexo2.pdf' && $nombreArchivo != 'Anexo4.pdf') {
+                if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx') {
                     if (count($existeAnexo) == 0) {
                         Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
 
