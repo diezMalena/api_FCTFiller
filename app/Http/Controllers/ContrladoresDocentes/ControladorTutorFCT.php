@@ -463,7 +463,7 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(':', $a->created_at);
             $fechaAux = explode(' ', $fechaAux[0]);
 
-            if ($empresa_nombre) {
+            if (!$empresa_nombre) {
                 $datos[] = [
                     'nombre' => $rutaAux[1],
                     'codigo' => $rutaAux[2],
@@ -512,7 +512,7 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            if ($empresa_nombre) {
+            if (!$empresa_nombre) {
                 $datos[] = [
                     'nombre' => 'Anexo1',
                     'codigo' => $nombreArchivo,
@@ -565,7 +565,7 @@ class ControladorTutorFCT extends Controller
             $fechaAux = explode(' ', $fechaAux[0]);
 
             //meter ese nombre en un array asociativo
-            if ($empresa_nombre) {
+            if (!$empresa_nombre) {
                 $datos[] = [
                     'nombre' => $rutaAux[1],
                     'codigo' => $rutaAux[2],
