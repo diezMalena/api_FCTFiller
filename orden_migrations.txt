@@ -13,6 +13,7 @@ php artisan migrate:refresh --path=database/migrations/2022_02_01_190818_create_
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082907_create_grupo.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082839_create_oferta_grupo.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082623_create_alumno.php
+php artisan migrate:refresh --path=database/migrations/2014_10_12_000000_create_users_table.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082806_create_matricula.php
 php artisan migrate:refresh --path=database/migrations/2022_02_02_002148_create_tutoria_table.php
 php artisan migrate:refresh --path=database/migrations/2022_01_25_214346_create_fct.php
