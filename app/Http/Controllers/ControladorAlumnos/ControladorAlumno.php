@@ -4,31 +4,46 @@ namespace App\Http\Controllers\ControladorAlumnos;
 
 use App\Http\Controllers\Controller;
 use App\Models\Alumno;
+use App\Models\Grupo;
 use App\Models\CentroEstudios;
 use App\Models\Empresa;
 use App\Models\FamiliaProfesional;
 use App\Models\Fct;
 use App\Models\NivelEstudios;
+use App\Auxiliar\Parametros;
 use App\Models\Profesor;
 use App\Models\Seguimiento;
 use App\Models\Trabajador;
+use App\Models\Matricula;
+use App\Models\Anexo;
+use App\Models\Semana;
+use App\Models\Notificacion;
 use App\Auxiliar\Auxiliar;
 use Illuminate\Http\Request;
 use Exception;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
 use App\Models\AuxCursoAcademico;
+use App\Models\GrupoFamilia;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+
 
 class ControladorAlumno extends Controller
 {
-    //
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
+    /***********************************************************************/
+    #region Hojas de seguimiento - Anexo III
+
+    /***********************************************************************/
+    #region Funciones auxiliares generales
 
     /**
      * Método que recoge el id y el id_empresa de la tabla FCT correspondiente al dni_alumno
@@ -45,29 +60,6 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     * Método que recibe un objeto Jornada y el dni_alumno del alumno que ha iniciado sesión en la aplicación,
-     * y con ello añade la jornada en la tabla Seguimiento de la BBDD. Le devuelve a la parte de cliente un
-     * array de Jornadas correspondientes al alumno.
-     * @author Malena.
-     */
-    public function addJornada(Request $req)
-    {
-        $jornada = $req->get('jornada');
-
-        $fct = $this->buscarId_fct($req->get('dni_alumno'));
-        $id_fct = $fct[0]->id;
-        $jornada['id_fct'] = $id_fct;
-
-        $ultimoOrden = $this->encontrarUltimoOrden($id_fct);
-        if ($ultimoOrden[0]->orden_jornada == null) {
-            $jornada['orden_jornada'] = 1;
-        } else {
-            $jornada['orden_jornada'] = $ultimoOrden[0]->orden_jornada + 1;
-        }
-        $seguimiento = Seguimiento::create($jornada);
-    }
-
-    /**
      * Este método me devuelve el valor más alto del campo orden, para
      * ordenar los resultados por id_fct, y mostrarlos en la tabla de las
      * jornadas rellenadas por el alumno en orden descendente.
@@ -78,8 +70,59 @@ class ControladorAlumno extends Controller
         $ultimoOrden = Seguimiento::select(DB::raw('MAX(orden_jornada) AS orden_jornada'))
             ->where('id_fct', '=', $id_fct)
             ->get();
-        //error_log($ultimoOrden);
         return $ultimoOrden;
+    }
+
+    /**
+     * Método que devuelve el id_empresa a la que el alumno está asociado.
+     * @return id_empresa
+     * @author Malena
+     */
+    public function empresaAsignadaAlumno(string $dni_alumno)
+    {
+        /*Necesitamos también el id_empresa para luego poder mostrar en el desplegable todos
+        los tutores y responsables de dicha empresa.*/
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+        return $id_empresa;
+    }
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Gestión de jornadas
+
+    /**
+     * Método que recibe un objeto Jornada y el dni_alumno del alumno que ha iniciado sesión en la aplicación,
+     * y con ello añade la jornada en la tabla Seguimiento de la BBDD. Le devuelve a la parte de cliente un
+     * array de Jornadas correspondientes al alumno.
+     * @author Malena.
+     */
+    public function addJornada(Request $req)
+    {
+        $jornada = $req->get('jornada');
+        $dni_alumno = $req->get('dni_alumno');
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+        $jornada['id_fct'] = $id_fct;
+
+        $ultimoOrden = $this->encontrarUltimoOrden($id_fct)[0]->orden_jornada;
+        if ($ultimoOrden == null) {
+            $jornada['orden_jornada'] = 1;
+        } else {
+            $jornada['orden_jornada'] = $ultimoOrden + 1;
+        }
+        $seguimiento = Seguimiento::create($jornada);
+
+        if (($ultimoOrden + 1) % 5 == 0) {
+            //Es el último día de la semana:
+            $jornadas = $this->ultimaJornada($dni_alumno);
+            $semana = Semana::create([
+                'id_fct' => $id_fct,
+                'id_quinto_dia' => $jornadas[0]->id,
+            ]);
+        }
     }
 
     /**
@@ -87,11 +130,14 @@ class ControladorAlumno extends Controller
      * con su empresa asignada.
      * @param $dni_alumno del alumno que inicia sesion, $id_empresa de la que tiene asignada dicho alumno.
      * @author Malena.
-     * @return $jornadas, array de jornadas que tiene el alumno añadidas en la BBDD.
+     * @return $semanas, array de semanas que tiene el alumno.
      */
     public function devolverJornadas(Request $req)
     {
-        $dni_alumno = $dni_alumno = $req->get('dni');
+        //este array tendrá dentro las jornadas divididas de 5 en 5 para organizarlas en semanas.
+        $semanas = []; //Array de semanas
+        $semana = []; //Array de jornadas
+        $dni_alumno = $req->get('dni');
 
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
@@ -100,110 +146,33 @@ class ControladorAlumno extends Controller
             ->select('seguimiento.id AS id_jornada', 'seguimiento.orden_jornada AS orden_jornada', 'seguimiento.fecha_jornada AS fecha_jornada', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
-            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->orderBy('seguimiento.orden_jornada', 'ASC')
             ->get();
 
-        //error_log($jornadas);
 
-        return response()->json($jornadas, 200);
-    }
-
-
-    /**
-     * Método que selecciona de la BBDD el nombre, los apellidos y la empresa asignada del alumno
-     * que inicia sesión, para mostrarlo en la correspondiente interfaz.
-     * @author Malena
-     */
-    public function devolverDatosAlumno(Request $req)
-    {
-        $dni_alumno = $req->get('dni');
-        try {
-            $datosAlumno = FCT::join('alumno', 'alumno.dni', '=', 'fct.dni_alumno')
-                ->join('empresa', 'empresa.id', '=', 'fct.id_empresa')
-                ->select('alumno.nombre AS nombre_alumno', 'alumno.apellidos AS apellidos_alumno', 'empresa.nombre AS nombre_empresa')
-                ->where('alumno.dni', '=', $dni_alumno)
-                ->get();
-
-            return response()->json($datosAlumno, 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
+        for ($i = 0; $i < count($jornadas); $i++) {
+            $semana[] = $jornadas[$i];
+            if (count($semana) == 5 || $i == count($jornadas) - 1) {
+                $semanas[] = $semana;
+                $semana = [];
+            }
         }
+        return response()->json($semanas, 200);
     }
 
-    /**
-     * Método que recoge el departamento del alumno que inicia sesión, y se encarga
-     * de mandarlo a la parte de cliente, donde se gestiona qué hacer dependiendo de si el Departamento
-     * tiene o no tiene valor.
-     * @author Malena.
-     */
-    public function gestionarDepartamento(Request $req)
+
+
+    public function devolverSemanas(Request $req)
     {
         $dni_alumno = $req->get('dni');
-        //error_log($dni_alumno);
-        try {
-            $departamento = FCT::select('departamento')
-                ->where('fct.dni_alumno', '=', $dni_alumno)
-                ->get();
-            //error_log($departamento[0]); //Resultado = {"departamento":""}
-            return response()->json($departamento, 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, el departamento no se ha enviado.'], 450);
-        }
-    }
-
-    /**
-     * Método que se encarga de recoger el valor del Departamento para añadirlo
-     * a su campo correspondiente en la tabla FCT.
-     * @author Malena.
-     */
-    public function addDepartamento(Request $req)
-    {
-        $dni_alumno = $req->get('dni');
-        $departamento = $req->get('departamento');
-        //error_log($dni_alumno);
-        //error_log($departamento);
-        try {
-            $departamento = FCT::where('dni_alumno', $dni_alumno)
-                ->update(['departamento' => $departamento]);
-            return response()->json(['message' => 'El departamento se ha insertado correctamente.'], 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, el departamento no se ha insertado en la BBDD.'], 450);
-        }
-    }
-
-    /**
-     * Método que se encarga de sumar todas las horas del campo "tiempo_empleado" de la tabla Seguimiento,
-     * del alumno que inicia sesión para mostrarlas en la interfaz.
-     * @author Malena.
-     */
-    public function sumatorioHorasTotales(Request $req)
-    {
-        $dni_alumno = $req->get('dni');
-        $horas = 0;
-
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
-        //error_log($id_fct);
 
-        try {
-            $horasTotales = Seguimiento::join('fct', 'seguimiento.id_fct', '=', 'fct.id')
-                ->select(DB::raw('SUM( seguimiento.tiempo_empleado) AS horasSumadas'))
-                ->where('fct.dni_alumno', '=', $dni_alumno)
-                ->where('seguimiento.id_fct', '=', $id_fct)
-                ->groupBy('fct.dni_alumno')
-                ->get();
+        $semanas = Semana::where('id_fct', '=', $id_fct)
+            ->orderBy('id_quinto_dia', 'DESC')
+            ->get();
 
-            //error_log($horasTotales[0]->horasSumadas);
-
-            /*Me saltaba un error al no encontrar jornadas en un alumno, y horasSumadas ser null,
-            con este control de errores lo soluciono.*/
-            if (count($horasTotales) != 0) {
-                $horas = $horasTotales[0]->horasSumadas;
-            }
-            return response()->json($horas, 200);
-        } catch (Exception $ex) {
-            return response()->json(['message' => 'Error, las hotas se han ido a la verga.'], 450);
-        }
+        return response()->json($semanas, 200);
     }
 
 
@@ -232,6 +201,202 @@ class ControladorAlumno extends Controller
         }
     }
 
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Cabeceras: departamento, alumno, horas y tutor
+
+    /**
+     * Método que recoge el departamento del alumno que inicia sesión, y se encarga
+     * de mandarlo a la parte de cliente, donde se gestiona qué hacer dependiendo de si el Departamento
+     * tiene o no tiene valor.
+     * @author Malena.
+     */
+    public function gestionarDepartamento(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        try {
+            $departamento = FCT::select('departamento')
+                ->where('fct.dni_alumno', '=', $dni_alumno)
+                ->get();
+            return response()->json($departamento, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, el departamento no se ha enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que se encarga de recoger el valor del Departamento para añadirlo
+     * a su campo correspondiente en la tabla FCT.
+     * @author Malena.
+     */
+    public function addDepartamento(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        $departamento = $req->get('departamento');
+        try {
+            $departamento = FCT::where('dni_alumno', $dni_alumno)
+                ->update(['departamento' => $departamento]);
+            return response()->json(['message' => 'El departamento se ha insertado correctamente.'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, el departamento no se ha insertado en la BBDD.'], 450);
+        }
+    }
+
+    /**
+     * Método que selecciona de la BBDD el nombre, los apellidos y la empresa asignada del alumno
+     * que inicia sesión, para mostrarlo en la correspondiente interfaz.
+     * @author Malena
+     */
+    public function devolverDatosAlumno(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        try {
+            $datosAlumno = FCT::join('alumno', 'alumno.dni', '=', 'fct.dni_alumno')
+                ->join('empresa', 'empresa.id', '=', 'fct.id_empresa')
+                ->select('alumno.nombre AS nombre_alumno', 'alumno.apellidos AS apellidos_alumno', 'empresa.nombre AS nombre_empresa')
+                ->where('alumno.dni', '=', $dni_alumno)
+                ->get();
+
+            return response()->json($datosAlumno, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que se encarga de sumar todas las horas del campo "tiempo_empleado" de la tabla Seguimiento,
+     * del alumno que inicia sesión para mostrarlas en la interfaz.
+     * @author Malena.
+     */
+    public function sumatorioHorasTotales(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        $horas = 0;
+
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+
+        try {
+            $horasTotales = Seguimiento::join('fct', 'seguimiento.id_fct', '=', 'fct.id')
+                ->select(DB::raw('SUM( seguimiento.tiempo_empleado) AS horasSumadas'))
+                ->where('fct.dni_alumno', '=', $dni_alumno)
+                ->where('seguimiento.id_fct', '=', $id_fct)
+                ->groupBy('fct.dni_alumno')
+                ->get();
+
+            /*Me saltaba un error al no encontrar jornadas en un alumno, y horasSumadas ser null,
+            con este control de errores lo soluciono.*/
+            if (count($horasTotales) != 0) {
+                $horas = $horasTotales[0]->horasSumadas;
+            }
+            return response()->json($horas, 200);
+        } catch (Exception $ex) {
+            return response()->json(['message' => 'Error, las hotas se han ido a la verga.'], 450);
+        }
+    }
+
+    /**
+     * Método que envia al cliente los datos del tutor al que está asociado el alumno
+     * para poder mostrarlo en la interfaz, ademas de mandarle también el id_empresa
+     * al que el alumno está asociado.
+     * @author Malena
+     */
+    public function recogerTutorEmpresa(Request $req)
+    {
+        $dni_alumno = $req->get('dni');
+        $dni_tutor = $this->sacarDniTutor($dni_alumno)->dni_tutor_empresa;
+        try {
+            $mail_tutor = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.dni', '=', $dni_tutor)
+                ->select('trabajador.email AS email')
+                ->first();
+
+            $email_tutor = $mail_tutor->email;
+            //Recojo el id_empresa:
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+            return response()->json([$email_tutor, $id_empresa], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, los datos no se han enviado.'], 450);
+        }
+    }
+
+    /**
+     * Método que actualiza en la BBDD el tutor que el alumno ha elegido.
+     * @author Malena
+     */
+    public function actualizarTutorEmpresa(Request $req)
+    {
+        try {
+            $mail_tutor_nuevo = $req->get('mail_tutor_nuevo');
+            $dni_alumno = $req->get('dni_alumno');
+            $id_empresa = $this->empresaAsignadaAlumno($dni_alumno);
+
+            //Tenemos el mail del nuevo tutor, tenemos que coger su dni para poder actualizarlo en la tabla FCT:
+            $dni_tutor_nuevo = Trabajador::join('rol_trabajador_asignado', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
+                ->whereIn('rol_trabajador_asignado.id_rol', array(2, 3))
+                ->where('trabajador.id_empresa', '=', $id_empresa)
+                ->where('trabajador.email', '=', $mail_tutor_nuevo)
+                ->select('trabajador.dni AS dni')
+                ->first();
+
+            Fct::where('dni_alumno', $dni_alumno)->update([
+                'dni_tutor_empresa' => $dni_tutor_nuevo->dni,
+            ]);
+            return response()->json(['message' => 'Tutor actualizado correctamente.'], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, el tutor no se ha actualizado.'], 450);
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
+
+
+
+    /***********************************************************************/
+    #region Recoger alumnos asociados a un tutor
+
+    public function getAlumnosAsociados(Request $req)
+    {
+        //dni_tutor puede ser tanto de instituto como de empresa
+        $dni = $req->dni_tutor;
+        $esTutorEstudios = Profesor::where('dni', '=', $dni)
+            ->select('dni')
+            ->first();
+
+        $alumnosAsociados = [];
+        //Si encontramos un tutor_estudios con ese dni, sacamos sus alumnos asociados,
+        //Sino, querrá decir que el dni pertenecerá a un tutor de la empresa, y se le mostrarán sus correspondientes alumnos.
+        if ($esTutorEstudios != null) {
+            $alumnosAsociados = Alumno::join('matricula', 'alumno.dni', '=', 'matricula.dni_alumno')
+                ->join('grupo', 'grupo.cod', '=', 'matricula.cod_grupo')
+                ->join('tutoria', 'tutoria.cod_grupo', '=', 'grupo.cod')
+                ->where('tutoria.dni_profesor', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
+        } else {
+            $alumnosAsociados = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+                ->where('fct.dni_tutor_empresa', '=', $dni)
+                ->select('alumno.dni AS dni', 'alumno.nombre AS nombre', 'alumno.apellidos AS apellidos')
+                ->get();
+        }
+
+        return response()->json($alumnosAsociados, 200);
+    }
+
+
+    #endregion
+    /***********************************************************************/
+
+
+
+
+    /***********************************************************************/
+    #region Generación y descarga del Anexo III
+
     /**
      * Mètodo que genera el Anexo III con los datos necesarios extraídos de la BBDD.
      * @author Malena.
@@ -239,7 +404,7 @@ class ControladorAlumno extends Controller
     public function generarAnexo3(Request $req)
     {
         $dni_alumno = $req->get('dni');
-        //error_log($dni_alumno);
+        $id_quinto_dia = $req->get('id_quinto_dia');
 
         //Primero, vamos a sacar el centro donde está el alumno:
         $centro = $this->centroDelAlumno($dni_alumno);
@@ -258,7 +423,7 @@ class ControladorAlumno extends Controller
         //Sacamos los registros que necesitamos de la tabla FCT:
         $fct = $this->getDatosFct($dni_alumno);
         //Cogemos las ultimas 5 jornadas, para ponerlas en el documento:
-        $jornadas = $this->las5UltimasJornadas($dni_alumno);
+        $jornadas = $this->las5UltimasJornadas($dni_alumno, $id_quinto_dia);
 
         //Construyo el array con todos los datos y ss correspondientes prefijos.
         $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional', 'ciclo', 'empresa', 'tutor_empresa', 'fct'];
@@ -284,16 +449,98 @@ class ControladorAlumno extends Controller
         $nombre = $nombrePlantilla . '_' . $dni_alumno . '_' . $fecha_doc . '.docx';
         Auxiliar::existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3'));
         $rutaDestino = $dni_alumno . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . $nombre;
-
+        //Anexo::create(['tipo_anexo' => 'Anexo3', 'ruta_anexo' => $rutaDestino]);
         //Creo la plantilla y la relleno con los valores establecidos anteriormente.
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
 
+
+        /*Cuando se genere un nuevo Word, las firmas de los 3 implicados se pondrán a 0 dado que se entiende que al generar un Word nuevo, es porque el
+        alumno ha cambiado algún campo y hay que firmarlo y subirlo nuevo.*/
+
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+        $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
+            ->where('id_quinto_dia', '=', $id_quinto_dia)
+            ->update([
+                'firmado_alumno' => 0,
+                'firmado_tutor_estudios' => 0,
+                'firmado_tutor_empresa' => 0,
+            ]);
+
         return response()->download(public_path($rutaDestino));
     }
 
 
+    public function hayDocumento(Request $req)
+    {
+        $ruta_hoja = Semana::where('id_fct', '=', $req->id_fct)
+            ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+            ->select('ruta_hoja')
+            ->first();
+        return response()->json($ruta_hoja, 200);
+    }
+
+
+    public function descargarAnexo3(Request $req)
+    {
+        return response()->download(public_path($req->ruta_hoja));
+    }
+
+    /**
+     *
+     */
+    public function subirAnexo3(Request $req)
+    {
+        try {
+            $dni = $req->dni;
+            $rutaDestino = public_path() . DIRECTORY_SEPARATOR . $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded';
+            if (strpos($req->file_name, ".pdf")) {
+                $replaced = Str::replace('.pdf', '', $req->file_name);
+            }
+            $subida = Auxiliar::guardarFichero($rutaDestino, $replaced, $req->file);
+            $ruta_hoja = $dni . DIRECTORY_SEPARATOR . 'Anexo3' . DIRECTORY_SEPARATOR . 'Uploaded' . DIRECTORY_SEPARATOR . $req->file_name;
+
+            $rol_dni_alumno = Alumno::select('dni')
+                ->where('dni', '=', $dni)
+                ->first();
+
+            if ($rol_dni_alumno == null) {
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_tutor_estudios' => 1
+                    ]);
+                //Vamos a poner en leido la notificacion de una semana en concreto porque el tutor del instituto ya lo ha firmado
+                $sacarId_semana = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->select('id')
+                    ->first();
+
+                $notificacion_id_semana = Notificacion::where('semana', '=', $sacarId_semana->id)
+                    ->update([
+                        'leido' => 1,
+                    ]);
+            } else {
+                //en este caso, firma el alumno y si ha marcado el check, firmará tambien el tutor de la empresa
+                $actualizarFirma = Semana::where('id_fct', '=', $req->id_fct)
+                    ->where('id_quinto_dia', '=', $req->id_quinto_dia)
+                    ->update([
+                        'ruta_hoja' => $ruta_hoja,
+                        'firmado_alumno' => 1,
+                        'firmado_tutor_empresa' => $req->firmado_tutor_empresa
+                    ]);
+            }
+            return response()->json(['message' => 'Documento subido correctamente.'], 200);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Error, el documento no se ha subido.'], 450);
+        }
+    }
+
+    /***********************************************************************/
+    #region Funciones auxiliares para la generación del Anexo III
     /**
      * Método que recoge los campos necesarios del centro de estudios de la BBDD.
      * @return $centro.
@@ -309,7 +556,6 @@ class ControladorAlumno extends Controller
         return $centro;
     }
 
-
     /**
      * Método que recoge el nombre del alumno.
      * Para futuro cambio, concatenar el nombre + apellidos.
@@ -318,13 +564,12 @@ class ControladorAlumno extends Controller
      */
     public function getNombreAlumno(string $dni_alumno)
     {
-        $nombre = Alumno::select('nombre')
+        $nombre = Alumno::select('nombre', 'apellidos')
             ->where('dni', '=', $dni_alumno)
             ->first();
 
         return $nombre;
     }
-
 
     /**
      * Método que recoge el nombre del tutor del centro estudios que le corresponde al alumno.
@@ -338,12 +583,11 @@ class ControladorAlumno extends Controller
             ->join('grupo', 'tutoria.cod_grupo', '=', 'grupo.cod')
             ->join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
             ->where('matricula.dni_alumno', '=', $dni_alumno)
-            ->select('profesor.nombre AS nombre')
+            ->select('profesor.nombre AS nombre', 'profesor.apellidos AS apellidos')
             ->first();
 
         return $tutor;
     }
-
 
     /**
      * Método que recoge la familia profesional del ciclo en el que está matriculado el alumno.
@@ -362,7 +606,6 @@ class ControladorAlumno extends Controller
         return $familia_profesional;
     }
 
-
     /**
      * Método que recoge el ciclo formativo en el que está matriculado el alumno.
      * @return $ciclo_formativo
@@ -379,7 +622,6 @@ class ControladorAlumno extends Controller
         return $ciclo_formativo;
     }
 
-
     /**
      * Método que recoge el nombre de la empresa en la que está asociado el alumno.
      * @return $nombre_empresa
@@ -392,15 +634,12 @@ class ControladorAlumno extends Controller
 
         //En la select incluyo al curso academico como otra select:
         $nombre_empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
-            ->where('fct.curso_academico','=', $curso)
+            ->where('fct.curso_academico', '=', $curso)
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->select('empresa.nombre AS nombre')
             ->first();
         return $nombre_empresa;
     }
-
-
-
 
     /**
      * Método que recoge de la BBDD el nombre del tutor que tiene asignado el alumno en la empresa.
@@ -417,7 +656,6 @@ class ControladorAlumno extends Controller
         return $tutor_empresa;
     }
 
-
     /**
      * Método que recoge los datos necesarios correspondientes a la tabla FCT.
      * @return $fct
@@ -432,25 +670,185 @@ class ControladorAlumno extends Controller
         return $fct;
     }
 
-
     /**
      * Método que recoge las últimas 5 jornadas para insertarlas en la tabla del Anexo III.
      * @return array $jornadas
      * @author Malena
      */
-    public function las5UltimasJornadas(string $dni_alumno)
+    public function las5UltimasJornadas(string $dni_alumno, $id_quinto_dia)
     {
         $fct = $this->buscarId_fct($dni_alumno);
         $id_empresa = $fct[0]->id_empresa;
 
+        $quinto_dia = Seguimiento::where('id', '=', $id_quinto_dia)
+            ->first();
+
         $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
+            ->where('seguimiento.orden_jornada', '<=', $quinto_dia->orden_jornada)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
             ->take(5)
             ->get();
 
+
         return $jornadas;
     }
+
+    /**
+     * Método que recoge la última jornada añadida.
+     */
+    public function ultimaJornada($dni_alumno)
+    {
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_empresa = $fct[0]->id_empresa;
+
+        $jornada = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->where('fct.dni_alumno', '=', $dni_alumno)
+            ->where('fct.id_empresa', '=', $id_empresa)
+            ->orderBy('seguimiento.orden_jornada', 'DESC')
+            ->take(1)
+            ->get();
+
+
+        return $jornada;
+    }
+
+    /**
+     * Método para sacar el dni del tutor que tiene asignado el alumno.
+     * @return tutor_empresa
+     * @author Malena
+     */
+    public function sacarDniTutor(string $dni_alumno)
+    {
+        $tutor_empresa = Fct::where('dni_alumno', '=', $dni_alumno)
+            ->select('dni_tutor_empresa')
+            ->first();
+        return $tutor_empresa;
+    }
+
+
+    #endregion
+    /***********************************************************************/
+
+    #endregion
+    /***********************************************************************/
+
+    #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Acuerdo de confidencialidad - Anexo XV
+
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite rellenar el AnexoXV
+     * @param Request $req, este req contiene el dni del alumno
+     * @return void
+     */
+    public function rellenarAnexoXV(Request $req)
+    {
+
+        $fecha = Carbon::now();
+        $dni_alumno = $req->get('dni');
+        $nombre_alumno = $this->getNombreAlumno($dni_alumno);
+        $nombre_ciclo = $this->getNombreCicloAlumno($dni_alumno);
+        $centro_estudios = $this->getCentroEstudiosYLocalidad($dni_alumno);
+        $familia_profesional = $this->getDescripcionFamiliaProfesional($nombre_ciclo[0]->nombre_ciclo);
+
+        try {
+            //ARCHIVO
+            $rutaOriginal = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'AnexoXV.docx';
+            $rutaCarpeta = public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV');
+            Auxiliar::existeCarpeta($rutaCarpeta);
+            $AuxNombre = $dni_alumno . '_' . Parametros::MESES[$fecha->month] . '_' . $fecha->year . '_.docx';
+            $rutaDestino = $dni_alumno  . DIRECTORY_SEPARATOR . 'AnexoXV' . DIRECTORY_SEPARATOR . 'AnexoXV_' . $AuxNombre;
+
+            $datos = [
+                'alumno_nombre' => $nombre_alumno->nombre . ' ' . $nombre_alumno->apellidos,
+                'alumno_dni' => $dni_alumno,
+                'alumno_curso' => '2º',
+                'alumno_ciclo' => $nombre_ciclo[0]->nombre_ciclo,
+                'nombre_centro' => $centro_estudios[0]->nombre,
+                'ciudad' => $centro_estudios[0]->localidad,
+                'familia_profesional' => $familia_profesional[0]->descripcion,
+                'dia' => $fecha->day,
+                'mes' => Parametros::MESES[$fecha->month],
+                'year' => $fecha->year
+            ];
+
+            $template = new TemplateProcessor($rutaOriginal);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestino);
+
+            Anexo::create(['tipo_anexo' => 'AnexoXV', 'ruta_anexo' => $rutaDestino]);
+            return response()->download(public_path($rutaDestino));
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Error de ficheros: ' . $e
+            ], 500);
+        }
+    }
+
+    /***********************************************************************/
+    #region Funciones auxiliares para el Anexo XV
+
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite obtener la descripcion de la tabla familia profesional a través del
+     * nombre del ciclo
+     * @param [type] $nombreCiclo, es el nombre del ciclo
+     * @return void
+     */
+    public function getDescripcionFamiliaProfesional($nombreCiclo)
+    {
+
+        $familia_profesional = GrupoFamilia::join('grupo', 'grupo.cod', '=', 'grupo_familia.cod_grupo')
+            ->join('familia_profesional', 'familia_profesional.id', '=', 'grupo_familia.id_familia')
+            ->select('familia_profesional.descripcion')
+            ->where('grupo.nombre_ciclo', '=', $nombreCiclo)
+            ->get();
+
+        return $familia_profesional;
+    }
+
+    /**
+     * @author LauraM <lauramorenoramos97@gmail.com>
+     * Esta funcion nos permite obtener el nombre del ciclo al que pertenece el alumno
+     * @param [type] $dni_alumno, es el dni del alumno
+     * @return void
+     */
+    public function getNombreCicloAlumno($dni_alumno)
+    {
+
+        $nombre_ciclo = Grupo::join('matricula', 'matricula.cod_grupo', '=', 'grupo.cod')
+            ->select('grupo.nombre_ciclo')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $nombre_ciclo;
+    }
+
+    /**
+     *@author LauraM <lauramorenoramos97@gmail.com>
+     *Nos permite obtener el centro de estudios y la localidad al que este
+     *pertenece a través del dni de un alumno
+     * @param [type] $dni_alumno
+     * @return void
+     */
+    public function getCentroEstudiosYLocalidad($dni_alumno)
+    {
+
+        $centro_estudios = Matricula::join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+            ->select('centro_estudios.nombre', 'centro_estudios.localidad')
+            ->where('matricula.dni_alumno', '=', $dni_alumno)->get();
+
+        return $centro_estudios;
+    }
+
+    #endregion
+    /***********************************************************************/
+    #endregion
+    /***********************************************************************/
 }

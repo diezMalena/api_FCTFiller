@@ -6,10 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- *
- */
-
-/**
  * Modelo para la tabla convenio
  *
  * Antiguo EmpresaCentroEstudios
@@ -27,14 +23,13 @@ class Convenio extends Model
         'cod_convenio',
         'cod_centro',
         'id_empresa',
-        'curso_academico_inicio',
-        'curso_academico_fin',
-        'firmado_director',
-        'firmado_empresa',
+        'fecha_ini',
+        'fecha_fin',
         'ruta_anexo'
     ];
     protected $table = 'convenio';
     protected $primaryKey = ['cod_convenio'];
     public $incrementing = false;
     protected $keyType = ['string'];
+    protected $hidden = ['created_at', 'updated_at'];
 }
