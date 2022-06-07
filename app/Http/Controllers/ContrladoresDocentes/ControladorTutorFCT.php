@@ -305,7 +305,8 @@ class ControladorTutorFCT extends Controller
                     //Nombre del centro
                     $nombre_centro = CentroEstudios::select('nombre')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
                     //Año del curso
-                    $curso_anio = Convenio::select('curso_academico_inicio')->where('cod_convenio', $convenio[0]->cod_convenio)->get();
+                    $curso_anio=Carbon::createFromFormat('Y-m-d', Convenio::where('cod_convenio',$convenio[0]->cod_convenio )->select('fecha_ini')->get()->first()->fecha_ini)->year;
+
                     //Nombre del tutor
                     $nombre_tutor = Profesor::select('nombre', 'apellidos')->where('dni', $dni_tutor)->get();
                     //Responsable de la empresa
@@ -366,7 +367,7 @@ class ControladorTutorFCT extends Controller
 
                     $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
                     $datos = $datos +  [
-                        'anio.curso' => $curso_anio[0]->curso_academico_inicio,
+                        'anio.curso' => $curso_anio,
                         'dia' => $fecha->day,
                         'mes' => Parametros::MESES[$fecha->month],
                         'year' => $fecha->year,
@@ -454,6 +455,7 @@ class ControladorTutorFCT extends Controller
 
             $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
 
+            $empresa_nombre=[];
             if(count($id_empresa) > 0){
                 $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
 
@@ -502,6 +504,7 @@ class ControladorTutorFCT extends Controller
             $id_empresa = explode('_', $rutaAux[2]);
             $id_empresa = $id_empresa[1];
 
+            $empresa_nombre=[];
             if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
 
@@ -552,6 +555,7 @@ class ControladorTutorFCT extends Controller
             $id_empresa = explode('_', $rutaAux[2]);
             $id_empresa = $id_empresa[2];
 
+            $empresa_nombre=[];
             if($id_empresa){
             $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
             }
