@@ -3,6 +3,7 @@
 namespace App\Auxiliar;
 
 use App\Models\Alumno;
+use App\Models\Matricula;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
@@ -135,6 +136,7 @@ class Auxiliar
             $usuario = Alumno::where('email', '=', $usuario_view->email)
             ->select(['email', 'nombre', 'apellidos', 'dni'])
             ->first();
+
         }else if($usuario_view->perfil == 'trabajador'){
             $usuario = Trabajador::where('email', '=', $usuario_view->email)
             ->select(['email', 'nombre', 'apellidos', 'dni'])

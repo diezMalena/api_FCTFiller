@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
+use App\Models\Matricula;
 use App\Models\Ciudad;
 use App\Models\Usuario_view;
 use Error;
@@ -40,8 +41,22 @@ class ControladorGenerico extends Controller
             if ($ckPass) {
 
                 $usuario = Auxiliar::getDatosUsuario($usuario_view);
-                //DSB Cambio 10-03-2022: Añadido codigo de centro de estudios
-                $usuario->cod_centro = Auxiliar::obtenerCentroPorDNIProfesor($usuario->dni);
+
+                // Cambio añadido para rescatar el código del centro del alumno existente en tabla matrícula. Hasta ahora solo se rescataba el del profesor.
+                if ($usuario_view->perfil == 'alumno') {
+                    $matricula = Matricula::where('dni_alumno', '=', $usuario->dni)
+                    ->select(['*'])
+                    ->first();
+                    if ($matricula){
+                        $usuario->cod_centro=$matricula->cod_centro;
+                        $usuario->cod_grupo=$matricula->cod_grupo;
+                        $usuario->curso_academico=$matricula->curso_academico;
+                    }
+                }else{
+                    //DSB Cambio 10-03-2022: Añadido codigo de centro de estudios
+                    $usuario->cod_centro = Auxiliar::obtenerCentroPorDNIProfesor($usuario->dni);
+                }
+
                 // $usuario->token = auth()->user()->createToken('authToken')->accessToken;
                 return response()->json($usuario, 200);
             } else {
