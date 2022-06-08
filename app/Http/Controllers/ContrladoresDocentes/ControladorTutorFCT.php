@@ -123,14 +123,14 @@ class ControladorTutorFCT extends Controller
             $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                 ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
                 ->where([['rol_trabajador_asignado.id_rol', Parametros::RESPONSABLE_CENTRO], ['empresa.id', $empresa->id]])
-                ->select('trabajador.nombre')
+                ->select(['trabajador.nombre', 'trabajador.dni'])
                 ->first();
             //Por si acaso la empresa no tiene un responsable asignado, ponemos al representante legal
             if (!$responsable) {
                 $responsable = RolTrabajadorAsignado::join('trabajador', 'trabajador.dni', '=', 'rol_trabajador_asignado.dni')
                     ->join('empresa', 'empresa.id', '=', 'trabajador.id_empresa')
                     ->where([['rol_trabajador_asignado.id_rol', Parametros::REPRESENTANTE_LEGAL], ['empresa.id', $empresa->id]])
-                    ->select('trabajador.nombre')
+                    ->select(['trabajador.nombre', 'trabajador.dni'])
                     ->first();
             }
             $empresa->nombre_responsable = $responsable->nombre;
