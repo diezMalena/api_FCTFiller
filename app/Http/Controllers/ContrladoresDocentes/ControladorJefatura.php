@@ -1009,38 +1009,45 @@ class ControladorJefatura extends Controller
         return response()->json($listaGrupos, 200);
     }
 
+
+
+
+
     /**
-     * Guarda un nuevo cuestionario
+     * Guarda un nuevo cuestionario con los valores pasados en la request
      * @param Request
-     * @return Response OK o mensaje de error
+     * @return Response JSON con cuestionario y sus preguntas.
      * @author Pablo García Galán
      */
     public function crearCuestionario(Request $r)
     {
-
         $cuestionario = Cuestionario::create([
             'titulo' => $r->titulo,
             'destinatario' => $r->destinatario,
             'codigo_centro' => $r->codigo_centro,
         ]);
 
-
         foreach ($r->preguntas as $preg) {
             PreguntasCuestionario::create(['id_cuestionario' => $cuestionario->id ,'tipo' => $preg['tipo'], 'pregunta' => $preg['pregunta']]);
         }
-
         return response()->json(['message' => 'Formulario creado con éxito'], 200);
-
     }
 
 
 
 
-
+    /**
+     * Se obitnene el cuestionario activo en función del destinatario y del código del centro.
+     * @param destinatario
+     * @param codigo_centro
+     * @return Response JSON con cuestionario y sus preguntas.
+     * @author Pablo García Galán
+     */
     public function obtenerCuestionario($destinatario, $codigo_centro)
     {
         $datos = array();
         $cuestionario = Cuestionario::where([
+                ['activo', true],
                 ['destinatario', $destinatario],
                 ['codigo_centro', $codigo_centro]
             ])->get();
@@ -1061,7 +1068,12 @@ class ControladorJefatura extends Controller
     }
 
 
-
+    /**
+     * Se obitnene un cuestionario en función de su id.
+     * @param id
+     * @return Response JSON con cuestionario y sus preguntas.
+     * @author Pablo García Galán
+     */
     public function obtenerCuestionarioEdicion($id)
     {
         $datos = array();
@@ -1082,7 +1094,12 @@ class ControladorJefatura extends Controller
         }
     }
 
-
+    /**
+     * Almacena en base de datos un cuestionario con sus preguntas y respuestas.
+     * @param id del formulario.
+     * @return Response OK si no hay errores.
+     * @author Pablo García Galán
+     */
     public function crearCuestionarioRespondido(Request $r)
     {
         $cuestionarioRespondido = CuestionarioRespondido::create([
@@ -1101,7 +1118,12 @@ class ControladorJefatura extends Controller
     }
 
 
-
+    /**
+     * Obtiene cuestionario respondido para ese id_usuario.
+     * @param id del usuario.
+     * @return Response JSON con cuestionario o error.
+     * @author Pablo García Galán
+     */
     public function verificarCuestionarioRespondido($id_usuario)
     {
         try {
@@ -1113,13 +1135,24 @@ class ControladorJefatura extends Controller
     }
 
 
+    /**
+     * Obtiene los cuestionarios respondido para ese código centro.
+     * @param codigo_centro
+     * @return Response JSON con cuestionarios.
+     * @author Pablo García Galán
+     */
     public function listarCuestionarios($codigo_centro)
     {
         $cuestionarios = Cuestionario::where('codigo_centro', '=', $codigo_centro)->get();
         return response()->json($cuestionarios, 200);
     }
 
-
+    /**
+     * Elimina cuestionario con ese id.
+     * @param id
+     * @return Response JSON OK o error.
+     * @author Pablo García Galán
+     */
     public function eliminarCuestionario($id)
     {
         try {
@@ -1130,6 +1163,12 @@ class ControladorJefatura extends Controller
         }
     }
 
+    /**
+     * Actualiza el cuestionario.
+     * @param Request
+     * @return Response JSON OK o error.
+     * @author Pablo García Galán
+     */
     public function editarCuestionario(Request $r)
     {
         try {
@@ -1144,7 +1183,12 @@ class ControladorJefatura extends Controller
         }
     }
 
-
+    /**
+     * Obtiene los cuestionarios para los alumnos asociados a un tutor de empresa en función de su dni y el curso académico.
+     * @param dni
+     * @return Response JSON OK si no hay error.
+     * @author Pablo García Galán
+     */
     public function obtenerCuestionariosTutorEmpresaAlumnos($dni)
     {
         $fct = Fct::where('dni_tutor_empresa', '=', $dni)->get();
@@ -1190,6 +1234,11 @@ class ControladorJefatura extends Controller
         return response()->json($datos, 200);
     }
 
+    /**
+     * Activa el formulario en función de su id_formulario y desactiva el resto en función de su destinatario y código_centro.
+     * @param dni
+     * @author Pablo García Galán
+     */
     public function activarCuestionario($id_formulario, $destinatario, $codigo_centro)
     {
         Cuestionario::where([
@@ -1207,6 +1256,11 @@ class ControladorJefatura extends Controller
 
     }
 
+    /**
+     * Desactiva el formulario en función de su id_formulario.
+     * @param dni
+     * @author Pablo García Galán
+     */
     public function desactivarCuestionario($id_formulario)
     {
         Cuestionario::where([
@@ -1217,6 +1271,11 @@ class ControladorJefatura extends Controller
     }
 
 
+    /**
+     * Obtiene todos los cursos académicos existentes.
+     * @return Response JSON OK si no hay error.
+     * @author Pablo García Galán
+     */
     public function obtenerCursosAcademicos()
     {
         $cursosAcademicos = Matricula::select('curso_academico')->distinct()->get();
@@ -1224,7 +1283,12 @@ class ControladorJefatura extends Controller
     }
 
 
-
+    /**
+     * Obtiene las medias de todas las preguntas de tipo rango filtrando por curso_academico, destinatario y codigo_centro.
+     * @param Request
+     * @return Response JSON con las medias por pregunta.
+     * @author Pablo García Galán
+     */
     public function obtenerMediasCuestionariosRespondidos(Request $r){
 
        $respuestasFiltradas = CuestionarioRespondido::select(DB::raw('avg(preguntas_respondidas.respuesta) as value, preguntas_respondidas.pregunta as name'))->join('preguntas_respondidas', 'cuestionario_respondidos.id', '=', 'preguntas_respondidas.id_cuestionario_respondido')
@@ -1241,7 +1305,12 @@ class ControladorJefatura extends Controller
     }
 
 
-
+    /**
+     * Obtiene los cuestionarios respondidos filtrados por destinatarios, codigo_centro y curso_academico.
+     * @param Request
+     * @return Response JSON con cuestionarios.
+     * @author Pablo García Galán
+     */
     public function listarCuestionariosRespondidos(Request $r){
         try {
             $cuestionarios = CuestionarioRespondido::where([
@@ -1256,8 +1325,13 @@ class ControladorJefatura extends Controller
     }
 
 
+    /**
+     * Descarga cuestionario en .pdf por su id_cuestionario con librería DOMPDF
+     * @param Request
+     * @return Fichero con el cuestionario.
+     * @author Pablo García Galán
+     */
     public function descargarCuestionario($id_cuestionario){
-
 
         $datos = array();
         $cuestionario = CuestionarioRespondido::select('*')->where('id', '=', $id_cuestionario)->get();

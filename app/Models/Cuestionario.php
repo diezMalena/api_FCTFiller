@@ -6,10 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Migración para crear la tabla cuestionario
- *
- * Contiene el título e identificador de cada cuestionario registrado.
- *
+ * Modelo Cuestionario
  * @author Pablo García
  */
 class Cuestionario extends Model

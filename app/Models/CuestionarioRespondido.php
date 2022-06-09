@@ -4,7 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+/**
+ * Modelo CuestionarioRespondido
+ * @author Pablo García
+ */
 class CuestionarioRespondido extends Model
 {
     use HasFactory;

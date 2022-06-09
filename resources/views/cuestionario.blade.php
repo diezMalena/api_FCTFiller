@@ -6,18 +6,86 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Cuestionario FCT {{ $titulo }}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        .resumen-cuestionario-th{
+            border:1px solid #ececec;
+            padding:0 20px;
+            background-color:#225082;
+            color:#ececec;
+        }
+        .resumen-cuestionario-td{
+            border:1px solid #ececec;
+            padding:0 20px;
+            background-color: #5f7ea0;
+            color:#ececec;
+        }
+        .resumen-cuestionario-table{
+            margin: 20px auto;
+            padding: 20px auto;
+            width: 90%;
+            border:1px solid #225082;
+        }
+        .container-table{
+            background-color: #ececec;
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .table-cuestionario th{
+            background-color: #225082;
+            color:#ececec;
+            border:1px #ececec;
+        }
+
+    </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h2 class="text-center mb-3">ID Usuario: {{ $id_usuario }}</h2>
-        <h3 class="text-center mb-3">Título: {{ $titulo }}</h3>
-        <h3 class="text-center mb-3">Rol usuario: {{ $destinatario }}</h3>
-        <h3 class="text-center mb-3">Código centro: {{ $codigo_centro }}</h3>
-        <h3 class="text-center mb-3">Curso académico: {{ $curso_academico }}</h3>
-        <h3 class="text-center mb-3">Ciclo: {{ $ciclo }}</h3>
-        <table class="table table-bordered mb-5">
+        <h2>Cuestionario FCT</h2>
+        <div class="container-table">
+
+            <table class="resumen-cuestionario-table">
+
+                <tr class="resumen-cuestionario-tr">
+                    <th class="resumen-cuestionario-th">ID usuario</th>
+                    <td class="resumen-cuestionario-td">{{ $id_usuario }}</td>
+                </tr>
+
+                <tr>
+                    <th class="resumen-cuestionario-th"">Título</th>
+                    <td class="resumen-cuestionario-td">{{ $titulo }}</td>
+                </tr>
+
+                <tr>
+                    <th class="resumen-cuestionario-th">Destinatario</th>
+                    <td class="resumen-cuestionario-td">{{ $destinatario }}</td>
+                </tr>
+
+                <tr>
+                    <th class="resumen-cuestionario-th">Código Centro</th>
+                    <td class="resumen-cuestionario-td">{{ $codigo_centro }}</td>
+                </tr>
+
+                <tr>
+                    <th class="resumen-cuestionario-th">Curso Académico</th>
+                    <td class="resumen-cuestionario-td">{{ $curso_academico }}</td>
+                </tr>
+
+                <tr>
+                    <th class="resumen-cuestionario-th">Ciclo</th>
+                    <td class="resumen-cuestionario-td">{{ $ciclo }}</td>
+                </tr>
+
+            </table>
+
+        </div>
+
+        <hr>
+
+
+        <table class="table table-bordered mb-5 mt-5">
             <thead>
-                <tr class="table-danger">
+                <tr class="table-cuestionario">
                     <th scope="col">Pregunta</th>
                     <th scope="col">Respuesta</th>
                 </tr>
