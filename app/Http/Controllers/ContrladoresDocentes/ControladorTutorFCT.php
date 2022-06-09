@@ -305,7 +305,7 @@ class ControladorTutorFCT extends Controller
                     //Nombre del centro
                     $nombre_centro = CentroEstudios::select('nombre')->where('cod', $cod_centro[0]->cod_centro_estudios)->get();
                     //Año del curso
-                    $curso_anio=Carbon::createFromFormat('Y-m-d', Convenio::where('cod_convenio',$convenio[0]->cod_convenio )->select('fecha_ini')->get()->first()->fecha_ini)->year;
+                    $curso_anio = Carbon::createFromFormat('Y-m-d', Convenio::where('cod_convenio', $convenio[0]->cod_convenio)->select('fecha_ini')->get()->first()->fecha_ini)->year;
 
                     //Nombre del tutor
                     $nombre_tutor = Profesor::select('nombre', 'apellidos')->where('dni', $dni_tutor)->get();
@@ -405,9 +405,9 @@ class ControladorTutorFCT extends Controller
      * @param String $nombreZip es el nombre del zip
      * @return $nombreZip
      */
-    public function montarZip(String $rutaArchivo, ZipArchive $zip, String $nombreZip)
+    public function montarZip(String $rutaArchivo, ZipArchive $zip, String $rutaZip)
     {
-        if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
+        if ($zip->open(public_path($rutaZip), ZipArchive::CREATE)) {
 
             $files = File::files(public_path($rutaArchivo));
             foreach ($files as $value) {
@@ -416,7 +416,7 @@ class ControladorTutorFCT extends Controller
             }
             $zip->close();
         }
-        return $nombreZip;
+        return $rutaZip;
     }
 
     #endregion
@@ -444,49 +444,50 @@ class ControladorTutorFCT extends Controller
         #region ANEXO 0 - 0A
         $Anexos0 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo0', 'Anexo0A'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
         foreach ($Anexos0 as $a) {
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+            if (file_exists(public_path($a->ruta_anexo))) {
+                //Esto sirve para poner las barras segun el so que se este usando
+                $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-            $convenioAux = $rutaAux[2];
-            $convenioAux = explode('_', $convenioAux);
-            $convenioAux = explode('.', $convenioAux[1]);
-            $convenioAux = str_replace('-', DIRECTORY_SEPARATOR, $convenioAux[0]);
+                $convenioAux = $rutaAux[2];
+                $convenioAux = explode('_', $convenioAux);
+                $convenioAux = explode('.', $convenioAux[1]);
+                $convenioAux = str_replace('-', DIRECTORY_SEPARATOR, $convenioAux[0]);
 
-            $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
+                $id_empresa = Convenio::select('id_empresa')->where('cod_convenio', '=', $convenioAux)->get();
 
-            $empresa_nombre=[];
-            if(count($id_empresa) > 0){
-                $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
+                $empresa_nombre = [];
+                if (count($id_empresa) > 0) {
+                    $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa[0]->id_empresa)->get();
+                }
 
-            }
+                //FECHA
+                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(' ', $fechaAux[0]);
 
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            if (!$empresa_nombre) {
-                $datos[] = [
-                    'nombre' => $rutaAux[1],
-                    'codigo' => $rutaAux[2],
-                    'empresa' => ' ',
-                    'alumno' => ' ',
-                    'firma_empresa' => $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
-            } else {
-                $datos[] = [
-                    'nombre' => $rutaAux[1],
-                    'codigo' => $rutaAux[2],
-                    'empresa' => $empresa_nombre[0]->nombre,
-                    'alumno' => ' ',
-                    'firma_empresa' => $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
+                if (!$empresa_nombre) {
+                    $datos[] = [
+                        'nombre' => $rutaAux[1],
+                        'codigo' => $rutaAux[2],
+                        'empresa' => ' ',
+                        'alumno' => ' ',
+                        'firma_empresa' => $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                } else {
+                    $datos[] = [
+                        'nombre' => $rutaAux[1],
+                        'codigo' => $rutaAux[2],
+                        'empresa' => $empresa_nombre[0]->nombre,
+                        'alumno' => ' ',
+                        'firma_empresa' => $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                }
             }
         }
 
@@ -495,48 +496,49 @@ class ControladorTutorFCT extends Controller
         $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
 
         foreach ($Anexos1 as $a) {
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
-            $nombreArchivo = $rutaAux[2];
+            if (file_exists(public_path($a->ruta_anexo))) {
+                //Esto sirve para poner las barras segun el so que se este usando
+                $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+                $nombreArchivo = $rutaAux[2];
 
-            //Para sacar el id de la empresa
-            $id_empresa = explode('_', $rutaAux[2]);
-            $id_empresa = $id_empresa[1];
+                //Para sacar el id de la empresa
+                $id_empresa = explode('_', $rutaAux[2]);
+                $id_empresa = $id_empresa[1];
 
-            $empresa_nombre=[];
-            if($id_empresa){
-            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
+                $empresa_nombre = [];
+                if ($id_empresa) {
+                    $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
+                }
 
-            }
+                //FECHA
+                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(' ', $fechaAux[0]);
 
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            //meter ese nombre en un array asociativo
-            if (!$empresa_nombre) {
-                $datos[] = [
-                    'nombre' => 'Anexo1',
-                    'codigo' => $nombreArchivo,
-                    'empresa' => ' ',
-                    'alumno' => ' ',
-                    'firma_empresa' =>  $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
-            } else {
-                $datos[] = [
-                    'nombre' => 'Anexo1',
-                    'codigo' => $nombreArchivo,
-                    'empresa' => $empresa_nombre[0]->nombre,
-                    'alumno' => ' ',
-                    'firma_empresa' =>  $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
+                //meter ese nombre en un array asociativo
+                if (!$empresa_nombre) {
+                    $datos[] = [
+                        'nombre' => 'Anexo1',
+                        'codigo' => $nombreArchivo,
+                        'empresa' => ' ',
+                        'alumno' => ' ',
+                        'firma_empresa' =>  $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                } else {
+                    $datos[] = [
+                        'nombre' => 'Anexo1',
+                        'codigo' => $nombreArchivo,
+                        'empresa' => $empresa_nombre[0]->nombre,
+                        'alumno' => ' ',
+                        'firma_empresa' =>  $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                }
             }
         }
         #endregion
@@ -545,52 +547,53 @@ class ControladorTutorFCT extends Controller
         $AnexosIIYIV = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->whereIn('tipo_anexo', ['Anexo2', 'Anexo4'])->where('ruta_anexo', 'like', "$dni_tutor%")->get();
 
         foreach ($AnexosIIYIV as $a) {
+            if (file_exists(public_path($a->ruta_anexo))) {
+                //Esto sirve para poner las barras segun el so que se este usando
+                $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+                $nombreArchivo = $rutaAux[2];
 
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
-            $nombreArchivo = $rutaAux[2];
+                //Empresa ID y Nombre
+                $id_empresa = explode('_', $rutaAux[2]);
+                $id_empresa = $id_empresa[2];
 
-            //Empresa ID y Nombre
-            $id_empresa = explode('_', $rutaAux[2]);
-            $id_empresa = $id_empresa[2];
+                $empresa_nombre = [];
+                if ($id_empresa) {
+                    $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
+                }
 
-            $empresa_nombre=[];
-            if($id_empresa){
-            $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa)->get();
-            }
+                //DNI alumno
+                $dniAlumno = explode('_', $a->ruta_anexo);
+                $dniAlumno = $dniAlumno[1];
 
-            //DNI alumno
-            $dniAlumno = explode('_', $a->ruta_anexo);
-            $dniAlumno = $dniAlumno[1];
+                //FECHA
+                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(' ', $fechaAux[0]);
 
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            //meter ese nombre en un array asociativo
-            if (!$empresa_nombre) {
-                $datos[] = [
-                    'nombre' => $rutaAux[1],
-                    'codigo' => $rutaAux[2],
-                    'empresa' => ' ',
-                    'alumno' => $dniAlumno,
-                    'firma_empresa' =>  $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
-            } else {
-                $datos[] = [
-                    'nombre' => $rutaAux[1],
-                    'codigo' => $rutaAux[2],
-                    'empresa' => $empresa_nombre[0]->nombre,
-                    'alumno' => $dniAlumno,
-                    'firma_empresa' =>  $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
+                //meter ese nombre en un array asociativo
+                if (!$empresa_nombre) {
+                    $datos[] = [
+                        'nombre' => $rutaAux[1],
+                        'codigo' => $rutaAux[2],
+                        'empresa' => ' ',
+                        'alumno' => $dniAlumno,
+                        'firma_empresa' =>  $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                } else {
+                    $datos[] = [
+                        'nombre' => $rutaAux[1],
+                        'codigo' => $rutaAux[2],
+                        'empresa' => $empresa_nombre[0]->nombre,
+                        'alumno' => $dniAlumno,
+                        'firma_empresa' =>  $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                }
             }
         }
         #endregion
@@ -599,32 +602,33 @@ class ControladorTutorFCT extends Controller
         $AnexosXV = Anexo::select('tipo_anexo', 'firmado_alumno', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'AnexoXV')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
 
         foreach ($AnexosXV as $a) {
+            if (file_exists(public_path($a->ruta_anexo))) {
+                //Esto sirve para poner las barras segun el so que se este usando
+                $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-            //Esto sirve para poner las barras segun el so que se este usando
-            $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
-            $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+                //DNI alumno
+                $dniAlumno = explode('_', $a->ruta_anexo);
+                $dniAlumno = $dniAlumno[1];
 
-            //DNI alumno
-            $dniAlumno = explode('_', $a->ruta_anexo);
-            $dniAlumno = $dniAlumno[1];
+                $nombreArchivo = $rutaAux[2];
 
-            $nombreArchivo = $rutaAux[2];
+                //FECHA
+                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(' ', $fechaAux[0]);
 
-            //FECHA
-            $fechaAux = explode(':', $a->created_at);
-            $fechaAux = explode(' ', $fechaAux[0]);
-
-            //meter ese nombre en un array asociativo
-            $datos[] = [
-                'nombre' => 'AnexoXV',
-                'codigo' => $nombreArchivo,
-                'empresa' => ' ',
-                'alumno' => $dniAlumno,
-                'firma_empresa' => 0,
-                'firma_centro' => 0,
-                'firma_alumno' => $a->firmado_alumno,
-                'created_at' => $fechaAux[0]
-            ];
+                //meter ese nombre en un array asociativo
+                $datos[] = [
+                    'nombre' => 'AnexoXV',
+                    'codigo' => $nombreArchivo,
+                    'empresa' => ' ',
+                    'alumno' => $dniAlumno,
+                    'firma_empresa' => 0,
+                    'firma_centro' => 0,
+                    'firma_alumno' => $a->firmado_alumno,
+                    'created_at' => $fechaAux[0]
+                ];
+            }
         }
 
         #endregion
@@ -647,14 +651,15 @@ class ControladorTutorFCT extends Controller
 
         if (count($Anexos1) > 0) {
             foreach ($Anexos1 as $a) {
+                if (file_exists(public_path($a->ruta_anexo))) {
+                    $empresa = Empresa::select('nombre')->where('id', '=', $a->id_empresa)->get();
+                    $nombreArchivo = explode(DIRECTORY_SEPARATOR, $a->ruta_anexo);
 
-                $empresa = Empresa::select('nombre')->where('id', '=', $a->id_empresa)->get();
-                $nombreArchivo = explode(DIRECTORY_SEPARATOR, $a->ruta_anexo);
-
-                $datos[] = [
-                    'id_empresa' => $empresa[0]->nombre,
-                    'codigo' => $nombreArchivo[2]
-                ];
+                    $datos[] = [
+                        'id_empresa' => $empresa[0]->nombre,
+                        'codigo' => $nombreArchivo[2]
+                    ];
+                }
             }
 
             return response()->json($datos, 200);
@@ -676,7 +681,7 @@ class ControladorTutorFCT extends Controller
 
         if (count($AnexosIIYIV) > 0) {
             foreach ($AnexosIIYIV as $a) {
-                if (file_exists($a->ruta_anexo)) {
+                if (file_exists(public_path($a->ruta_anexo))) {
                     //Desgloso la ruta por la barra para extraer el nombre del archivo
                     $nombreArchivo = explode(DIRECTORY_SEPARATOR, $a->ruta_anexo);
                     //Saco el dni del alumno desglosando el nombre del archivo por la _ y obtengo su nombre y apellidos
