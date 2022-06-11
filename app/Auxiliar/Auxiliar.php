@@ -20,6 +20,7 @@ use App\Models\User;
 use Exception;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 
@@ -313,15 +314,22 @@ class Auxiliar
     public static function addUser(Model $model, string $perfil)
     {
         try {
+            $name = $model->nombre . ' ' . $model->apellidos;
             User::create([
+                'name' => $name,
                 'email' => $model->email,
                 'password' => $model->password,
-                'name' => $model->nombre . ' ' . $model->apellidos,
-                'perfil' => $perfil
+                'tipo' => $perfil
             ]);
             return 201; // Created
+        } catch (QueryException $ex) {
+            if ($ex->errorInfo[1] == 1062) {
+                return 409; // Conflicto (Registro ya creado)
+            } else {
+                return 400; // Error
+            }
         } catch (Exception $ex) {
-            return 409; // Conflict (ya existe el usuario)
+            return 500; // Error del servidor
         }
     }
 
