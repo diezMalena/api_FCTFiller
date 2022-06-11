@@ -24,7 +24,7 @@ class CreateSeguimiento extends Migration
             $table->unsignedBigInteger('orden_jornada');
             $table->date('fecha_jornada');
             $table->string('actividades');
-            $table->string('observaciones');
+            $table->string('observaciones')->nullable();
             $table->integer('tiempo_empleado');
             $table->foreign('id_fct')->references('id')->on('fct')->cascadeOnDelete()->cascadeOnUpdate();
             $table->timestamps();

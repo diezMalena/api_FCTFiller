@@ -41,6 +41,9 @@ class Parametros
 
     public const NUEVA_LINEA = '\r\n';
 
+    public const COEFICIENTE_KM_VEHICULO_PRIVADO = 0.12;
+
+
     #endregion
     /***********************************************************************/
 }
