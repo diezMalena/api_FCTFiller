@@ -29,5 +29,6 @@ class Empresa extends Model
         'es_privada'
     ];
     protected $table = 'empresa';
+    protected $hidden = ['created_at', 'updated_at'];
 
 }
