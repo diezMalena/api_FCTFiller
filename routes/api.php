@@ -212,6 +212,3 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
     Route::delete('/eliminarFacturaManutencion/{id}', [ControladorAlumno::class, 'eliminarFacturaManutencion']);
     /**********************************************************************/
 });
-
-
-Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);
