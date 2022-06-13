@@ -17,14 +17,12 @@ use Illuminate\Database\Eloquent\Model;
 class Grupo extends Model
 {
     use HasFactory;
-    /**
-     * DSB Eliminación del campo cod_familia_profesional, que se traspasa a la tabla GrupoFamilia,
-     * puesto que un grupo puede tener más de una familia profesional
-    */
+
     protected $fillable = ['cod', 'nombre_largo', 'nombre_ciclo', 'cod_nivel'];
     protected $primaryKey = ['cod'];
     protected $table = 'grupo';
     public $incrementing = false;
     protected $keyType = 'string';
+    protected $hidden = ['created_at', 'updated_at'];
 
 }

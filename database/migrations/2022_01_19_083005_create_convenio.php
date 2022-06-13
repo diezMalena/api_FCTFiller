@@ -25,11 +25,9 @@ class CreateConvenio extends Migration
             $table->string('cod_convenio')->primary();
             $table->string('cod_centro');
             $table->unsignedBigInteger('id_empresa');
-            $table->string('curso_academico_inicio');
-            $table->string('curso_academico_fin');
-            $table->integer('firmado_director');
-            $table->integer('firmado_empresa');
-            $table->string('ruta_anexo');
+            $table->date('fecha_ini')->nullable(true);
+            $table->date('fecha_fin')->nullable(true);
+            $table->string('ruta_anexo')->nullable(true);
             $table->foreign('id_empresa')->references('id')->on('empresa')->onDelete('cascade')->onUpdate('cascade');
             $table->foreign('cod_centro')->references('cod')->on('centro_estudios')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
