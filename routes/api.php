@@ -28,9 +28,11 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
     Route::get('listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
     /***********************************************************************/
+
     /****************************CRUD Alumnos*******************************/
     Route::get('descargarFotoPerfil/{dni}/{guid}', [ControladorJefatura::class, 'descargarFotoPerfil']);
     /***********************************************************************/
+
     /**************** CRUD Factura Transporte y Manutencion ****************/
     Route::get('descargarImagenTicketTransporte/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketTransporte']);
     Route::get('descargarImagenTicketManutencion/{id}/{guid}', [ControladorAlumno::class, 'descargarImagenTicketManutencion']);
@@ -42,15 +44,14 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::post('/getNotificacionesHeader', [ControladorGenerico::class, 'getNotificacionesHeader']);
     Route::post('/countNotificaciones', [ControladorGenerico::class, 'countNotificaciones']);
     Route::put('/cambiarLeido', [ControladorGenerico::class, 'cambiarLeido']);
-
-
-
-
     /***********************************************************************/
+
     /****************Obtener familias profesionales y ciclos****************/
     Route::get('/familias_profesionales', [ControladorGenerico::class, 'getFamiliasProfesionales']);
     Route::get('/ciclos/{familia?}', [ControladorGenerico::class, 'getCiclos']);
     /***********************************************************************/
+
+    Route::post('/descargar_anexo_ruta', [ControladorGenerico::class, 'descargarAnexoRuta']);
     Route::get('check_duplicado/{elemento}.{campo}={valor}', [ControladorGenerico::class, 'checkDuplicate']);
 });
 
@@ -153,11 +154,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_tutor']], function ()
     /**********************************************************************/
 });
 
-Route::middleware('auth:api')->any('prueba', [ControladorGenerico::class, 'prueba']);
-
-
 Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () {
-
     /************************SEGUIMIENTO - ANEXO III************************/
     Route::any('/addJornada', [ControladorAlumno::class, 'addJornada']);
     Route::any('/devolverDatosAlumno', [ControladorAlumno::class, 'devolverDatosAlumno']);
@@ -211,4 +208,13 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
     Route::post('/nuevaFacturaManutencion', [ControladorAlumno::class, 'nuevaFacturaManutencion']);
     Route::delete('/eliminarFacturaManutencion/{id}', [ControladorAlumno::class, 'eliminarFacturaManutencion']);
     /**********************************************************************/
+});
+
+/*
+|--------------------------------------------------------------------------
+| Rutas a las que pueden acceder sólo los alumnos
+|--------------------------------------------------------------------------
+*/
+Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
+    Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
 });

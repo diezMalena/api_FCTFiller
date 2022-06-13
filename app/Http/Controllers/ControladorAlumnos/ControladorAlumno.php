@@ -24,11 +24,14 @@ use Exception;
 use ZipArchive;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\AuxCursoAcademico;
 use App\Models\FacturaManutencion;
 use App\Models\FacturaTransporte;
 use App\Models\Gasto;
 use App\Models\GrupoFamilia;
+use App\Models\Tutoria;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -907,13 +910,13 @@ class ControladorAlumno extends Controller
     public function firmarAnexo($rutaParaBBDD, $extension)
     {
         if ($extension == 'pdf') {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
-                    'firmado_alumno' => 1,
-                ]);
+            Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                'firmado_alumno' => 1,
+            ]);
         } else {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
-                    'firmado_alumno' => 0,
-                ]);
+            Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                'firmado_alumno' => 0,
+            ]);
         }
     }
 
@@ -1098,7 +1101,11 @@ class ControladorAlumno extends Controller
     }
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
     #region Resumen de gastos del alumno - Anexo VI
+
+    /***********************************************************************/
     #region CRUD Tickets transporte
 
     /**
@@ -1151,8 +1158,8 @@ class ControladorAlumno extends Controller
                     ['dni_alumno', '=', $dni_alumno],
                     ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
                 ])->get();
-                 //Incluimos la URL de la foto del ticket de transporte
-                 foreach ($gasto->facturasManutencion as $factura) {
+                //Incluimos la URL de la foto del ticket de transporte
+                foreach ($gasto->facturasManutencion as $factura) {
                     $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
                 }
 
@@ -1354,7 +1361,9 @@ class ControladorAlumno extends Controller
         }
     }
     #endregion
+    /***********************************************************************/
 
+    /***********************************************************************/
     #region Funciones auxiliares CRUD Anexo VI:
 
     /**
@@ -1458,4 +1467,84 @@ class ControladorAlumno extends Controller
     }
     #endregion
     #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Confirmación de gastos - Anexo V
+
+    /**
+     * Actualiza los gastos en la base de datos y genera un Anexo V
+     *
+     * @param Request $req contiene los datos de los gastos de un alumno
+     * @return
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function confirmarGastos(Request $req)
+    {
+        try {
+            $curso = $req->curso_academico;
+            #region Actualización de gastos (confirmación)
+            Gasto::where('dni_alumno', $req->dni_alumno)->where('curso_academico', $curso)
+                ->update(['total_gastos' => $req->total_gastos]);
+            #endregion
+            #region Recolección de datos para rellenar el Anexo V
+            // Extraigo todos los objetos que se necesitan en el Anexo V
+            $controller = new ControladorTutorFCT();
+            $alumno = Alumno::where('dni', $req->dni_alumno)->first();
+            $fct = Fct::where('dni_alumno', $req->dni_alumno)->where('curso_academico', $curso)->first();
+            $matricula = Matricula::where('dni_alumno', $alumno->dni)->where('curso_academico', $curso)->first();
+            $centro = CentroEstudios::where('cod', $matricula->cod_centro)->first();
+            $director = $controller->getDirectorCentroEstudios($centro->cod);
+            $grupo = Grupo::where('cod', $matricula->cod_grupo)->first();
+            $familia = FamiliaProfesional::find(GrupoFamilia::where('cod_grupo', $grupo->cod)->first()->id_familia);
+            $tutor = Profesor::where('dni', Tutoria::where('cod_grupo', $grupo->cod)->where('curso_academico', $curso)->first()->dni_profesor)->first();
+            $empresa = Empresa::find($fct->id_empresa);
+
+            // Fabrico el vector con los datos y añado lo que falta
+            $datos = Auxiliar::modelsToArray(
+                [$alumno, $fct, $centro, $director, $grupo, $familia, $tutor, $empresa],
+                ['alumno', 'fct', 'centro', 'director', 'grupo', 'familia', 'tutor', 'empresa']
+            );
+            $fecha = Carbon::now();
+            $datos['dia'] = $fecha->day;
+            $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
+            $datos['anio'] = $fecha->year % 100;
+            $datos['gasto.total_gastos'] = $req->total_gastos;
+            #endregion
+            #region Generación del Anexo V
+            // Creo las rutas (y creo las carpetas) para el alumno y el tutor (que debe tener una copia)
+            $nombrePlantilla = 'Anexo5';
+            $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
+            Auxiliar::existeCarpeta(public_path($alumno->dni . DIRECTORY_SEPARATOR . $nombrePlantilla));
+            $rutaDestinoAlu = $alumno->dni . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . str_replace('/', '-', $curso) . '.docx';
+            Auxiliar::existeCarpeta(public_path($tutor->dni . DIRECTORY_SEPARATOR . $nombrePlantilla));
+            $rutaDestinoTutor = $tutor->dni . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $alumno->dni . '_' . str_replace('/', '-', $curso) . '.docx';
+
+            // Genero el Anexo V
+            $template = new TemplateProcessor($rutaOrigen);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestinoAlu);
+            // Y lo copio al tutor
+            copy($rutaDestinoAlu, $rutaDestinoTutor);
+            // Por último, introduzco los registros en la tabla de anexos
+            Anexo::where('ruta_anexo', $rutaDestinoAlu)->orWhere('ruta_anexo', $rutaDestinoTutor)->delete();
+            Anexo::create([
+                'tipo_anexo' => 'Anexo5',
+                'ruta_anexo' => $rutaDestinoAlu
+            ]);
+            Anexo::create([
+                'tipo_anexo' => 'Anexo5',
+                'ruta_anexo' => $rutaDestinoTutor
+            ]);
+            #endregion
+            return response()->json(['message' => 'Gastos confirmados', 'ruta_anexo' => $rutaDestinoAlu], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->getMessage(), 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
+    #endregion
+    /***********************************************************************/
 }
