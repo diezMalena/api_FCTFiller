@@ -84,7 +84,18 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
     Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
     Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
-     /***********************************************************************/
+    /***********************************************************************/
+
+    /******************************CRUD ALUMNOS******************************/
+    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
+    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
+    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
+    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
+    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
+    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
+    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
+    Route::get('/generarAnexoFEM05/{dni_alumno}', [ControladorJefatura::class, 'generarAnexoFEM05']);
+    /************************************************************************/
 });
 
 Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
@@ -123,21 +134,8 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
     Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
     /***********************************************************************/
-});
-
-Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     /*******************************SUBIDA CSV*******************************/
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
-    /************************************************************************/
-
-    /******************************CRUD ALUMNOS******************************/
-    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
-    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
-    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
-    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
-    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
-    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
-    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
     /************************************************************************/
 });
 
