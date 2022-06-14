@@ -1476,7 +1476,7 @@ class ControladorAlumno extends Controller
      * Actualiza los gastos en la base de datos y genera un Anexo V
      *
      * @param Request $req contiene los datos de los gastos de un alumno
-     * @return
+     * @return Response JSON con la ruta del anexo generado o un código de error
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function confirmarGastos(Request $req)
@@ -1527,7 +1527,7 @@ class ControladorAlumno extends Controller
             // Y lo copio al tutor
             copy($rutaDestinoAlu, $rutaDestinoTutor);
             // Por último, introduzco los registros en la tabla de anexos
-            Anexo::where('ruta_anexo', $rutaDestinoAlu)->orWhere('ruta_anexo', $rutaDestinoTutor)->delete();
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaDestinoAlu)[0] . '%')->orWhere('ruta_anexo', 'like', explode('.', $rutaDestinoTutor)[0] . '%')->delete();
             Anexo::create([
                 'tipo_anexo' => 'Anexo5',
                 'ruta_anexo' => $rutaDestinoAlu
@@ -1543,6 +1543,58 @@ class ControladorAlumno extends Controller
         } catch (Exception $ex) {
             return response()->json($ex->getMessage(), 500);
         }
+    }
+
+    public function subirAnexoV(Request $req)
+    {
+        try {
+            // Variables básicas
+            $dniAlu = $req->get('dni');
+            $curso = $req->get('curso_academico');
+            $dniTutor = $this->getTutorFromAlumnoCurso($dniAlu, $curso)->dni;
+
+            // Guardo los archivos
+            $carpetaAlu = $dniAlu . DIRECTORY_SEPARATOR . 'Anexo5';
+            $carpetaTutor = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo5';
+            $archivoAlu = 'Anexo5_' . str_replace('/', '-', $curso);
+            $archivoTutor = 'Anexo5_' . $dniAlu . '_' . str_replace('/', '-', $curso);
+            $rutaAlu = Auxiliar::guardarFichero($carpetaAlu, $archivoAlu, $req->get('file'));
+            $rutaTutor = Auxiliar::guardarFichero($carpetaTutor, $archivoTutor, $req->get('file'));
+            error_log($rutaAlu);
+            error_log($rutaTutor);
+
+            // Hago el update en la base de datos
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaAlu)[0] . '%')->update([
+                'ruta_anexo' => $rutaAlu,
+                'firmado_alumno' => 1
+            ]);
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaTutor)[0] . '%')->update([
+                'ruta_anexo' => $rutaTutor,
+                'firmado_alumno' => 1
+            ]);
+
+            return response()->json(['message' => 'Anexo firmado'], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->errorInfo[2], 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene el modelo del tutor a partir del DNI del alumno y un curso académico
+     *
+     * @param string $dni DNI de un alumno
+     * @param string $curso Curso académico
+     * @return Profesor Modelo con los datos del profesor
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    private function getTutorFromAlumnoCurso(string $dni, string $curso)
+    {
+        $matricula = Matricula::where('dni_alumno', $dni)->where('curso_academico', $curso)->first();
+        $grupo = Grupo::where('cod', $matricula->cod_grupo)->first();
+        $tutoria = Tutoria::where('curso_academico', $curso)->where('cod_grupo', $grupo->cod)->first();
+        return Profesor::where('dni', $tutoria->dni_profesor)->first();
     }
 
     #endregion

@@ -217,4 +217,5 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
 */
 Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
     Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
+    Route::post('/firmar_anexo_v', [ControladorAlumno::class, 'subirAnexoV']);
 });
