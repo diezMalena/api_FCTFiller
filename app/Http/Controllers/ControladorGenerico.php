@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Auxiliar\Auxiliar;
+use App\Models\Matricula;
 use App\Models\Ciudad;
 use App\Models\Notificacion;
 use App\Models\Semana;
