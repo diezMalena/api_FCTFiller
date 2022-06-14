@@ -1237,6 +1237,13 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    /**
+     * Actualiza un convenio existente
+     *
+     * @param Request $req Contiene todos los datos que llegan desde el cliente
+     * @return Response JSON con el código de respuesta del servidor
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
     public function updateConvenio(Request $req)
     {
         try {

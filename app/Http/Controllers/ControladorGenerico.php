@@ -88,7 +88,8 @@ class ControladorGenerico extends Controller
     #endregion
     /***********************************************************************/
 
-
+    #endregion
+    /***********************************************************************/
 
     /***********************************************************************/
     #region Gestión de Notificaciones
@@ -271,6 +272,22 @@ class ControladorGenerico extends Controller
             return response()->json($duplicado, 200);
         } catch (Exception $ex) {
             return response()->json(['message' => 'Error en la comprobación'], 500);
+        }
+    }
+
+    /**
+     * Descarga cualquier anexo a partir de la ruta que se le envía desde el cliente
+     *
+     * @param Request $req contiene la ruta del anexo
+     * @return Response señal de descarga o 404, si no se encuentra el archivo
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function descargarAnexoRuta(Request $req) {
+        $ruta_anexo = $req->get('ruta');
+        if (file_exists($ruta_anexo)) {
+            return response()->download($ruta_anexo);
+        } else {
+            return response()->json(['message' => 'Not Found'], 404);
         }
     }
 
