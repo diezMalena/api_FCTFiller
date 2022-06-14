@@ -451,7 +451,7 @@ class ControladorTutorFCT extends Controller
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
 
                $id_empresa = Convenio::select('id_empresa')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
-               error_log($id_empresa);
+
                 $empresa_nombre = [];
                 if ($id_empresa) {
                     $empresa_nombre = Empresa::select('nombre')->where('id', '=', $id_empresa->id_empresa)->get();
