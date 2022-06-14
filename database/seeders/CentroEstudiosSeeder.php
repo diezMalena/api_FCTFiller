@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Auxiliar\Auxiliar;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
 use App\Models\RolProfesorAsignado;
+use App\Models\User;
 use Database\Factories\ProfesorFactory;
 use Database\Factories\RolProfesorAsignadoFactory;
 use Illuminate\Database\Seeder;
@@ -53,6 +55,13 @@ class CentroEstudiosSeeder extends Seeder
                         'apellidos' => 'Santos Cabaña',
                         'cod_centro_estudios' => $centro->cod,
                     ]);
+                    User::create([
+                        'name' => 'Ana Belén Santos Cabaña',
+                        'email' => 'anabelen@cifpvirgendegracia.es',
+                        'password' => Hash::make('superman'),
+                        'tipo' => 'profesor'
+                    ]);
+                    // Auxiliar::addUser($profe, "profesor");
                 } else {
                     $profe = Profesor::factory()->create();
                 }

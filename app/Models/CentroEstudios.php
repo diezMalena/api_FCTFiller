@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 class CentroEstudios extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'cod',
         'cif',
@@ -32,5 +33,5 @@ class CentroEstudios extends Model
     protected $primaryKey = 'cod';
     public $incrementing = false;
     protected $keyType = 'string';
-
+    protected $hidden = ['created_at', 'updated_at'];
 }

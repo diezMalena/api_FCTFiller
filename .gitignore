@@ -7,6 +7,7 @@
 /public/*
 !/public/tmp/csv
 !/public/anexos
+.env
 .env.backup
 .phpunit.result.cache
 docker-compose.override.yml
@@ -16,3 +17,12 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+
+# public
+public/*
+public/*/
+!public/anexos/
+!public/.htaccess
+!public/favicon.ico
+!public/index.php
+!public/robots.txt
