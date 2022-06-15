@@ -4,6 +4,9 @@
 /storage/*.key
 /vendor
 /tmp
+/public/*
+!/public/tmp/csv
+!/public/anexos
 .env
 .env.backup
 .phpunit.result.cache
