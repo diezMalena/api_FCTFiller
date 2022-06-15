@@ -23,7 +23,7 @@ Route::group(['middleware' => ['Cors']], function () {
 | Rutas genéricas
 |--------------------------------------------------------------------------
 */
-Route::group(['middleware' => ['Cors']], function () {
+Route::group(['middleware' => ['Cors', 'auth:api']], function () {
     /*********************Obtener provincias y ciudades*********************/
     Route::get('listarProvincias', [ControladorGenerico::class, 'listarProvincias']);
     Route::get('listarCiudades/{provincia}', [ControladorGenerico::class, 'listarCiudades']);
