@@ -34,7 +34,7 @@ class CentroEstudiosSeeder extends Seeder
                     'direccion' => 'Paseo de San Gregorio, 82-84',
                     'cp' => '13500',
                     'telefono' => '926426250',
-                    'email' => 'secretaria@cifpvirgendegracia.com'
+                    'email' => 'secretaria@cifpvirgendegracia.es'
                 ]);
             } else {
                 $centro = CentroEstudios::factory()->create();
@@ -48,17 +48,17 @@ class CentroEstudiosSeeder extends Seeder
                 //Creo el profesor
                 if ($i == 0 && $j == 0) {
                     $profe = Profesor::create([
-                        'dni' => '1A',
-                        'email' => 'anabelen@cifpvirgendegracia.es',
+                        'dni' => $this->faker->unique()->dni(),
+                        'email' => 'director@cifpvirgendegracia.es',
                         'password' => Hash::make('superman'),
-                        'nombre' => 'Ana Belén',
-                        'apellidos' => 'Santos Cabaña',
+                        'nombre' => 'Director',
+                        'apellidos' => 'del Centro',
                         'cod_centro_estudios' => $centro->cod,
                     ]);
                     User::create([
-                        'name' => 'Ana Belén Santos Cabaña',
-                        'email' => 'anabelen@cifpvirgendegracia.es',
-                        'password' => Hash::make('superman'),
+                        'name' => 'Director',
+                        'email' => 'director@cifpvirgendegracia.es',
+                        'password' => Hash::make('Superman_22'),
                         'tipo' => 'profesor'
                     ]);
                     // Auxiliar::addUser($profe, "profesor");
