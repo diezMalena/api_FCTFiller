@@ -1569,12 +1569,13 @@ class ControladorTutorFCT extends Controller
 
     public function gestionGastosProfesor(Request $r)
     {
-        try {
-            $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
-            return response()->json($gastos, 200);
-        } catch (Exception $ex) {
-            return response()->json($ex->getMessage(), 400);
-        }
+        return response()->json('hola');
+        // try {
+        //     $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
+        //     return response()->json($gastos, 200);
+        // } catch (Exception $ex) {
+        //     return response()->json($ex->getMessage(), 400);
+        // }
     }
 
 
