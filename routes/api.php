@@ -5,6 +5,7 @@ use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Http\Controllers\ControladorEmpresas\ControladorResponCentro;
 use App\Http\Controllers\ControladorGenerico;
+use App\Http\Controllers\GastosProfesor;
 use Illuminate\Support\Facades\Route;
 
 
@@ -102,10 +103,10 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     //----Listar anexos
     Route::get('/solicitarAnexosFct/{dni_tutor}', [ControladorTutorFCT::class, 'listarAnexos1']);
     /***********************CRUD GASTOS ALUMNOS TUTOR***********************/
-    Route::get('/gestionGastosProfesor', [ControladorTutorFCT::class, 'gestionGastosProfesor']);
-    Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);
-    Route::post('/nuevoAlumnoGestionGastos', [ControladorTutorFCT::class, 'nuevoAlumnoGestionGastos']);
-    Route::get('/descargarAnexoVI', [ControladorTutorFCT::class, 'descargarAnexoVI']);
+    Route::get('/gestionGastosProfesor', [GastosProfesor::class, 'gestionGastosProfesor']);
+    Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [GastosProfesor::class, 'eliminarAlumnoDeGastos']);
+    Route::post('/nuevoAlumnoGestionGastos', [GastosProfesor::class, 'nuevoAlumnoGestionGastos']);
+    Route::get('/descargarAnexoVI', [GastosProfesor::class, 'descargarAnexoVI']);
     /***********************************************************************/
 
 });
