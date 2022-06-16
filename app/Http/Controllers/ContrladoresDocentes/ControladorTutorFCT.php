@@ -450,7 +450,7 @@ class ControladorTutorFCT extends Controller
                 $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-               $id_empresa = Convenio::select('id_empresa')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
+                $id_empresa = Convenio::select('id_empresa')->where('ruta_anexo', 'like', "$a->ruta_anexo")->first();
 
                 $empresa_nombre = [];
                 if ($id_empresa) {
@@ -1477,12 +1477,12 @@ class ControladorTutorFCT extends Controller
     {
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
 
-        $grupos[] =[
-            "cod_grupo" =>"Mis Anexos",
+        $grupos[] = [
+            "cod_grupo" => "Mis Anexos",
             "dni_profesor" => $dni
         ];
 
-        foreach(Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get() as $g){
+        foreach (Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get() as $g) {
             $grupos[] = $g;
         }
 
@@ -1569,8 +1569,12 @@ class ControladorTutorFCT extends Controller
 
     public function gestionGastosProfesor(Request $r)
     {
-        $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
-        return response()->json($gastos, 200);
+        try {
+            $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
+            return response()->json($gastos, 200);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 400);
+        }
     }
 
 
