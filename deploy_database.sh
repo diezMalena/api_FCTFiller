@@ -1,3 +1,6 @@
+#!/bin/bash
+# Este script despliega la base de datos, migrando las tablas e inicializando los datos básicos
+# Migraciones:
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083043_create_rol_empresa.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_083053_create_rol_profesor.php
 php artisan migrate:refresh --path=database/migrations/2022_01_19_082914_create_empresa.php
@@ -38,3 +41,25 @@ php artisan migrate:refresh --path=database/migrations/2022_05_10_182019_create_
 php artisan migrate:refresh --path=database/migrations/2022_05_26_170253_update_cuestionarios.php
 php artisan migrate:refresh --path=database/migrations/2022_05_26_171659_update_cuestionario_respondidos.php
 php artisan migrate:refresh --path=database/migrations/2022_06_01_183938_update_cuestionario_activo.php
+php artisan migrate:refresh --path=database/migrations/2022_06_16_181821_create_ciudad.php
+php artisan migrate
+
+# Seeders:
+# Tablas de roles
+php artisan db:seed --class=RolesEstudioSeeder
+php artisan db:seed --class=RolesEmpresaSeeder
+
+# Tablas de grupos, familias profesionales, y niveles de estudios
+php artisan db:seed --class=NivelEstudiosSeeder
+php artisan db:seed --class=FamiliaProfesionalSeeder
+php artisan db:seed --class=GrupoSeeder
+php artisan db:seed --class=GrupoFamiliaSeeder
+
+# Tabla de centro de estudios
+php artisan db:seed --class=CentroEstudiosSeeder
+php artisan db:seed --class=EmpresaSeeder
+
+# Tabla de ciudades
+php artisan db:seed --class=CiudadSeeder
+
+php artisan passport:install
