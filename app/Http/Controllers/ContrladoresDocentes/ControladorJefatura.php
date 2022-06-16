@@ -8,15 +8,21 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use App\Models\RolProfesorAsignado;
 use App\Models\Alumno;
+use App\Models\Fct;
 use App\Models\CentroEstudios;
 use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\OfertaGrupo;
 use App\Models\Profesor;
 use App\Models\Tutoria;
+use App\Models\Cuestionario;
+use App\Models\CuestionarioRespondido;
+use App\Models\PreguntasCuestionario;
+use App\Models\PreguntasRespondidas;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ControladorJefatura extends Controller
 {
@@ -848,15 +854,15 @@ class ControladorJefatura extends Controller
                     'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
                     'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
                     'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
-                    'alumno.cuenta_bancaria',
+                    'alumno.cuenta_bancaria', 'alumno.curriculum',
                     'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
                     'matricula.cod_centro as matricula_cod_centro'
                 ])
                 ->get();
 
             foreach ($listado as $alumno) {
-                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
-                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
             }
 
             return response()->json($listado, 200);
@@ -889,7 +895,7 @@ class ControladorJefatura extends Controller
                 $alumno->password = '';
 
                 //Foto y CV
-                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
+                $alumno->foto = Auxiliar::obtenerURLServidor() . '/api/descargarFotoPerfil/' . $alumno->dni . '/' . uniqid();
                 $alumno->curriculum = Auxiliar::obtenerURLServidor() . '/api/jefatura/descargarCurriculum/' . $alumno->dni . '/' . uniqid();
 
                 //Incorporación del ciclo formativo al que pertenece
@@ -936,9 +942,10 @@ class ControladorJefatura extends Controller
             ]);
             Auxiliar::addUser($alu, 'alumno');
 
+            $matricula_cod_centro = Auxiliar::obtenerCentroPorDNIProfesor(Profesor::where('email', '=', $r->user()->email)->get()->first()->dni);
             Matricula::create([
                 'cod' => $r->matricula_cod,
-                'cod_centro' => $r->matricula_cod_centro,
+                'cod_centro' => $matricula_cod_centro,
                 'dni_alumno' => $r->dni,
                 'cod_grupo' => $r->matricula_cod_grupo,
                 'curso_academico' => Auxiliar::obtenerCursoAcademico()
@@ -946,11 +953,14 @@ class ControladorJefatura extends Controller
 
             return response()->json(['message' => 'Alumno creado correctamente'], 200);
         } catch (Exception $ex) {
-            if (str_contains($ex->getMessage(), 'Integrity')) {
-                return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
-            } else {
-                return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
-            }
+            // if (str_contains($ex->getMessage(), 'Integrity')) {
+            //     return response()->json(['mensaje' => 'Este alumno ya se ha registrado en la aplicación'], 400);
+            // } else {
+            //     return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+            // }
+
+                return response()->json(['mensaje' => $ex->getMessage()], 400);
+
         }
     }
 
@@ -963,7 +973,6 @@ class ControladorJefatura extends Controller
     public function modificarAlumno(Request $r)
     {
         try {
-            $email = '';
             if (strlen($r->dni_antiguo) != 0) {
                 $foto = '';
                 $curriculum = '';
@@ -971,27 +980,25 @@ class ControladorJefatura extends Controller
                 //Si la foto o el curriculum contienen su parte de URL, no se guardan en la base de datos;
                 //se recoge entonces el path original que tuvieran
                 if (!str_contains($r->foto, "descargarFoto")) {
-                    $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
                     $fotoAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
                     if (strlen($fotoAnterior) != 0) {
                         Auxiliar::borrarFichero($fotoAnterior);
                     }
+                    $foto = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'fotoPerfil', $r->foto);
                 } else {
                     $foto = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->foto;
                 }
 
                 if (!str_contains($r->curriculum, "descargarCurriculum")) {
-                    $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
                     $cvAnterior = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
                     if (strlen($cvAnterior) != 0) {
                         Auxiliar::borrarFichero($cvAnterior);
                     }
+                    $curriculum = Auxiliar::guardarFichero(public_path() . DIRECTORY_SEPARATOR .  $r->dni, 'CV', $r->curriculum);
                 } else {
                     $curriculum = Alumno::where('dni', '=', $r->dni_antiguo)->get()->first()->curriculum;
                 }
 
-
-                $email = Alumno::find($r->dni_antiguo)->email;
                 Alumno::where('dni', '=', $r->dni_antiguo)->update([
                     'dni' => $r->dni,
                     'cod_alumno' => $r->cod_alumno,
@@ -1012,7 +1019,8 @@ class ControladorJefatura extends Controller
                         'password' => Hash::make($r->password)
                     ]);
                 }
-                Auxiliar::addUser(Alumno::find($r->dni), $email);
+
+                Auxiliar::updateUser(Alumno::where('dni', '=', $r->dni)->get()->first(), $r->email);
 
                 Matricula::where([
                     ['dni_alumno', '=', $r->dni],
@@ -1072,15 +1080,13 @@ class ControladorJefatura extends Controller
     /**
      * Devuelve un objeto File para que descarga el curriculum
      * @param string $dni DNI del alumno del que se quiere obtener el curriculum
-     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
-     * el cambio de foto si se actualiza.
      * @return File Objeto File para que la foto sea accesible desde el lado cliente
      */
-    public function descargarCurriculum($dni, $guid)
+    public function descargarCurriculum($dni)
     {
         $pathCV = Alumno::where('dni', '=', $dni)->select('curriculum')->get()->first()->curriculum;
         if ($pathCV) {
-            return response()->file($pathCV);
+            return response()->download($pathCV);
         } else {
             return response()->json(['mensaje' => 'Error, fichero no encontrado'], 404);
         }
@@ -1099,4 +1105,360 @@ class ControladorJefatura extends Controller
 
     #endregion
     /***********************************************************************/
+
+
+
+    /***********************************************************************/
+    #region cuestionarios
+
+    /**
+     * Guarda un nuevo cuestionario con los valores pasados en la request
+     * @param Request
+     * @return Response JSON con cuestionario y sus preguntas.
+     * @author Pablo García Galán
+     */
+    public function crearCuestionario(Request $r)
+    {
+        $cuestionario = Cuestionario::create([
+            'titulo' => $r->titulo,
+            'destinatario' => $r->destinatario,
+            'codigo_centro' => $r->codigo_centro,
+        ]);
+
+        foreach ($r->preguntas as $preg) {
+            PreguntasCuestionario::create(['id_cuestionario' => $cuestionario->id ,'tipo' => $preg['tipo'], 'pregunta' => $preg['pregunta']]);
+        }
+        return response()->json(['message' => 'Formulario creado con éxito'], 200);
+    }
+
+
+
+
+    /**
+     * Se obitnene el cuestionario activo en función del destinatario y del código del centro.
+     * @param destinatario
+     * @param codigo_centro
+     * @return Response JSON con cuestionario y sus preguntas.
+     * @author Pablo García Galán
+     */
+    public function obtenerCuestionario($destinatario, $codigo_centro)
+    {
+        $datos = array();
+        $cuestionario = Cuestionario::where([
+                ['activo', true],
+                ['destinatario', $destinatario],
+                ['codigo_centro', $codigo_centro]
+            ])->get();
+
+        foreach (PreguntasCuestionario::where('id_cuestionario', '=', $cuestionario[0]->id)->get() as $p) {
+            $datos[] = $p;
+        }
+
+        $result = array("id"=>$cuestionario[0]->id , "titulo"=>$cuestionario[0]->titulo  , "destinatario"=>$cuestionario[0]->destinatario  , "preguntas"=>$datos , "activo"=>$cuestionario[0]->activo);
+
+        if ($result) {
+            return response()->json($result, 200);
+        } else {
+            return response()->json([
+                'message' => 'Error al obtener cuestionario'
+            ], 401);
+        }
+    }
+
+
+    /**
+     * Se obitnene un cuestionario en función de su id.
+     * @param id
+     * @return Response JSON con cuestionario y sus preguntas.
+     * @author Pablo García Galán
+     */
+    public function obtenerCuestionarioEdicion($id)
+    {
+        $datos = array();
+        $cuestionario = Cuestionario::select('*')->where('id', '=', $id)->get();
+
+        foreach (PreguntasCuestionario::where('id_cuestionario', '=', $cuestionario[0]->id)->get() as $p) {
+            $datos[] = $p;
+        }
+
+        $result = array("id"=>$cuestionario[0]->id , "titulo"=>$cuestionario[0]->titulo  , "destinatario"=>$cuestionario[0]->destinatario  , "preguntas"=>$datos );
+
+        if ($result) {
+            return response()->json($result, 200);
+        } else {
+            return response()->json([
+                'message' => 'Error al obtener cuestionario'
+            ], 401);
+        }
+    }
+
+    /**
+     * Almacena en base de datos un cuestionario con sus preguntas y respuestas.
+     * @param id del formulario.
+     * @return Response OK si no hay errores.
+     * @author Pablo García Galán
+     */
+    public function crearCuestionarioRespondido(Request $r)
+    {
+        $cuestionarioRespondido = CuestionarioRespondido::create([
+            'titulo' => $r->titulo,
+            'destinatario' => $r->destinatario,
+            'id_usuario' => $r->id_usuario,
+            'codigo_centro' => $r->codigo_centro,
+            'ciclo' => $r->ciclo,
+            'curso_academico' => $r->curso_academico,
+            'dni_tutor_empresa' =>$r->dni_tutor_empresa,
+        ]);
+        foreach ($r->respuestas as $resp) {
+            PreguntasRespondidas::create(['id_cuestionario_respondido' => $cuestionarioRespondido->id ,'tipo' => $resp['tipo'], 'pregunta' => $resp['pregunta'], 'respuesta' => $resp['respuesta']]);
+        }
+        return response()->json(['message' => 'Formulario guardado con éxito'], 200);
+    }
+
+
+    /**
+     * Obtiene cuestionario respondido para ese id_usuario.
+     * @param id del usuario.
+     * @return Response JSON con cuestionario o error.
+     * @author Pablo García Galán
+     */
+    public function verificarCuestionarioRespondido($id_usuario)
+    {
+        try {
+            $cuestionarios = CuestionarioRespondido::where('id_usuario', '=', $id_usuario)->get();
+            return response()->json($cuestionarios, 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * Obtiene los cuestionarios respondido para ese código centro.
+     * @param codigo_centro
+     * @return Response JSON con cuestionarios.
+     * @author Pablo García Galán
+     */
+    public function listarCuestionarios($codigo_centro)
+    {
+        $cuestionarios = Cuestionario::where('codigo_centro', '=', $codigo_centro)->get();
+        return response()->json($cuestionarios, 200);
+    }
+
+    /**
+     * Elimina cuestionario con ese id.
+     * @param id
+     * @return Response JSON OK o error.
+     * @author Pablo García Galán
+     */
+    public function eliminarCuestionario($id)
+    {
+        try {
+            Cuestionario::where('id', '=', $id)->delete();
+            return response()->json(['mensaje' => 'Cuestionario borrado correctamente'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Actualiza el cuestionario.
+     * @param Request
+     * @return Response JSON OK o error.
+     * @author Pablo García Galán
+     */
+    public function editarCuestionario(Request $r)
+    {
+        try {
+            Cuestionario::where('id', '=', $r->id)->update(['destinatario' => $r->destinatario, 'titulo' => $r->titulo]);
+            PreguntasCuestionario::where('id_cuestionario', '=', $r->id)->delete();
+            foreach ($r->preguntas as $preg) {
+                PreguntasCuestionario::create(['id_cuestionario' => $r->id ,'tipo' => $preg['tipo'], 'pregunta' => $preg['pregunta']]);
+            }
+            return response()->json(['mensaje' => 'Cuestionario editado correctamente'], 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Obtiene los cuestionarios para los alumnos asociados a un tutor de empresa en función de su dni y el curso académico.
+     * @param dni
+     * @return Response JSON OK si no hay error.
+     * @author Pablo García Galán
+     */
+    public function obtenerCuestionariosTutorEmpresaAlumnos($dni)
+    {
+        $fct = Fct::where('dni_tutor_empresa', '=', $dni)->get();
+        $datos=[];
+
+        foreach ($fct as $registroFct) {
+
+            $cuestionarioRespondido = CuestionarioRespondido::where([
+                ['dni_tutor_empresa', $dni],
+                ['id_usuario', $registroFct->dni_alumno],
+                ['curso_academico', $registroFct->curso_academico],
+                ['destinatario', 'empresa']
+            ])->get();
+
+            $respondido=false;
+
+            if(($cuestionarioRespondido) && (count($cuestionarioRespondido)>0)){
+                $respondido=true;
+            }
+
+            $cod_centro='';
+            $cod_grupo='';
+
+            $matricula = Matricula::where('dni_alumno', '=', $registroFct->dni_alumno)
+                ->select(['*'])
+                ->first();
+                if ($matricula){
+                    $cod_centro=$matricula->cod_centro;
+                    $cod_grupo=$matricula->cod_grupo;
+                }
+
+            $registroAlumno = array(
+                'dni_alumno'=> $registroFct->dni_alumno,
+                'curso_academico'=> $registroFct->curso_academico,
+                'cod_centro'=> $cod_centro,
+                'cod_grupo'=> $cod_grupo,
+                'dni_alumno'=> $registroFct->dni_alumno,
+                'respondido'=> $respondido);
+
+            array_push($datos,$registroAlumno);
+        }
+
+        return response()->json($datos, 200);
+    }
+
+    /**
+     * Activa el formulario en función de su id_formulario y desactiva el resto en función de su destinatario y código_centro.
+     * @param dni
+     * @author Pablo García Galán
+     */
+    public function activarCuestionario($id_formulario, $destinatario, $codigo_centro)
+    {
+        Cuestionario::where([
+            ['destinatario', '=',$destinatario],
+            ['codigo_centro', '=', $codigo_centro]
+            ])->update([
+            'activo' => false
+        ]);
+
+        Cuestionario::where([
+            ['id', '=',$id_formulario],
+            ])->update([
+            'activo' => true
+        ]);
+
+    }
+
+    /**
+     * Desactiva el formulario en función de su id_formulario.
+     * @param dni
+     * @author Pablo García Galán
+     */
+    public function desactivarCuestionario($id_formulario)
+    {
+        Cuestionario::where([
+            ['id', '=',$id_formulario],
+            ])->update([
+            'activo' => false
+        ]);
+    }
+
+
+    /**
+     * Obtiene todos los cursos académicos existentes.
+     * @return Response JSON OK si no hay error.
+     * @author Pablo García Galán
+     */
+    public function obtenerCursosAcademicos()
+    {
+        $cursosAcademicos = Matricula::select('curso_academico')->distinct()->get();
+        return response()->json($cursosAcademicos, 200);
+    }
+
+
+    /**
+     * Obtiene las medias de todas las preguntas de tipo rango filtrando por curso_academico, destinatario y codigo_centro.
+     * @param Request
+     * @return Response JSON con las medias por pregunta.
+     * @author Pablo García Galán
+     */
+    public function obtenerMediasCuestionariosRespondidos(Request $r){
+
+       $respuestasFiltradas = CuestionarioRespondido::select(DB::raw('avg(preguntas_respondidas.respuesta) as value, preguntas_respondidas.pregunta as name'))->join('preguntas_respondidas', 'cuestionario_respondidos.id', '=', 'preguntas_respondidas.id_cuestionario_respondido')
+            ->where([
+                ['cuestionario_respondidos.curso_academico', '=', $r->curso_academico],
+                ['cuestionario_respondidos.destinatario', '=', $r->destinatario],
+                ['cuestionario_respondidos.codigo_centro', '=', $r->codigo_centro],
+                ['preguntas_respondidas.tipo', '=', 'rango'],
+            ])
+            ->groupBy('preguntas_respondidas.pregunta')
+            ->get();
+
+            return response()->json($respuestasFiltradas, 200);
+    }
+
+
+    /**
+     * Obtiene los cuestionarios respondidos filtrados por destinatarios, codigo_centro y curso_academico.
+     * @param Request
+     * @return Response JSON con cuestionarios.
+     * @author Pablo García Galán
+     */
+    public function listarCuestionariosRespondidos(Request $r){
+        try {
+            $cuestionarios = CuestionarioRespondido::where([
+            ['destinatario', '=',$r->destinatario],
+            ['codigo_centro', '=', $r->codigo_centro],
+            ['curso_academico', '=', $r->curso_academico]
+            ])->get();
+            return response()->json($cuestionarios, 200);
+        } catch (Exception $ex) {
+            return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * Descarga cuestionario en .pdf por su id_cuestionario con librería DOMPDF
+     * @param Request
+     * @return Fichero con el cuestionario.
+     * @author Pablo García Galán
+     */
+    public function descargarCuestionario($id_cuestionario){
+
+        $datos = array();
+        $cuestionario = CuestionarioRespondido::select('*')->where('id', '=', $id_cuestionario)->get();
+
+        foreach (PreguntasRespondidas::where('id_cuestionario_respondido', '=', $cuestionario[0]->id)->get() as $p) {
+            $datos[] = $p;
+        }
+
+        $result = array("id"=>$cuestionario[0]->id , "titulo"=>$cuestionario[0]->titulo  , "destinatario"=>$cuestionario[0]->destinatario  , "preguntas"=>$datos );
+
+
+        $pdf = PDF::loadView('cuestionario', [
+            'datos' =>$datos,
+            'titulo' =>$cuestionario[0]->titulo,
+            'id_usuario' =>$cuestionario[0]->id_usuario,
+            'destinatario' =>$cuestionario[0]->destinatario,
+            'codigo_centro' =>$cuestionario[0]->codigo_centro,
+            'ciclo' =>$cuestionario[0]->ciclo,
+            'curso_academico' =>$cuestionario[0]->curso_academico,
+        ]);
+        return $pdf->download('pdf_file.pdf');
+
+    }
+
+    #endregion
+    /***********************************************************************/
+
+
+
+
+
 }
