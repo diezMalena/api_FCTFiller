@@ -22,7 +22,6 @@ else
         cp .env.example .env
 fi
 php artisan key:generate -n
-rm ../update.sh && cp update.sh ../update.sh
 
 if [ -d $RUTA_CLIENTE ]; then
         cd $RUTA_CLIENTE
@@ -44,3 +43,5 @@ ng build
 chmod 775 ${RUTA_APLICACION}/* -R
 chgrp www-data ${RUTA_APLICACION}/* -R
 chown fctfiller ${RUTA_APLICACION}/* -R
+
+rm ${RUTA_APLICACION}/update.sh --verbose && cp ${RUTA_API}/update.sh ${RUTA_APLICACION}/update.sh --verbose
