@@ -22,7 +22,7 @@ else
         cp .env.example .env
 fi
 php artisan key:generate -n
-cp update.sh ../update.sh
+rm ../update.sh && cp update.sh ../update.sh
 
 if [ -d $RUTA_CLIENTE ]; then
         cd $RUTA_CLIENTE
