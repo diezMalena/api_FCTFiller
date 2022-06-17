@@ -87,9 +87,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
     Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
      /***********************************************************************/
-});
 
-Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     /***********************ASIGNACIÓN ALUMNO-EMPRESA***********************/
     Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
@@ -108,7 +106,6 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::post('/nuevoAlumnoGestionGastos', [GastosProfesor::class, 'nuevoAlumnoGestionGastos']);
     Route::get('/descargarAnexoVI', [GastosProfesor::class, 'descargarAnexoVI']);
     /***********************************************************************/
-
 });
 
 /*
