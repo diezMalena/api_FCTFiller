@@ -22,7 +22,7 @@ class CreateSemanas extends Migration
             $table->integer('firmado_tutor_empresa')->default(0);
             $table->string('ruta_hoja')->default('');
             $table->foreign('id_fct')->references('id_fct')->on('seguimiento')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->foreign('id_quinto_dia')->references('id')->on('seguimiento')->cascadeOnUpdate();
+            $table->foreign('id_quinto_dia')->references('id')->on('seguimiento')->cascadeOnDelete()->cascadeOnUpdate();
 
             $table->timestamps();
         });
