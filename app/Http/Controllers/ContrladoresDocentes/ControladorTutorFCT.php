@@ -28,11 +28,13 @@ use App\Models\Matricula;
 use App\Models\EmpresaGrupo;
 use App\Models\FacturaManutencion;
 use App\Models\FacturaTransporte;
+use App\Models\FamiliaProfesional;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use Carbon\Carbon;
 use App\Models\Grupo;
+use App\Models\GrupoFamilia;
 use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -450,7 +452,7 @@ class ControladorTutorFCT extends Controller
                 $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
 
-               $id_empresa = Convenio::select('id_empresa')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
+                $id_empresa = Convenio::select('id_empresa')->where('ruta_anexo', 'like', "$a->ruta_anexo")->first();
 
                 $empresa_nombre = [];
                 if ($id_empresa) {
@@ -1477,12 +1479,12 @@ class ControladorTutorFCT extends Controller
     {
         $centroEstudios = Profesor::select('cod_centro_estudios')->where('dni', '=', $dni)->get();
 
-        $grupos[] =[
-            "cod_grupo" =>"Mis Anexos",
+        $grupos[] = [
+            "cod_grupo" => "Mis Anexos",
             "dni_profesor" => $dni
         ];
 
-        foreach(Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get() as $g){
+        foreach (Tutoria::select('cod_grupo', 'dni_profesor')->where('cod_centro', '=', $centroEstudios[0]->cod_centro_estudios)->get() as $g) {
             $grupos[] = $g;
         }
 
@@ -1703,9 +1705,80 @@ class ControladorTutorFCT extends Controller
         return $rutaDevolver;
     }
 
+    public function confirmarTrayectos(Request $req)
+    {
+        try {
+            #region Extracción e introducción de datos globales
+            // Extraigo las variables univerales a todos los alumnos (cabeceras, fechas y demás)
+            $tutor = Profesor::where('email', auth()->user()->email)->first();
+            $centro = CentroEstudios::where('cod', $tutor->cod_centro_estudios)->first();
+            $curso = AuxCursoAcademico::where('cod_curso', $req->gastos[0]['curso_academico'])->first();
+            $grupo = Grupo::where('cod', Tutoria::where('dni_profesor', $tutor->dni)->where('curso_academico', $curso->cod_curso)->first()->cod_grupo)->first();
+            $familia = FamiliaProfesional::find(GrupoFamilia::where('cod_grupo', $grupo->cod)->first()->id_familia);
+            $director = $this->getDirectorCentroEstudios($centro->cod);
+            $datos = Auxiliar::modelsToArray(
+                [$tutor, $centro, $curso, $grupo, $familia, $director],
+                ['tutor', 'centro', 'curso', 'grupo', 'familia', 'director']
+            );
+            $fecha = Carbon::now();
+            $datos['dia'] = $fecha->day;
+            $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
+            $datos['anio'] = $fecha->year % 100;
+            $datos['fct.num_horas'] = 400;
+
+            // Introduzco los datos en el .docx
+            $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . 'Anexo7.docx';
+            $rutaDestino = $tutor->dni . DIRECTORY_SEPARATOR . 'Anexo7' . DIRECTORY_SEPARATOR . 'Anexo7_' . $grupo->cod . '_' . str_replace('/', '-', $curso->cod_curso) . '.docx';
+            $template = new TemplateProcessor($rutaOrigen);
+            $template->setValues($datos);
+            #endregion
+            #region Extracción e introducción de datos por alumno
+            for ($i = 0; $i < 12; $i++) {
+                // Ahora extraigo los datos de cada alumno y los introduzco
+                if (key_exists($i, $req->gastos)) {
+                    $gasto = new Gasto($req->gastos[$i]);
+                    $alumno = Alumno::where('dni', $gasto->dni_alumno)->first();
+                    $gasto->distancia_diaria = $this->calcularSumaKMVehiculoPrivado($gasto);
+                    $gasto->total_kms = $gasto->dias_transporte_privado * $gasto->distancia_diaria;
+                    $empresa = Empresa::find(Fct::where('dni_alumno', $alumno->dni)->where('curso_academico', $curso->cod_curso)->first()->id_empresa);
+                    $datos = Auxiliar::modelsToArray([$gasto, $alumno, $empresa], ['gasto' . $i, 'alumno' . $i, 'empresa' . $i]);
+                    $template->setValues($datos);
+                } else {
+                    $datos = [
+                        'alumno' . $i . '.nombre' => '-',
+                        'alumno' . $i . '.apellidos' => ' ',
+                        'alumno' . $i . '.matricula_coche' => '-',
+                        'alumno' . $i . '.localidad' => ' ',
+                        'empresa' . $i . '.localidad' => ' ',
+                        'gasto' . $i . '.dias_transporte_privado' => '-',
+                        'gasto' . $i . '.distancia_diaria' => '-',
+                        'gasto' . $i . '.total_kms' => '-'
+                    ];
+                    $template->setValues($datos);
+                }
+            }
+            #endregion
+            // Guardo el Word en la ruta correspondiente
+            Auxiliar::existeCarpeta($tutor->dni . DIRECTORY_SEPARATOR . 'Anexo7');
+            $template->saveAs($rutaDestino);
+
+            // Creo el en la tabla anexos (previa eliminación por si ya está el archivo, aunque sea en .pdf)
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaDestino)[0] . '%')->delete();
+            Anexo::create([
+                'tipo_anexo' => 'Anexo7',
+                'ruta_anexo' => $rutaDestino
+            ]);
+            #endregion
+            return response()->json(['message' => 'Gastos confirmados', 'ruta_anexo' => $rutaDestino], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->getMessage(), 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
     #endregion
     /***********************************************************************/
-
 
     /***********************************************************************/
     #region Funciones auxiliares - response
