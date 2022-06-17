@@ -1,7 +1,7 @@
 #!/bin/bash
 #Este programa actualiza los repositorios de la aplicación
 #Si no existe la carpeta, clona el repositorio. Si existe, actualiza los cambios
-RUTA_APLICACION="/var/www/html/fctfiller/"
+RUTA_APLICACION="/var/www/html/fctfiller"
 RUTA_API="${RUTA_APLICACION}/api_FCTFiller"
 RUTA_CLIENTE="${RUTA_APLICACION}/cliente_FCTFiller"
 RAMA="pre-produccion"
