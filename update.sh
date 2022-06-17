@@ -12,18 +12,16 @@ if [ -d $RUTA_API ]; then
         git checkout ${RAMA}
         git pull
         echo "Repositorio de servidor actualizado"
-        composer install
+        composer install -n
 else
         cd $RUTA_APLICACION
-        git clone -b ${RAMA} --single-branch https://DaniJCoello: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@github.com/diezMalena/api_FCTFiller
+        git clone -b ${RAMA} --single-branch https://github.com/diezMalena/api_FCTFiller
         echo "Repositorio de servidor descargado. Asegúrese de configurarlo adecuadamente. Puede consultar las instrucciones en la Wiki de la aplicación"
         cd $RUTA_API
-        composer install
+        composer install -n
         cp .env.example .env
-        php artisan passport:install
-        php artisan vendor:publish --tag=passport-config
 fi
-php artisan key:generate
+php artisan key:generate -n
 
 if [ -d $RUTA_CLIENTE ]; then
         cd $RUTA_CLIENTE
@@ -33,7 +31,7 @@ if [ -d $RUTA_CLIENTE ]; then
         echo "Repositorio de cliente actualizado"
 else
         cd $RUTA_APLICACION
-        git clone -b ${RAMA} --single-branch https://DaniJCoello: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@github.com/diezMalena/cliente_FCTFiller
+        git clone -b ${RAMA} --single-branch https://github.com/diezMalena/cliente_FCTFiller
         echo "Repositorio de cliente descargado. Asegúrese de configurarlo adecuadamente. Puede consultar las instrucciones en la Wiki de la aplicación"
         cd $RUTA_CLIENTE
 fi
