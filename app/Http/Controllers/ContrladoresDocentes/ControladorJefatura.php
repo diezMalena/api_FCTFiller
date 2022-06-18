@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use App\Models\RolProfesorAsignado;
 use App\Models\Alumno;
+use App\Models\Fct;
 use App\Models\AuxCursoAcademico;
 use App\Models\CentroEstudios;
 use App\Models\Convenio;
@@ -17,9 +18,11 @@ use App\Models\Matricula;
 use App\Models\OfertaGrupo;
 use App\Models\Profesor;
 use App\Models\Tutoria;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 class ControladorJefatura extends Controller
 {
@@ -850,42 +853,42 @@ class ControladorJefatura extends Controller
 
             if (in_array(Parametros::DIRECTOR, $roles) || in_array(Parametros::JEFE_ESTUDIOS, $roles)) {
                 $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
-                ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
-                ->where([
-                    ['profesor.dni', '=', $dni_logueado],
-                    ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-                ])
-                ->select([
-                    'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
-                    'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
-                    'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
-                    'alumno.cuenta_bancaria', 'alumno.curriculum', 'alumno.fecha_nacimiento',
-                    'alumno.movil', 'alumno.telefono', 'alumno.domicilio',
-                    'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
-                    'matricula.cod_centro as matricula_cod_centro'
-                ])
-                ->get();
+                    ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+                    ->join('profesor', 'profesor.cod_centro_estudios', '=', 'centro_estudios.cod')
+                    ->where([
+                        ['profesor.dni', '=', $dni_logueado],
+                        ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                    ])
+                    ->select([
+                        'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
+                        'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
+                        'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
+                        'alumno.cuenta_bancaria', 'alumno.curriculum', 'alumno.fecha_nacimiento',
+                        'alumno.movil', 'alumno.telefono', 'alumno.domicilio',
+                        'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
+                        'matricula.cod_centro as matricula_cod_centro'
+                    ])
+                    ->get();
             }
 
-            if(in_array(Parametros::TUTOR, $roles)) {
+            if (in_array(Parametros::TUTOR, $roles)) {
                 $listado = Alumno::join('matricula', 'matricula.dni_alumno', '=', 'alumno.dni')
-                ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
-                ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
-                ->where([
-                    ['tutoria.dni_profesor', '=', $dni_logueado],
-                    ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-                ])
-                ->select([
-                    'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
-                    'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
-                    'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
-                    'alumno.cuenta_bancaria', 'alumno.curriculum', 'alumno.fecha_nacimiento',
-                    'alumno.movil', 'alumno.telefono', 'alumno.domicilio',
-                    'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
-                    'matricula.cod_centro as matricula_cod_centro'
-                ])
-                ->get();
+                    ->join('centro_estudios', 'centro_estudios.cod', '=', 'matricula.cod_centro')
+                    ->join('tutoria', 'tutoria.cod_grupo', '=', 'matricula.cod_grupo')
+                    ->where([
+                        ['tutoria.dni_profesor', '=', $dni_logueado],
+                        ['matricula.curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                    ])
+                    ->select([
+                        'alumno.dni', 'alumno.cod_alumno', 'alumno.email',
+                        'alumno.nombre', 'alumno.apellidos', 'alumno.provincia',
+                        'alumno.localidad', 'alumno.va_a_fct', 'alumno.matricula_coche',
+                        'alumno.cuenta_bancaria', 'alumno.curriculum', 'alumno.fecha_nacimiento',
+                        'alumno.movil', 'alumno.telefono', 'alumno.domicilio',
+                        'matricula.cod as matricula_cod', 'matricula.cod_grupo as matricula_cod_grupo',
+                        'matricula.cod_centro as matricula_cod_centro'
+                    ])
+                    ->get();
             }
 
 
@@ -1143,20 +1146,67 @@ class ControladorJefatura extends Controller
 
     /***********************************************************************/
     #region Anexo FEM05
-    public function generarAnexoFEM05($dni_alumno) {
-        $alumno = Alumno::where('dni', $dni_alumno)->get()->first();
-        $grupo = Grupo::where('cod', Matricula::where([
-            ['dni_alumno', '=', $dni_alumno],
-            ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
-        ])->get()->first()->cod_grupo)->get()->first();
-        $aux_curso_academico = AuxCursoAcademico::where('cod_curso', Auxiliar::obtenerCursoAcademico())->get()->first();
-        $empresa = Empresa::where()->get()->first();
-        $convenio = Convenio::where()->get->first();
+    public function generarAnexoFEM05($dni_alumno)
+    {
+        try {
+            //Consultas
+            $alumno = Alumno::where('dni', $dni_alumno)->first();
 
+            $grupo = Grupo::where('cod', Matricula::where([
+                ['dni_alumno', '=', $dni_alumno],
+                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])->first()->cod_grupo)->first();
+
+            $aux_curso_academico = AuxCursoAcademico::where('cod_curso', Auxiliar::obtenerCursoAcademico())->first();
+
+            $empresa = Empresa::where([
+                ['id', '=', Fct::where([
+                    ['dni_alumno', '=', $dni_alumno],
+                    ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+                ])->first()->id_empresa],
+            ])->first();
+
+            $idConvenio = DB::select('select cod_convenio from convenio where id_empresa = ' . $empresa->id . ' and (year(fecha_ini) >= ' . explode('-', $aux_curso_academico->fecha_inicio)[0] . ' or year(fecha_fin) <= ' . explode('-', $aux_curso_academico->fecha_fin)[0] . ')')[0]->cod_convenio;
+            $convenio = Convenio::where('cod_convenio', $idConvenio)->first();
+
+            $profesor = Profesor::where('dni', Tutoria::where([
+                ['cod_grupo', $grupo->cod],
+                ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
+            ])->first()->dni_profesor)->first();
+
+            // Construyo el array con todos los datos
+            $auxPrefijos = ['alumno', 'grupo', 'aux_curso_academico', 'empresa', 'convenio', 'profesor'];
+            $auxDatos = [$alumno, $grupo, $aux_curso_academico, $empresa, $convenio, $profesor];
+            $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+            //Fecha
+            $datos['dia'] = date('d');
+            $datos['mes'] = strtoupper(Parametros::MESES[intval(date('m'))]);
+            $datos['anio'] = date('Y');
+
+            // Ahora genero el Word en sí
+            // Establezco las variables que necesito
+            $nombrePlantilla = 'AnexoFEM05';
+            $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
+            Auxiliar::existeCarpeta(public_path($dni_alumno . DIRECTORY_SEPARATOR . $nombrePlantilla));
+            $rutaDestino =  $dni_alumno . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $dni_alumno . '.docx';
+
+            // Creo la plantilla y la relleno (podría haber usado la función de Auxiliar, pero me hace falta
+            // introducir imágenes)
+            $template = new TemplateProcessor($rutaOrigen);
+            if(file_exists($alumno->foto)) {
+                $template->setImageValue('imagen-alumno', $alumno->foto);
+            } else {
+                $datos['imagen-alumno'] = '';
+            }
+            $template->setValues($datos);
+            $template->saveAs($rutaDestino);
+
+            return response()->download($rutaDestino);
+        } catch (Exception $ex) {
+            return response()->json(['la vida es dura y se ha producido un excepción' => $ex->getMessage()], 400);
+        }
     }
     #endregion
     /***********************************************************************/
-
-
-
 }
