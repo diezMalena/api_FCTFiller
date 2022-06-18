@@ -4,7 +4,6 @@
 /storage/*.key
 /vendor
 /tmp
-/public/tmp
 .env
 .env.backup
 .phpunit.result.cache
@@ -15,3 +14,12 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+
+# public
+public/*
+public/*/
+!public/anexos/
+!public/.htaccess
+!public/favicon.ico
+!public/index.php
+!public/robots.txt

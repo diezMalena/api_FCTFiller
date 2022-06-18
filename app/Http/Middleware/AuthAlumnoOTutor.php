@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class AuthAlumnoOTutor
 {
     /**
-     * Permite el paso a los usuarios con perfil de profesor y rol de director o de jefatura
+     * Permite el paso a los usuarios con perfil de tutor y de alumno
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next

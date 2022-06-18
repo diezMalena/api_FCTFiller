@@ -2,16 +2,25 @@
 
 namespace App\Auxiliar;
 
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\Alumno;
+use App\Models\Grupo;
 use App\Models\AuxCursoAcademico;
+use App\Models\GrupoFamilia;
 use App\Models\CentroEstudios;
 use App\Models\Profesor;
+use App\Models\Matricula;
+use App\Models\Tutoria;
+use App\Models\RolEmpresa;
+use App\Models\Fct;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
 use App\Models\User;
 use Exception;
+use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 
@@ -165,12 +174,16 @@ class Auxiliar
             $usuario->roles = $roles;
         } else {
             $usuario = Profesor::where('email', '=', $user->email)
-                ->select(['email', 'nombre', 'apellidos', 'dni'])
+                ->select(['email', 'nombre', 'apellidos', 'dni', 'cod_centro_estudios'])
                 ->first();
             $roles = RolProfesorAsignado::where('dni', '=', $usuario->dni)
                 ->select('id_rol')
                 ->get();
             $usuario->roles = $roles;
+            //DJC Cambio 28-05-2022: añadido objeto de centro de estudios al profesor. Lo siento por la ñapa
+            $usuario->centro = CentroEstudios::find($usuario->cod_centro_estudios);
+            $controller = new ControladorTutorFCT();
+            $usuario->centro->director = $controller->getDirectorCentroEstudios($usuario->cod_centro_estudios);
         }
         $usuario->tipo = $user->tipo;
         return $usuario;
@@ -195,6 +208,7 @@ class Auxiliar
         }
     }
 
+
     /**
      * Guarda un fichero en base64 en la carpeta indicada
      * @param string $path Ubicación en la que se desea guardar el fichero
@@ -215,7 +229,7 @@ class Auxiliar
                 self::existeCarpeta($path);
 
                 //Obtenemos la extensión del fichero:
-                $extension = explode('/', mime_content_type($fichero))[1];
+                $extension = explode('.', explode('/', mime_content_type($fichero))[1])[0];
                 //Abrimos el flujo de escritura para guardar el fichero
                 $flujo = fopen($path . DIRECTORY_SEPARATOR .  $nombreFichero . '.' . $extension, 'wb');
 
@@ -242,20 +256,43 @@ class Auxiliar
     }
 
     /**
-     * Borra el fichero según la ruta indicada en $path
+     * Borra el fichero según la ruta indicada en el parámetro $path
      *
      * @param string $path Ruta del fichero a eliminar
+     * @return boolean Devuelve true en caso de haber eliminado correctamente el
+     * fichero indicado en la ruta. Devuelve false si no se ha podido eliminar o ha ocurrido
+     * algún error (la ruta era incorrecta, el fichero no existía,...)
      * @author David Sánchez Barragán
      */
     public static function borrarFichero($path)
     {
-        unlink($path);
+        try {
+            if (file_exists($path)) {
+                unlink($path);
+                return true;
+            }
+            return false;
+        } catch (\Throwable $th) {
+            return false;
+        }
     }
 
     /**
-     * Devuelve el server de ejecución del PHP
+     * Comprime el directorio indicado en un fichero ZIP
+     * @param string $rutaAComprimir Carpeta o directorio a comprimir
+     * @param string $nombreFichero Nombre con el que se guardará el fichero comprimido
+     * @return
      */
-    public static function obtenerURLServidor() {
+    public static function comprimirDirectorio($rutaAComprimir, $nombreFichero) {
+
+    }
+
+    /**
+     * Devuelve la URL del server de ejecución actual de PHP
+     * @author David Sánchez Barragán
+     */
+    public static function obtenerURLServidor()
+    {
         return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER["HTTP_HOST"];
     }
 
@@ -277,15 +314,22 @@ class Auxiliar
     public static function addUser(Model $model, string $perfil)
     {
         try {
+            $name = $model->nombre . ' ' . $model->apellidos;
             User::create([
+                'name' => $name,
                 'email' => $model->email,
                 'password' => $model->password,
-                'name' => $model->nombre . ' ' . $model->apellidos,
-                'perfil' => $perfil
+                'tipo' => $perfil
             ]);
             return 201; // Created
+        } catch (QueryException $ex) {
+            if ($ex->errorInfo[1] == 1062) {
+                return 409; // Conflicto (Registro ya creado)
+            } else {
+                return 400; // Error
+            }
         } catch (Exception $ex) {
-            return 409; // Conflict (ya existe el usuario)
+            return 500; // Error del servidor
         }
     }
 
@@ -303,7 +347,7 @@ class Auxiliar
             if ($user = User::where('email', $email)->first()) {
                 return $user;
             } else {
-                return 404; // Not Found
+                return 204; // No Content
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error
@@ -355,7 +399,7 @@ class Auxiliar
             if ($delete > 0) {
                 return 200; // OK
             } else if ($delete == 0) {
-                return 404; // Not Fount
+                return 204; // Not Found
             }
         } catch (Exception $ex) {
             return 500; // Internal Server Error
@@ -396,4 +440,11 @@ class Auxiliar
 
     #endregion
     /***********************************************************************/
+
+    public static function templateProcessorAndSetValues($rutaOrigen, $rutaDestino, $datos)
+    {
+        $template = new TemplateProcessor($rutaOrigen);
+        $template->setValues($datos);
+        $template->saveAs($rutaDestino);
+    }
 }
