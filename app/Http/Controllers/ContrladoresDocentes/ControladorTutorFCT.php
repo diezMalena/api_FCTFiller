@@ -1705,6 +1705,14 @@ class ControladorTutorFCT extends Controller
         return $rutaDevolver;
     }
 
+    /**
+     * Genera un Anexo VII con los datos de los trayectos de los alumnos que se han desplazado
+     * en transporte privado
+     *
+     * @param Request $req contiene un vector con los datos de los gastos de los alumnos de un grupo
+     * @return Response JSON con la ruta del anexo generado (si todo ha ido bien), un mensaje y el código HTTP
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
     public function confirmarTrayectos(Request $req)
     {
         try {
@@ -1738,6 +1746,9 @@ class ControladorTutorFCT extends Controller
                 if (key_exists($i, $req->gastos)) {
                     $gasto = new Gasto($req->gastos[$i]);
                     $alumno = Alumno::where('dni', $gasto->dni_alumno)->first();
+                    if (!$alumno->matricula_coche) {
+                        $alumno->matricula_coche = 'Sin registrar';
+                    }
                     $gasto->distancia_diaria = $this->calcularSumaKMVehiculoPrivado($gasto);
                     $gasto->total_kms = $gasto->dias_transporte_privado * $gasto->distancia_diaria;
                     $empresa = Empresa::find(Fct::where('dni_alumno', $alumno->dni)->where('curso_academico', $curso->cod_curso)->first()->id_empresa);
@@ -1776,6 +1787,41 @@ class ControladorTutorFCT extends Controller
             return response()->json($ex->getMessage(), 500);
         }
     }
+
+    /**
+     * Guarda el archivo que recibe en base64 en la carpeta correspondiente al tutor,
+     * cambia su ruta y lo marca como firmado
+     *
+     * @param Request $req contiene el archivo en base 64, el curso académico y el DNI del alumno
+     * @return Response JSON con la respuesta del servidor, según haya resultado el proceso
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function subirAnexoVII(Request $req)
+    {
+        try {
+            $dni = Profesor::where('email', auth()->user()->email)->first()->dni;
+            $curso = $req->curso_academico;
+
+            // Guardo el archivo
+            $carpeta = $dni . DIRECTORY_SEPARATOR . 'Anexo7';
+            $grupo = Grupo::where('cod', Tutoria::where('dni_profesor', $dni)->where('curso_academico', $curso)->first()->cod_grupo)->first();
+            $archivo = 'Anexo7_' . $grupo->cod . '_' . str_replace('/', '-', $curso);
+            $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->get('file'));
+
+            // Hago el update en la base de datos
+            Anexo::where('ruta_anexo', 'like', explode('.', $ruta)[0] . '%')->update([
+                'ruta_anexo' => $ruta,
+                'firmado_director' => 1
+            ]);
+
+            return response()->json(['message' => 'Anexo firmado'], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->errorInfo[2], 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
 
     #endregion
     /***********************************************************************/

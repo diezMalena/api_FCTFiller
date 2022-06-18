@@ -107,6 +107,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::post('/nuevoAlumnoGestionGastos', [ControladorTutorFCT::class, 'nuevoAlumnoGestionGastos']);
     Route::get('/descargarAnexoVI', [ControladorTutorFCT::class, 'descargarAnexoVI']);
     Route::post('/confirmar_trayectos', [ControladorTutorFCT::class, 'confirmarTrayectos']);
+    Route::post('/firmar_anexo_vii', [ControladorTutorFCT::class, 'subirAnexoVII']);
     /***********************************************************************/
 });
 
@@ -173,6 +174,9 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () 
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
     //----AnexoXV
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+    //----AnexoV
+    Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
+    Route::post('/firmar_anexo_v', [ControladorAlumno::class, 'subirAnexoV']);
 });
 
 /*
@@ -233,6 +237,4 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
 |--------------------------------------------------------------------------
 */
 Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
-    Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
-    Route::post('/firmar_anexo_v', [ControladorAlumno::class, 'subirAnexoV']);
 });
