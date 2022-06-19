@@ -85,7 +85,18 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::delete('/eliminarAnexo/{dni_tutor}/{cod_anexo}', [ControladorTutorFCT::class, 'eliminarAnexo']);
     Route::post('/deshabilitarAnexo', [ControladorTutorFCT::class, 'deshabilitarAnexo']);
     Route::post('/habilitarAnexo', [ControladorTutorFCT::class, 'habilitarAnexo']);
-     /***********************************************************************/
+    /***********************************************************************/
+
+    /******************************CRUD ALUMNOS******************************/
+    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
+    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
+    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
+    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
+    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
+    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
+    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
+    Route::get('/generarAnexoFEM05/{dni_alumno}', [ControladorJefatura::class, 'generarAnexoFEM05']);
+    /************************************************************************/
 });
 
 Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
@@ -106,8 +117,9 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     Route::delete('/eliminarAlumnoDeGastos/{dni_alumno}', [ControladorTutorFCT::class, 'eliminarAlumnoDeGastos']);
     Route::post('/nuevoAlumnoGestionGastos', [ControladorTutorFCT::class, 'nuevoAlumnoGestionGastos']);
     Route::get('/descargarAnexoVI', [ControladorTutorFCT::class, 'descargarAnexoVI']);
+    Route::post('/confirmar_trayectos', [ControladorTutorFCT::class, 'confirmarTrayectos']);
+    Route::post('/firmar_anexo_vii', [ControladorTutorFCT::class, 'subirAnexoVII']);
     /***********************************************************************/
-
 });
 
 /*
@@ -124,21 +136,8 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
     Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
     /***********************************************************************/
-});
-
-Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     /*******************************SUBIDA CSV*******************************/
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
-    /************************************************************************/
-
-    /******************************CRUD ALUMNOS******************************/
-    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
-    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
-    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
-    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
-    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
-    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
-    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
     /************************************************************************/
 });
 
@@ -173,6 +172,9 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'seguimiento']], function () 
     Route::put('actualizarTutorEmpresa', [ControladorAlumno::class, 'actualizarTutorEmpresa']);
     //----AnexoXV
     Route::post('/rellenarAnexoXV', [ControladorAlumno::class, 'rellenarAnexoXV']);
+    //----AnexoV
+    Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
+    Route::post('/firmar_anexo_v', [ControladorAlumno::class, 'subirAnexoV']);
 });
 
 /*
@@ -233,6 +235,4 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
 |--------------------------------------------------------------------------
 */
 Route::group(['middleware' => ['Cors', 'auth:api', 'alumno']], function () {
-    Route::post('/confirmar_gastos', [ControladorAlumno::class, 'confirmarGastos']);
-    Route::post('/firmar_anexo_v', [ControladorAlumno::class, 'subirAnexoV']);
 });
