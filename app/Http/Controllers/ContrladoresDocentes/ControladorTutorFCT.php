@@ -184,33 +184,33 @@ class ControladorTutorFCT extends Controller
                 foreach ($alumnos as $alumno) {
 
                     $AlumnoTieneSeguimiento =  FCT::join('seguimiento', 'seguimiento.id_fct', '=', 'fct.id')
-                    ->where([['fct.dni_alumno', $alumno['dni']]])
-                    ->select(['seguimiento.id'])
-                    ->first();
+                        ->where([['fct.dni_alumno', $alumno['dni']]])
+                        ->select(['seguimiento.id'])
+                        ->first();
 
                     if (!$AlumnoTieneSeguimiento) {
-                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                        Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
 
-                    Fct::create([
-                        'id_empresa' => $empresa['id'],
-                        'dni_alumno' => $alumno['dni'],
-                        'dni_tutor_empresa' => $empresa['dni_responsable'],
-                        'curso_academico' => $cursoAcademico,
-                        'horario' => $alumno['horario'],
-                        'num_horas' => '400',
-                        'fecha_ini' => $alumno['fecha_ini'],
-                        'fecha_fin' => $alumno['fecha_fin'],
-                        'firmado_director' => '0',
-                        'firmado_empresa' => '0',
-                        'ruta_anexo' => '',
-                        'departamento' => ''
-                    ]);
-                }else{
-                    $empresaAux=Fct::select('id_empresa')->where('dni_alumno','=',$alumno['dni'])->first();
-                    if($empresaAux->id_empresa != $empresa['id']){
-                        return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: '.$alumno['nombre']], 406);
+                        Fct::create([
+                            'id_empresa' => $empresa['id'],
+                            'dni_alumno' => $alumno['dni'],
+                            'dni_tutor_empresa' => $empresa['dni_responsable'],
+                            'curso_academico' => $cursoAcademico,
+                            'horario' => $alumno['horario'],
+                            'num_horas' => '400',
+                            'fecha_ini' => $alumno['fecha_ini'],
+                            'fecha_fin' => $alumno['fecha_fin'],
+                            'firmado_director' => '0',
+                            'firmado_empresa' => '0',
+                            'ruta_anexo' => '',
+                            'departamento' => ''
+                        ]);
+                    } else {
+                        $empresaAux = Fct::select('id_empresa')->where('dni_alumno', '=', $alumno['dni'])->first();
+                        if ($empresaAux->id_empresa != $empresa['id']) {
+                            return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: ' . $alumno['nombre']], 406);
+                        }
                     }
-                }
                 }
             }
             return response()->json(['message' => 'Actualizacion completada'], 200);
@@ -405,10 +405,10 @@ class ControladorTutorFCT extends Controller
 
 
                     //Convertir en Zip
-                    $nombreZip = $this->montarZip($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1', $zip, $nombreZip);
+                    $nombreZip = $this->montarZipConCondicion($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1', $zip, $nombreZip);
                 }
             }
-             return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
+            return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Error de ficheros: ' . $e
@@ -422,6 +422,7 @@ class ControladorTutorFCT extends Controller
      *
      * @param String $rutaArchivo es la ruta en la que se van a buscar los archivos a comprimir
      * @param ZipArchive $zip es el zip
+     * @param String $rutaZip es la ruta donde se va a crear el zip
      * @param String $nombreZip es el nombre del zip
      * @return $nombreZip
      */
@@ -433,6 +434,34 @@ class ControladorTutorFCT extends Controller
             foreach ($files as $value) {
                 $relativeNameZipFile = basename($value);
                 $zip->addFile($value, $relativeNameZipFile);
+            }
+            $zip->close();
+        }
+        return $rutaZip;
+    }
+
+    /**
+     * Este metodo sirve para comprimir varios archivos del Anexo1 en un zip siempre y cuando este
+     * concuerde con la base de datos
+     * @author Laura <lauramorenoramos97@gmail.com>
+     *
+     * @param String $rutaArchivo es la ruta en la que se van a buscar los archivos a comprimir
+     * @param ZipArchive $zip es el zip
+     * @param String $rutaZip es la ruta donde se va a crear el zip
+     * @param String $nombreZip es el nombre del zip
+     * @return $nombreZip
+     */
+    public function montarZipConCondicion(String $rutaArchivo, ZipArchive $zip, String $rutaZip)
+    {
+        if ($zip->open(public_path($rutaZip), ZipArchive::CREATE)) {
+
+            $files = File::files(public_path($rutaArchivo));
+            foreach ($files as $value) {
+                $relativeNameZipFile = basename($value);
+                $existeAnexo = Anexo::where('ruta_anexo', 'like', "%$relativeNameZipFile%")->where('habilitado', '=', 1)->first();
+                if ($existeAnexo) {
+                    $zip->addFile($value, $relativeNameZipFile);
+                }
             }
             $zip->close();
         }
