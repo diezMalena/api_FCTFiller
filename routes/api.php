@@ -5,6 +5,7 @@ use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Http\Controllers\ControladorAlumnos\ControladorAlumno;
 use App\Http\Controllers\ControladorEmpresas\ControladorResponCentro;
 use App\Http\Controllers\ControladorGenerico;
+use App\Http\Controllers\GastosProfesor;
 use Illuminate\Support\Facades\Route;
 
 
@@ -97,9 +98,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
     Route::get('/generarAnexoFEM05/{dni_alumno}', [ControladorJefatura::class, 'generarAnexoFEM05']);
     /************************************************************************/
-});
 
-Route::group(['middleware' => ['Cors', 'auth:api', 'tutor']], function () {
     /***********************ASIGNACIÓN ALUMNO-EMPRESA***********************/
     Route::get('/solicitarAlumnosSinEmpresa/{dni}', [ControladorTutorFCT::class, 'solicitarAlumnosSinEmpresa']);
     Route::get('/solicitarEmpresasConAlumnos/{dni}', [ControladorTutorFCT::class, 'solicitarEmpresasConAlumnos']);
