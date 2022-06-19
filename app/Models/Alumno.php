@@ -30,7 +30,11 @@ class Alumno extends Model
         'foto',
         'curriculum',
         'cuenta_bancaria',
-        'matricula_coche'
+        'matricula_coche',
+        'fecha_nacimiento',
+        'domicilio',
+        'telefono',
+        'movil'
     ];
     protected $table = 'alumno';
     protected $primaryKey = 'dni';

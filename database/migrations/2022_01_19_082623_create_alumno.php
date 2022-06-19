@@ -33,6 +33,10 @@ class CreateAlumno extends Migration
             $table->string('curriculum')->nullable(true);
             $table->string('cuenta_bancaria')->nullable(true);
             $table->string('matricula_coche')->nullable(true);
+            $table->date('fecha_nacimiento')->nullable(true);
+            $table->string('domicilio')->nullable(true);
+            $table->string('telefono')->nullable(true);
+            $table->string('movil')->nullable(true);
             $table->timestamps();
         });
     }

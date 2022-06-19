@@ -1476,7 +1476,7 @@ class ControladorAlumno extends Controller
      * Actualiza los gastos en la base de datos y genera un Anexo V
      *
      * @param Request $req contiene los datos de los gastos de un alumno
-     * @return Response JSON con la ruta del anexo generado o un código de error
+     * @return Response JSON con la ruta del anexo generado (si todo ha ido bien), un mensaje y el código HTTP
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
     public function confirmarGastos(Request $req)
@@ -1545,6 +1545,14 @@ class ControladorAlumno extends Controller
         }
     }
 
+    /**
+     * Guarda el archivo que recibe en base64 en la ruta del alumno y de su tutor,
+     * y marca los archivos como firmados
+     *
+     * @param Request $req contiene el archivo en base 64, el curso académico y el DNI del alumno
+     * @return Response JSON con la respuesta del servidor, según haya resultado el proceso
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
     public function subirAnexoV(Request $req)
     {
         try {
@@ -1560,8 +1568,6 @@ class ControladorAlumno extends Controller
             $archivoTutor = 'Anexo5_' . $dniAlu . '_' . str_replace('/', '-', $curso);
             $rutaAlu = Auxiliar::guardarFichero($carpetaAlu, $archivoAlu, $req->get('file'));
             $rutaTutor = Auxiliar::guardarFichero($carpetaTutor, $archivoTutor, $req->get('file'));
-            error_log($rutaAlu);
-            error_log($rutaTutor);
 
             // Hago el update en la base de datos
             Anexo::where('ruta_anexo', 'like', explode('.', $rutaAlu)[0] . '%')->update([
