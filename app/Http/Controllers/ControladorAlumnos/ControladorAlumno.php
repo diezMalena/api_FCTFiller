@@ -366,7 +366,12 @@ class ControladorAlumno extends Controller
 
     /***********************************************************************/
     #region Recoger alumnos asociados a un tutor
-
+    /**
+     * Función que recoge de la BBDD los alumnos que tienen un determinado
+     * tutor.
+     * @author Malena
+     * @return $alumnosAsociados a x tutor
+     */
     public function getAlumnosAsociados(Request $req)
     {
         //dni_tutor puede ser tanto de instituto como de empresa
@@ -394,13 +399,8 @@ class ControladorAlumno extends Controller
 
         return response()->json($alumnosAsociados, 200);
     }
-
-
     #endregion
     /***********************************************************************/
-
-
-
 
     /***********************************************************************/
     #region Generación y descarga del Anexo III
@@ -437,7 +437,6 @@ class ControladorAlumno extends Controller
         $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional', 'ciclo', 'empresa', 'tutor_empresa', 'fct'];
         $auxDatos = [$centro, $alumno, $tutor, $familia_profesional, $ciclo, $empresa, $tutor_empresa, $fct];
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
-
         //Recorro las 5 jornadas, y les establezco su valor correspondiente en el documento.
         for ($i = 0; $i < count($jornadas); $i++) {
             $datos['jornada' . $i . '.actividades'] = $jornadas[$i]->actividades;
@@ -446,10 +445,8 @@ class ControladorAlumno extends Controller
         }
         //Nombre de la plantilla:
         $nombrePlantilla = 'Anexo3';
-
         //La ruta donde se va a almacenar el documento:
         $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
-
         //Establezco la fecha para ponerlo en el nombre del documento:
         $fecha = Carbon::now();
         $fecha_doc = $fecha->day . '-' . AuxiliarParametros::MESES[$fecha->month] . '-' . $fecha->year % 100;
@@ -462,11 +459,8 @@ class ControladorAlumno extends Controller
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
-
-
         /*Cuando se genere un nuevo Word, las firmas de los 3 implicados se pondrán a 0 dado que se entiende que al generar un Word nuevo, es porque el
         alumno ha cambiado algún campo y hay que firmarlo y subirlo nuevo.*/
-
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
         $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
@@ -476,11 +470,15 @@ class ControladorAlumno extends Controller
                 'firmado_tutor_estudios' => 0,
                 'firmado_tutor_empresa' => 0,
             ]);
-
         return response()->download(public_path($rutaDestino));
     }
 
-
+    /**
+     * Función que comprueba en la BBDD si existe una hoja de seguimiento
+     * de una determinada semana
+     * @author Malena
+     * @return $ruta_hoja
+     */
     public function hayDocumento(Request $req)
     {
         $ruta_hoja = Semana::where('id_fct', '=', $req->id_fct)
@@ -490,14 +488,22 @@ class ControladorAlumno extends Controller
         return response()->json($ruta_hoja, 200);
     }
 
-
+    /**
+     * Función que envía al cliente la ruta de la hoja de seguimiento
+     * de una determinada semana para descargarla.
+     * @author Malena
+     * @return Ruta $req->ruta_hoja
+     */
     public function descargarAnexo3(Request $req)
     {
         return response()->download(public_path($req->ruta_hoja));
     }
 
     /**
-     *
+     * Función que recoge todos los datos necesarios para poder subir una determinaa
+     * hoja de seguimiento al servidor, guardándola en su correspondiente carpeta y
+     * añadiendo la ruta en la BBDD.
+     * @author Malena
      */
     public function subirAnexo3(Request $req)
     {
@@ -706,6 +712,8 @@ class ControladorAlumno extends Controller
 
     /**
      * Método que recoge la última jornada añadida.
+     * @author Malena
+     * @return $jornada
      */
     public function ultimaJornada($dni_alumno)
     {

@@ -31,6 +31,7 @@ use App\Models\FacturaTransporte;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use App\Models\Notificacion;
 use Carbon\Carbon;
 use App\Models\Grupo;
 use Exception;
@@ -184,33 +185,33 @@ class ControladorTutorFCT extends Controller
                 foreach ($alumnos as $alumno) {
 
                     $AlumnoTieneSeguimiento =  FCT::join('seguimiento', 'seguimiento.id_fct', '=', 'fct.id')
-                    ->where([['fct.dni_alumno', $alumno['dni']]])
-                    ->select(['seguimiento.id'])
-                    ->first();
+                        ->where([['fct.dni_alumno', $alumno['dni']]])
+                        ->select(['seguimiento.id'])
+                        ->first();
 
                     if (!$AlumnoTieneSeguimiento) {
-                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                        Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
 
-                    Fct::create([
-                        'id_empresa' => $empresa['id'],
-                        'dni_alumno' => $alumno['dni'],
-                        'dni_tutor_empresa' => $empresa['dni_responsable'],
-                        'curso_academico' => $cursoAcademico,
-                        'horario' => $alumno['horario'],
-                        'num_horas' => '400',
-                        'fecha_ini' => $alumno['fecha_ini'],
-                        'fecha_fin' => $alumno['fecha_fin'],
-                        'firmado_director' => '0',
-                        'firmado_empresa' => '0',
-                        'ruta_anexo' => '',
-                        'departamento' => ''
-                    ]);
-                }else{
-                    $empresaAux=Fct::select('id_empresa')->where('dni_alumno','=',$alumno['dni'])->first();
-                    if($empresaAux->id_empresa != $empresa['id']){
-                        return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: '.$alumno['nombre']], 406);
+                        Fct::create([
+                            'id_empresa' => $empresa['id'],
+                            'dni_alumno' => $alumno['dni'],
+                            'dni_tutor_empresa' => $empresa['dni_responsable'],
+                            'curso_academico' => $cursoAcademico,
+                            'horario' => $alumno['horario'],
+                            'num_horas' => '400',
+                            'fecha_ini' => $alumno['fecha_ini'],
+                            'fecha_fin' => $alumno['fecha_fin'],
+                            'firmado_director' => '0',
+                            'firmado_empresa' => '0',
+                            'ruta_anexo' => '',
+                            'departamento' => ''
+                        ]);
+                    } else {
+                        $empresaAux = Fct::select('id_empresa')->where('dni_alumno', '=', $alumno['dni'])->first();
+                        if ($empresaAux->id_empresa != $empresa['id']) {
+                            return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: ' . $alumno['nombre']], 406);
+                        }
                     }
-                }
                 }
             }
             return response()->json(['message' => 'Actualizacion completada'], 200);
@@ -408,7 +409,7 @@ class ControladorTutorFCT extends Controller
                     $nombreZip = $this->montarZip($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1', $zip, $nombreZip);
                 }
             }
-             return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
+            return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Error de ficheros: ' . $e
@@ -1871,6 +1872,45 @@ class ControladorTutorFCT extends Controller
                     'firmado_empresa' => 0,
                 ]);
             }
+        }
+        //---------------------------GENERACIÓN NOTIFICACIÓN-----------------------------------
+        //Cogemos la empresa a la que estan asociados los alumnos del AnexoI
+        $empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
+            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
+            ->select('empresa.id AS id', 'empresa.nombre AS nombre')
+            ->first();
+        /*Vamos a sacar el dni del alumno del registro FCT*/
+        $dni_alumno = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
+            ->select('alumno.dni AS dni')
+            ->first();
+        /*Primero tenemos que saber qué tutor ha generado el AnexoI*/
+        $email_tutor = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->where('matricula.dni_alumno', '=', $dni_alumno->dni)
+            ->select('profesor.email AS email')
+            ->first();
+        error_log($email_tutor->email);
+        /*Despues, comprobamos si el dni es del director*/
+        $director = Profesor::join('rol_profesor_asignado', 'profesor.dni', '=', 'rol_profesor_asignado.dni')
+            ->where('profesor.dni', '=', $dni)
+            ->where('rol_profesor_asignado.id_rol', '=', 1)
+            ->select('profesor.email AS email')
+            ->get();
+        //Si existe el director, mandamos la notificación
+        if (count($director) > 0) {
+            $introducirNotificacion = Notificacion::create([
+                'email' => $email_tutor->email,
+                'mensaje' => 'El/la director/a ya ha firmado el Anexo I referente a la empresa ' . $empresa->nombre . '.',
+                'leido' => 0
+            ]);
+        }else{
+            /*En el caso de que sea tutor (porque alumno no puede ser porque al menu FCT no tiene acceso),
+            la notificación se marcará como leida.*/
+            $updateNotificacion = Notificacion::whereNull('semana')
+            ->update([
+                'leido' => 1,
+            ]);
         }
     }
 
