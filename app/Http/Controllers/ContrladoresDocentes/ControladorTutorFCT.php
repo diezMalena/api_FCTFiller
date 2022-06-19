@@ -540,10 +540,11 @@ class ControladorTutorFCT extends Controller
 
         #endregion
         #region Anexo I
-        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
-
+        $Anexos1 = Anexo::select('tipo_anexo', 'firmado_empresa', 'firmado_director', 'ruta_anexo')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo1')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
         foreach ($Anexos1 as $a) {
             if (file_exists(public_path($a->ruta_anexo))) {
+                //Saco la hora a parte, por que si el servidor tarda en introducir los datos, el distinct no funcióna
+                $created_at=Anexo::select('created_at')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
                 //Esto sirve para poner las barras segun el so que se este usando
                 $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
@@ -559,7 +560,7 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //FECHA
-                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(':', $created_at->created_at);
                 $fechaAux = explode(' ', $fechaAux[0]);
 
                 //meter ese nombre en un array asociativo
