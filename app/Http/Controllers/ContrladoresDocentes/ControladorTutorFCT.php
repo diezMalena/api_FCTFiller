@@ -929,7 +929,6 @@ class ControladorTutorFCT extends Controller
                     $ruta_completa = public_path($dni_tutor . DIRECTORY_SEPARATOR . $a->tipo_anexo . DIRECTORY_SEPARATOR . basename($value));
                     if (file_exists($ruta_completa)) {
                         $nombreAux = basename($value);
-                        error_log('hola');
                         $existeAnexo = Anexo::where('tipo_anexo', '=', $a->tipo_anexo)->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->first();
 
                         if ($existeAnexo) {
