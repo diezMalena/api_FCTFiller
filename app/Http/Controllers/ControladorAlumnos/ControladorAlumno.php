@@ -1108,6 +1108,7 @@ class ControladorAlumno extends Controller
      * - Lista de facturas de manutención
      * @param string $dni_alumno DNI del alumno
      * @return Response Respuesta con la información del alumno, según su DNI y el curso académico actual
+     * @author David Sánchez Barragán
      */
     public function gestionGastosAlumno($dni_alumno)
     {
@@ -1121,6 +1122,9 @@ class ControladorAlumno extends Controller
 
     /**
      * Obtiene el registro correspondiente de la tabla Gasto según el DNI del alumno
+     * @param string $dni_alumno DNI del alumno
+     * @return Gasto Registro de la tabla correspondiente al alumno en el curso académico actual
+     * @author David Sánchez Barragán
      */
     public function obtenerGastoAlumnoPorDNIAlumno($dni_alumno)
     {
@@ -1175,9 +1179,11 @@ class ControladorAlumno extends Controller
 
 
     /**
-     * Actualiza la información en la tabla Gasto según el objeto recibido
+     * Actualiza la información en la tabla Gasto según el objeto recibido con la información
+     * del cliente.
      * @param Request $r Request con forma de objeto Gasto
      * @return Response Respuesta HTTP estándar
+     * @author David Sánchez Barragán
      */
     public function actualizarDatosGastoAlumno(Request $r)
     {
@@ -1200,6 +1206,7 @@ class ControladorAlumno extends Controller
      * Actualiza el campo dias_transporte_privado del modelo Gasto
      * @param Request $r Request que incluye el dni del alumno a actualizar y el número de días
      * @return Response Código HTTP estándar
+     * @author David Sánchez Barragán
      */
     public function actualizarDiasVehiculoPrivado(Request $r)
     {
@@ -1214,12 +1221,13 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     *
+     * Introduce una factura de transporte en la tabla FacturaTransporte
+     * @param Request $r Petición con la información de la factura de transporte
+     * @return Response Respuesta HTTP estándar
+     * @author David Sánchez Barragán
      */
     public function nuevaFacturaTransporte(Request $r)
     {
-
-
         $factura = FacturaTransporte::create([
             'dni_alumno' => $r->dni_alumno,
             'curso_academico' => Auxiliar::obtenerCursoAcademico(),
@@ -1245,7 +1253,10 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     *
+     * Introduce una factura de manutención en la tabla FacturaManutencion
+     * @param Request $r Petición con la información de la factura de manutención
+     * @return Response Respuesta HTTP estándar
+     * @author David Sánchez Barragán
      */
     public function nuevaFacturaManutencion(Request $r)
     {
@@ -1273,6 +1284,7 @@ class ControladorAlumno extends Controller
 
     /**
      * Actualización de los datos de la factura de transporte recibida por la Request
+     * @param Request $r Petición con la información de la factura de transporte
      * @author David Sánchez Barragán
      */
     public function actualizarFacturaTransporte(Request $r)
@@ -1305,7 +1317,8 @@ class ControladorAlumno extends Controller
     }
 
     /**
-     * Actualización de los datos de la factura de transporte recibida por la Request
+     * Actualización de los datos de la factura de manutención recibida por la Request
+     * @param Request $r Petición con la información de la factura de manutención
      * @author David Sánchez Barragán
      */
     public function actualizarFacturaManutencion(Request $r)
@@ -1334,6 +1347,12 @@ class ControladorAlumno extends Controller
         return response()->json(['mensaje' => 'Factura actualizada correctamente']);
     }
 
+    /**
+     * Elimina una factura de manutención según su ID en la tabla FacturaManutencion
+     * @param $id ID de la factura a eliminar
+     * @return Response Respuesta HTTP estándar
+     * @author David Sánchez Barragán
+     */
     public function eliminarFacturaManutencion($id)
     {
         try {
@@ -1344,6 +1363,12 @@ class ControladorAlumno extends Controller
         }
     }
 
+    /**
+     * Elimina una factura de transporte según su ID en la tabla FacturaTransporte
+     * @param $id ID de la factura a eliminar
+     * @return Response Respuesta HTTP estándar
+     * @author David Sánchez Barragán
+     */
     public function eliminarFacturaTransporte($id)
     {
         try {
@@ -1361,6 +1386,11 @@ class ControladorAlumno extends Controller
 
     /**
      * Descarga la imagen del ticket de transporte
+     * @param string $dni DNI del alumno del que se quiere obtener la la imagen del ticket de transporte
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el atributo src en etiquetas img en lado cliente
+     * @author David Sánchez Barragán
      */
     public function descargarImagenTicketTransporte($id, $guid)
     {
@@ -1374,6 +1404,11 @@ class ControladorAlumno extends Controller
 
     /**
      * Descarga la imagen del ticket de manutención
+     * @param string $dni DNI del alumno del que se quiere obtener la la imagen del ticket de manutención
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el atributo src en etiquetas img en lado cliente
+     * @author David Sánchez Barragán
      */
     public function descargarImagenTicketManutencion($id, $guid)
     {
@@ -1387,8 +1422,9 @@ class ControladorAlumno extends Controller
 
     /**
      * Calcula el total del importe correspondiente al gasto de viajar en vehículo privado
-     * @param Gasto $gasto Objeto Gasto del que queramos calcular el importe
+     * @param Gasto $gasto Objeto de la tabla Gasto del que queramos calcular el importe
      * @return float Cálculo del importe correspondiente.
+     * @author David Sánchez Barragán
      */
     public function calcularGastoVehiculoPrivado($gasto)
     {
@@ -1445,6 +1481,7 @@ class ControladorAlumno extends Controller
      * @return string El tipo de desplazamiento-> Centro educativo: el centro de trabajo está a las afueras
      * o en otra localidad, Domicilio: el alumno no reside en la localidad del centro educativo,
      * No aplica-> no se tiene derecho a gastos de manutencion.
+     * @author David Sánchez Barragán
      */
     public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
     {
