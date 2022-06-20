@@ -61,6 +61,10 @@ Route::group(['middleware' => ['Cors']], function () {
     Route::get('/verificarCuestionarioRespondidoFCT/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
     Route::get('/obtenerCuestionarioFCT/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
     Route::post('/crearCuestionarioRespondidoFCT', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
+    Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
+    Route::get('/obtenerMediasCuestionariosRespondidosFCT', [ControladorJefatura::class, 'obtenerMediasCuestionariosRespondidos']);
+    Route::get('/listarCuestionariosRespondidosFCT', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
+    Route::get('/descargarCuestionarioFCT/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
     /***********************************************************************/
 
 
@@ -176,7 +180,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
     Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
     Route::post('/activarCuestionario/{id_cuestionario}/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'activarCuestionario']);
     Route::post('/desactivarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'desactivarCuestionario']);
-    Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
+    // Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
     Route::get('/obtenerMediasCuestionariosRespondidos', [ControladorJefatura::class, 'obtenerMediasCuestionariosRespondidos']);
     Route::get('/listarCuestionariosRespondidos', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
     Route::get('/descargarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
