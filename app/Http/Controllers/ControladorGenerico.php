@@ -45,6 +45,17 @@ class ControladorGenerico extends Controller
             $user = auth()->user();
             $token = $user->createToken('authToken')->accessToken;
             $usuario = Auxiliar::getDatosUsuario($user);
+            // Cambio añadido para rescatar el código del centro del alumno existente en tabla matrícula. Hasta ahora solo se rescataba el del profesor.
+            if ($user->tipo == 'alumno') {
+                $matricula = Matricula::where('dni_alumno', '=', $usuario->dni)
+                ->select(['*'])
+                ->first();
+                if ($matricula){
+                    $usuario->cod_centro=$matricula->cod_centro;
+                    $usuario->cod_grupo=$matricula->cod_grupo;
+                    $usuario->curso_academico=$matricula->curso_academico;
+                }
+            }
             return response()->json([
                 'usuario' => $usuario,
                 'access_token' => $token,
