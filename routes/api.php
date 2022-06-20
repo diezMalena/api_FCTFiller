@@ -54,6 +54,20 @@ Route::group(['middleware' => ['Cors']], function () {
 
     Route::post('/descargar_anexo_ruta', [ControladorGenerico::class, 'descargarAnexoRuta']);
     Route::get('check_duplicado/{elemento}.{campo}={valor}', [ControladorGenerico::class, 'checkDuplicate']);
+
+    /***********************************************************************/
+    /*********************Cuestionarios Tutores Empresa*********************/
+    Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
+    Route::get('/verificarCuestionarioRespondidoFCT/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
+    Route::get('/obtenerCuestionarioFCT/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
+    Route::post('/crearCuestionarioRespondidoFCT', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
+    Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
+    Route::get('/obtenerMediasCuestionariosRespondidosFCT', [ControladorJefatura::class, 'obtenerMediasCuestionariosRespondidos']);
+    Route::get('/listarCuestionariosRespondidosFCT', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
+    Route::get('/descargarCuestionarioFCT/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
+    /***********************************************************************/
+
+
 });
 
 /*
@@ -135,6 +149,42 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
     Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
     /***********************************************************************/
+
+
+});
+
+Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
+    /*******************************SUBIDA CSV*******************************/
+    Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
+    /************************************************************************/
+
+    /******************************CRUD ALUMNOS******************************/
+    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
+    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
+    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
+    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
+    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
+    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
+    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
+    /************************************************************************/
+
+    /*************************CRUD CUESTIONARIOS***************************/
+    Route::post('/crearCuestionario', [ControladorJefatura::class, 'crearCuestionario']);
+    Route::post('/editarCuestionario', [ControladorJefatura::class, 'editarCuestionario']);
+    Route::get('/obtenerCuestionarioEdicion/{id}', [ControladorJefatura::class, 'obtenerCuestionarioEdicion']);
+    Route::get('/obtenerCuestionario/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
+    Route::post('/crearCuestionarioRespondido', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
+    Route::get('/listarCuestionarios/{codigo_centro}', [ControladorJefatura::class, 'listarCuestionarios']);
+    Route::get('/verificarCuestionarioRespondido/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
+    Route::delete('/eliminarCuestionario/{id}', [ControladorJefatura::class, 'eliminarCuestionario']);
+    Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
+    Route::post('/activarCuestionario/{id_cuestionario}/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'activarCuestionario']);
+    Route::post('/desactivarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'desactivarCuestionario']);
+    // Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
+    Route::get('/obtenerMediasCuestionariosRespondidos', [ControladorJefatura::class, 'obtenerMediasCuestionariosRespondidos']);
+    Route::get('/listarCuestionariosRespondidos', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
+    Route::get('/descargarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
+    /**********************************************************************/
     /*******************************SUBIDA CSV*******************************/
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
     /************************************************************************/
@@ -210,22 +260,13 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
     Route::delete('/eliminarFacturaManutencion/{id}', [ControladorAlumno::class, 'eliminarFacturaManutencion']);
     /**********************************************************************/
 
-    //Crud Cuestionarios
-    Route::post('/crearCuestionario', [ControladorJefatura::class, 'crearCuestionario']);
-    Route::post('/editarCuestionario', [ControladorJefatura::class, 'editarCuestionario']);
-    Route::get('/obtenerCuestionarioEdicion/{id}', [ControladorJefatura::class, 'obtenerCuestionarioEdicion']);
+     /******************************CUESTIONARIOS**************************/
+    Route::get('/verificarCuestionarioRespondido/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
     Route::get('/obtenerCuestionario/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
     Route::post('/crearCuestionarioRespondido', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
-    Route::get('/listarCuestionarios/{codigo_centro}', [ControladorJefatura::class, 'listarCuestionarios']);
-    Route::get('/verificarCuestionarioRespondido/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
-    Route::delete('/eliminarCuestionario/{id}', [ControladorJefatura::class, 'eliminarCuestionario']);
-    Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
-    Route::post('/activarCuestionario/{id_cuestionario}/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'activarCuestionario']);
-    Route::post('/desactivarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'desactivarCuestionario']);
-    Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
-    Route::get('/obtenerMediasCuestionariosRespondidos', [ControladorJefatura::class, 'obtenerMediasCuestionariosRespondidos']);
-    Route::get('/listarCuestionariosRespondidos', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
-    Route::get('/descargarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
+    /**********************************************************************/
+
+
 });
 
 /*

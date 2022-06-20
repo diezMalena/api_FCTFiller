@@ -32,6 +32,7 @@ use App\Models\FamiliaProfesional;
 use App\Models\RolProfesorAsignado;
 use App\Models\RolTrabajadorAsignado;
 use App\Models\Trabajador;
+use App\Models\Notificacion;
 use Carbon\Carbon;
 use App\Models\Grupo;
 use App\Models\GrupoFamilia;
@@ -271,7 +272,6 @@ class ControladorTutorFCT extends Controller
      */
     public function rellenarAnexo1(Request $val)
     {
-        error_log($val);
         // Centro estudios
         $dni_tutor = $val->get('dni_tutor');
         $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->first();
@@ -340,20 +340,25 @@ class ControladorTutorFCT extends Controller
                     $curso_anio = Carbon::createFromFormat('Y-m-d', Convenio::where('cod_convenio', $convenio->cod_convenio)->select('fecha_ini')->get()->first()->fecha_ini)->year;
 
                     //Responsable de la empresa
-                    $responsable_empresa = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                    $representante_legal = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
                         ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
-                        ->get();
+                        ->first();
 
                     //representante del centro de trabajo
-                    $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                    $responsable_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
                         ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
-                        ->get();
+                        ->first();
+
+
+                    if (!$responsable_centro) {
+                        $responsable_centro = $representante_legal;
+                    }
 
                     #endregion
 
@@ -384,7 +389,7 @@ class ControladorTutorFCT extends Controller
 
                     #region Relleno de datos en Word
                     $auxPrefijos = ['convenio', 'centro', 'empresa', 'ciclo', 'responsable', 'centro', 'directora', 'representante', 'tutor'];
-                    $auxDatos = [$convenio, $nombre_centro, $nombre_empresa, $nombre_ciclo, $responsable_empresa[0], $ciudad_centro_estudios, $directora, $representante_centro[0], $nombre_tutor];
+                    $auxDatos = [$convenio, $nombre_centro, $nombre_empresa, $nombre_ciclo, $representante_legal, $ciudad_centro_estudios, $directora, $responsable_centro, $nombre_tutor];
 
                     $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
                     $datos = $datos +  [
@@ -544,7 +549,7 @@ class ControladorTutorFCT extends Controller
         foreach ($Anexos1 as $a) {
             if (file_exists(public_path($a->ruta_anexo))) {
                 //Saco la hora a parte, por que si el servidor tarda en introducir los datos, el distinct no funcióna
-                $created_at=Anexo::select('created_at')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
+                $created_at = Anexo::select('created_at')->where('ruta_anexo', 'like', "$a->ruta_anexo")->first();
                 //Esto sirve para poner las barras segun el so que se este usando
                 $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
@@ -854,6 +859,7 @@ class ControladorTutorFCT extends Controller
     public function habilitarAnexo(Request $val)
     {
 
+        // Request
         $cod_anexo = $val->get('cod_anexo');
         $dni_tutor = $val->get('dni_tutor');
 
@@ -864,19 +870,14 @@ class ControladorTutorFCT extends Controller
         $codAux = explode("_", $cod_anexo);
         //$codAux[0] es el tipo del Anexo
         if ($codAux[0] == 'Anexo1') {
-            FCT::where('id_empresa', '=', $codAux[1])->update([
-                'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
-            ]);
-        } else {
-            if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
+            $ruta_anexo = Anexo::where('ruta_anexo', 'like', "%$cod_anexo%")->first();
 
-                $convenio = explode('_', $cod_anexo);
-                $convenio = explode('.', $convenio[1]);
-                $convenio = str_replace('-', '/', $convenio[0]);
-
-                Convenio::where('cod_convenio', '=', $convenio)->update([
-                    'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
-                ]);
+            //Buscar alumnos del tutor para asegurar modificar la fila de bbdd correcta
+            $alumnos_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
+            foreach ($alumnos_tutor as $a) {
+                    Fct::where('id_empresa', '=', $codAux[1])->where('dni_alumno', '=', $a->dni_alumno)->update([
+                        'ruta_anexo' => $ruta_anexo->ruta_anexo,
+                    ]);
             }
         }
     }
@@ -2053,6 +2054,45 @@ class ControladorTutorFCT extends Controller
                     'firmado_empresa' => 0,
                 ]);
             }
+        }
+        //---------------------------GENERACIÓN NOTIFICACIÓN-----------------------------------
+        //Cogemos la empresa a la que estan asociados los alumnos del AnexoI
+        $empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
+            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
+            ->select('empresa.id AS id', 'empresa.nombre AS nombre')
+            ->first();
+        /*Vamos a sacar el dni del alumno del registro FCT*/
+        $dni_alumno = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
+            ->select('alumno.dni AS dni')
+            ->first();
+        /*Primero tenemos que saber qué tutor ha generado el AnexoI*/
+        $email_tutor = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+            ->where('matricula.dni_alumno', '=', $dni_alumno->dni)
+            ->select('profesor.email AS email')
+            ->first();
+        error_log($email_tutor->email);
+        /*Despues, comprobamos si el dni es del director*/
+        $director = Profesor::join('rol_profesor_asignado', 'profesor.dni', '=', 'rol_profesor_asignado.dni')
+            ->where('profesor.dni', '=', $dni)
+            ->where('rol_profesor_asignado.id_rol', '=', 1)
+            ->select('profesor.email AS email')
+            ->get();
+        //Si existe el director, mandamos la notificación
+        if (count($director) > 0) {
+            $introducirNotificacion = Notificacion::create([
+                'email' => $email_tutor->email,
+                'mensaje' => 'El/la director/a ya ha firmado el Anexo I referente a la empresa ' . $empresa->nombre . '.',
+                'leido' => 0
+            ]);
+        } else {
+            /*En el caso de que sea tutor (porque alumno no puede ser porque al menu FCT no tiene acceso),
+            la notificación se marcará como leida.*/
+            $updateNotificacion = Notificacion::whereNull('semana')
+                ->update([
+                    'leido' => 1,
+                ]);
         }
     }
 
