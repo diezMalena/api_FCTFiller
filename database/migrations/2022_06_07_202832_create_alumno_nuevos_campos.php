@@ -19,10 +19,14 @@ class CreateAlumnoNuevosCampos extends Migration
     public function up()
     {
         Schema::table('alumno', function (Blueprint $table) {
-            $table->string('foto')->default('./assets/images/defaultProfilePicture.png')->nullable(true);
-            $table->string('curriculum')->nullable(true);
-            $table->string('cuenta_bancaria')->nullable(true);
-            $table->string('matricula_coche')->nullable(true);
+            $table->date('fecha_nacimiento')->nullable(true);;
+            $table->string('domicilio')->nullable(true);
+            $table->string('telefono')->nullable(true);
+            $table->string('movil')->nullable(true);
+            // $table->string('foto')->default('./assets/images/defaultProfilePicture.png')->nullable(true);
+            // $table->string('curriculum')->nullable(true);
+            // $table->string('cuenta_bancaria')->nullable(true);
+            // $table->string('matricula_coche')->nullable(true);
         });
     }
 

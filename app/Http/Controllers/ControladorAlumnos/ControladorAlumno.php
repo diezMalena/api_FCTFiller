@@ -24,11 +24,14 @@ use Exception;
 use ZipArchive;
 use Carbon\Carbon;
 use App\Auxiliar\Parametros as AuxiliarParametros;
+use App\Http\Controllers\ContrladoresDocentes\ControladorTutorFCT;
 use App\Models\AuxCursoAcademico;
 use App\Models\FacturaManutencion;
 use App\Models\FacturaTransporte;
 use App\Models\Gasto;
 use App\Models\GrupoFamilia;
+use App\Models\Tutoria;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -363,7 +366,12 @@ class ControladorAlumno extends Controller
 
     /***********************************************************************/
     #region Recoger alumnos asociados a un tutor
-
+    /**
+     * Función que recoge de la BBDD los alumnos que tienen un determinado
+     * tutor.
+     * @author Malena
+     * @return $alumnosAsociados a x tutor
+     */
     public function getAlumnosAsociados(Request $req)
     {
         //dni_tutor puede ser tanto de instituto como de empresa
@@ -391,13 +399,8 @@ class ControladorAlumno extends Controller
 
         return response()->json($alumnosAsociados, 200);
     }
-
-
     #endregion
     /***********************************************************************/
-
-
-
 
     /***********************************************************************/
     #region Generación y descarga del Anexo III
@@ -434,7 +437,6 @@ class ControladorAlumno extends Controller
         $auxPrefijos = ['centro', 'alumno', 'tutor', 'familia_profesional', 'ciclo', 'empresa', 'tutor_empresa', 'fct'];
         $auxDatos = [$centro, $alumno, $tutor, $familia_profesional, $ciclo, $empresa, $tutor_empresa, $fct];
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
-
         //Recorro las 5 jornadas, y les establezco su valor correspondiente en el documento.
         for ($i = 0; $i < count($jornadas); $i++) {
             $datos['jornada' . $i . '.actividades'] = $jornadas[$i]->actividades;
@@ -443,10 +445,8 @@ class ControladorAlumno extends Controller
         }
         //Nombre de la plantilla:
         $nombrePlantilla = 'Anexo3';
-
         //La ruta donde se va a almacenar el documento:
         $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
-
         //Establezco la fecha para ponerlo en el nombre del documento:
         $fecha = Carbon::now();
         $fecha_doc = $fecha->day . '-' . AuxiliarParametros::MESES[$fecha->month] . '-' . $fecha->year % 100;
@@ -459,11 +459,8 @@ class ControladorAlumno extends Controller
         $template = new TemplateProcessor($rutaOrigen);
         $template->setValues($datos);
         $template->saveAs($rutaDestino);
-
-
         /*Cuando se genere un nuevo Word, las firmas de los 3 implicados se pondrán a 0 dado que se entiende que al generar un Word nuevo, es porque el
         alumno ha cambiado algún campo y hay que firmarlo y subirlo nuevo.*/
-
         $fct = $this->buscarId_fct($dni_alumno);
         $id_fct = $fct[0]->id;
         $cambiarFirmas = Semana::where('id_fct', '=', $id_fct)
@@ -473,11 +470,15 @@ class ControladorAlumno extends Controller
                 'firmado_tutor_estudios' => 0,
                 'firmado_tutor_empresa' => 0,
             ]);
-
         return response()->download(public_path($rutaDestino));
     }
 
-
+    /**
+     * Función que comprueba en la BBDD si existe una hoja de seguimiento
+     * de una determinada semana
+     * @author Malena
+     * @return $ruta_hoja
+     */
     public function hayDocumento(Request $req)
     {
         $ruta_hoja = Semana::where('id_fct', '=', $req->id_fct)
@@ -487,14 +488,22 @@ class ControladorAlumno extends Controller
         return response()->json($ruta_hoja, 200);
     }
 
-
+    /**
+     * Función que envía al cliente la ruta de la hoja de seguimiento
+     * de una determinada semana para descargarla.
+     * @author Malena
+     * @return Ruta $req->ruta_hoja
+     */
     public function descargarAnexo3(Request $req)
     {
         return response()->download(public_path($req->ruta_hoja));
     }
 
     /**
-     *
+     * Función que recoge todos los datos necesarios para poder subir una determinaa
+     * hoja de seguimiento al servidor, guardándola en su correspondiente carpeta y
+     * añadiendo la ruta en la BBDD.
+     * @author Malena
      */
     public function subirAnexo3(Request $req)
     {
@@ -703,6 +712,8 @@ class ControladorAlumno extends Controller
 
     /**
      * Método que recoge la última jornada añadida.
+     * @author Malena
+     * @return $jornada
      */
     public function ultimaJornada($dni_alumno)
     {
@@ -907,13 +918,13 @@ class ControladorAlumno extends Controller
     public function firmarAnexo($rutaParaBBDD, $extension)
     {
         if ($extension == 'pdf') {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
-                    'firmado_alumno' => 1,
-                ]);
+            Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                'firmado_alumno' => 1,
+            ]);
         } else {
-                Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
-                    'firmado_alumno' => 0,
-                ]);
+            Anexo::where('ruta_anexo', 'like', "$rutaParaBBDD")->update([
+                'firmado_alumno' => 0,
+            ]);
         }
     }
 
@@ -1098,7 +1109,11 @@ class ControladorAlumno extends Controller
     }
     #endregion
     /***********************************************************************/
+
+    /***********************************************************************/
     #region Resumen de gastos del alumno - Anexo VI
+
+    /***********************************************************************/
     #region CRUD Tickets transporte
 
     /**
@@ -1151,8 +1166,8 @@ class ControladorAlumno extends Controller
                     ['dni_alumno', '=', $dni_alumno],
                     ['curso_academico', '=', Auxiliar::obtenerCursoAcademico()]
                 ])->get();
-                 //Incluimos la URL de la foto del ticket de transporte
-                 foreach ($gasto->facturasManutencion as $factura) {
+                //Incluimos la URL de la foto del ticket de transporte
+                foreach ($gasto->facturasManutencion as $factura) {
                     $factura->imagen_ticket = Auxiliar::obtenerURLServidor() . '/api/descargarImagenTicketManutencion/' . $factura->id . '/' . uniqid();
                 }
 
@@ -1354,7 +1369,9 @@ class ControladorAlumno extends Controller
         }
     }
     #endregion
+    /***********************************************************************/
 
+    /***********************************************************************/
     #region Funciones auxiliares CRUD Anexo VI:
 
     /**
@@ -1458,4 +1475,142 @@ class ControladorAlumno extends Controller
     }
     #endregion
     #endregion
+    /***********************************************************************/
+
+    /***********************************************************************/
+    #region Confirmación de gastos - Anexo V
+
+    /**
+     * Actualiza los gastos en la base de datos y genera un Anexo V
+     *
+     * @param Request $req contiene los datos de los gastos de un alumno
+     * @return Response JSON con la ruta del anexo generado (si todo ha ido bien), un mensaje y el código HTTP
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function confirmarGastos(Request $req)
+    {
+        try {
+            $curso = $req->curso_academico;
+            #region Actualización de gastos (confirmación)
+            Gasto::where('dni_alumno', $req->dni_alumno)->where('curso_academico', $curso)
+                ->update(['total_gastos' => $req->total_gastos]);
+            #endregion
+            #region Recolección de datos para rellenar el Anexo V
+            // Extraigo todos los objetos que se necesitan en el Anexo V
+            $controller = new ControladorTutorFCT();
+            $alumno = Alumno::where('dni', $req->dni_alumno)->first();
+            $fct = Fct::where('dni_alumno', $req->dni_alumno)->where('curso_academico', $curso)->first();
+            $matricula = Matricula::where('dni_alumno', $alumno->dni)->where('curso_academico', $curso)->first();
+            $centro = CentroEstudios::where('cod', $matricula->cod_centro)->first();
+            $director = $controller->getDirectorCentroEstudios($centro->cod);
+            $grupo = Grupo::where('cod', $matricula->cod_grupo)->first();
+            $familia = FamiliaProfesional::find(GrupoFamilia::where('cod_grupo', $grupo->cod)->first()->id_familia);
+            $tutor = Profesor::where('dni', Tutoria::where('cod_grupo', $grupo->cod)->where('curso_academico', $curso)->first()->dni_profesor)->first();
+            $empresa = Empresa::find($fct->id_empresa);
+
+            // Fabrico el vector con los datos y añado lo que falta
+            $datos = Auxiliar::modelsToArray(
+                [$alumno, $fct, $centro, $director, $grupo, $familia, $tutor, $empresa],
+                ['alumno', 'fct', 'centro', 'director', 'grupo', 'familia', 'tutor', 'empresa']
+            );
+            $fecha = Carbon::now();
+            $datos['dia'] = $fecha->day;
+            $datos['mes'] = AuxiliarParametros::MESES[$fecha->month];
+            $datos['anio'] = $fecha->year % 100;
+            $datos['gasto.total_gastos'] = $req->total_gastos;
+            #endregion
+            #region Generación del Anexo V
+            // Creo las rutas (y creo las carpetas) para el alumno y el tutor (que debe tener una copia)
+            $nombrePlantilla = 'Anexo5';
+            $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
+            Auxiliar::existeCarpeta(public_path($alumno->dni . DIRECTORY_SEPARATOR . $nombrePlantilla));
+            $rutaDestinoAlu = $alumno->dni . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . str_replace('/', '-', $curso) . '.docx';
+            Auxiliar::existeCarpeta(public_path($tutor->dni . DIRECTORY_SEPARATOR . $nombrePlantilla));
+            $rutaDestinoTutor = $tutor->dni . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $alumno->dni . '_' . str_replace('/', '-', $curso) . '.docx';
+
+            // Genero el Anexo V
+            $template = new TemplateProcessor($rutaOrigen);
+            $template->setValues($datos);
+            $template->saveAs($rutaDestinoAlu);
+            // Y lo copio al tutor
+            copy($rutaDestinoAlu, $rutaDestinoTutor);
+            // Por último, introduzco los registros en la tabla de anexos
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaDestinoAlu)[0] . '%')->orWhere('ruta_anexo', 'like', explode('.', $rutaDestinoTutor)[0] . '%')->delete();
+            Anexo::create([
+                'tipo_anexo' => 'Anexo5',
+                'ruta_anexo' => $rutaDestinoAlu
+            ]);
+            Anexo::create([
+                'tipo_anexo' => 'Anexo5',
+                'ruta_anexo' => $rutaDestinoTutor
+            ]);
+            #endregion
+            return response()->json(['message' => 'Gastos confirmados', 'ruta_anexo' => $rutaDestinoAlu], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->getMessage(), 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Guarda el archivo que recibe en base64 en la ruta del alumno y de su tutor,
+     * y marca los archivos como firmados
+     *
+     * @param Request $req contiene el archivo en base 64, el curso académico y el DNI del alumno
+     * @return Response JSON con la respuesta del servidor, según haya resultado el proceso
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    public function subirAnexoV(Request $req)
+    {
+        try {
+            // Variables básicas
+            $dniAlu = $req->get('dni');
+            $curso = $req->get('curso_academico');
+            $dniTutor = $this->getTutorFromAlumnoCurso($dniAlu, $curso)->dni;
+
+            // Guardo los archivos
+            $carpetaAlu = $dniAlu . DIRECTORY_SEPARATOR . 'Anexo5';
+            $carpetaTutor = $dniTutor . DIRECTORY_SEPARATOR . 'Anexo5';
+            $archivoAlu = 'Anexo5_' . str_replace('/', '-', $curso);
+            $archivoTutor = 'Anexo5_' . $dniAlu . '_' . str_replace('/', '-', $curso);
+            $rutaAlu = Auxiliar::guardarFichero($carpetaAlu, $archivoAlu, $req->get('file'));
+            $rutaTutor = Auxiliar::guardarFichero($carpetaTutor, $archivoTutor, $req->get('file'));
+
+            // Hago el update en la base de datos
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaAlu)[0] . '%')->update([
+                'ruta_anexo' => $rutaAlu,
+                'firmado_alumno' => 1
+            ]);
+            Anexo::where('ruta_anexo', 'like', explode('.', $rutaTutor)[0] . '%')->update([
+                'ruta_anexo' => $rutaTutor,
+                'firmado_alumno' => 1
+            ]);
+
+            return response()->json(['message' => 'Anexo firmado'], 200);
+        } catch (QueryException $ex) {
+            return response()->json($ex->errorInfo[2], 400);
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene el modelo del tutor a partir del DNI del alumno y un curso académico
+     *
+     * @param string $dni DNI de un alumno
+     * @param string $curso Curso académico
+     * @return Profesor Modelo con los datos del profesor
+     * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
+     */
+    private function getTutorFromAlumnoCurso(string $dni, string $curso)
+    {
+        $matricula = Matricula::where('dni_alumno', $dni)->where('curso_academico', $curso)->first();
+        $grupo = Grupo::where('cod', $matricula->cod_grupo)->first();
+        $tutoria = Tutoria::where('curso_academico', $curso)->where('cod_grupo', $grupo->cod)->first();
+        return Profesor::where('dni', $tutoria->dni_profesor)->first();
+    }
+
+    #endregion
+    /***********************************************************************/
 }
