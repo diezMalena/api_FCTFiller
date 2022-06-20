@@ -271,7 +271,6 @@ class ControladorTutorFCT extends Controller
      */
     public function rellenarAnexo1(Request $val)
     {
-        error_log($val);
         // Centro estudios
         $dni_tutor = $val->get('dni_tutor');
         $cod_centro = Profesor::select('cod_centro_estudios')->where('dni', $dni_tutor)->first();
@@ -340,20 +339,25 @@ class ControladorTutorFCT extends Controller
                     $curso_anio = Carbon::createFromFormat('Y-m-d', Convenio::where('cod_convenio', $convenio->cod_convenio)->select('fecha_ini')->get()->first()->fecha_ini)->year;
 
                     //Responsable de la empresa
-                    $responsable_empresa = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                    $representante_legal = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
                         ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::REPRESENTANTE_LEGAL)
-                        ->get();
+                        ->first();
 
                     //representante del centro de trabajo
-                    $representante_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
+                    $responsable_centro = Empresa::join('trabajador', 'trabajador.id_empresa', '=', 'empresa.id')
                         ->join('rol_trabajador_asignado', 'rol_trabajador_asignado.dni', '=', 'trabajador.dni')
                         ->select('trabajador.nombre', 'trabajador.apellidos')
                         ->where('trabajador.id_empresa', '=', $id->id_empresa)
                         ->where('rol_trabajador_asignado.id_rol', '=', Parametros::RESPONSABLE_CENTRO)
-                        ->get();
+                        ->first();
+
+
+                    if (!$responsable_centro) {
+                        $responsable_centro = $representante_legal;
+                    }
 
                     #endregion
 
@@ -384,7 +388,7 @@ class ControladorTutorFCT extends Controller
 
                     #region Relleno de datos en Word
                     $auxPrefijos = ['convenio', 'centro', 'empresa', 'ciclo', 'responsable', 'centro', 'directora', 'representante', 'tutor'];
-                    $auxDatos = [$convenio, $nombre_centro, $nombre_empresa, $nombre_ciclo, $responsable_empresa[0], $ciudad_centro_estudios, $directora, $representante_centro[0], $nombre_tutor];
+                    $auxDatos = [$convenio, $nombre_centro, $nombre_empresa, $nombre_ciclo, $representante_legal, $ciudad_centro_estudios, $directora, $responsable_centro, $nombre_tutor];
 
                     $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
                     $datos = $datos +  [
@@ -544,7 +548,7 @@ class ControladorTutorFCT extends Controller
         foreach ($Anexos1 as $a) {
             if (file_exists(public_path($a->ruta_anexo))) {
                 //Saco la hora a parte, por que si el servidor tarda en introducir los datos, el distinct no funcióna
-                $created_at=Anexo::select('created_at')->where('ruta_anexo','like',"$a->ruta_anexo")->first();
+                $created_at = Anexo::select('created_at')->where('ruta_anexo', 'like', "$a->ruta_anexo")->first();
                 //Esto sirve para poner las barras segun el so que se este usando
                 $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
                 $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
