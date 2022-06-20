@@ -1081,47 +1081,17 @@ class ControladorAlumno extends Controller
      */
     public function descargarTodoAlumnos(Request $req)
     {
-        $zip = new ZipArchive;
+        $c = new ControladorTutorFCT();
         $AuxNombre = Str::random(7);
         $dni = $req->get('dni_alumno');
         $habilitado = 1;
 
         $nombreZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
+        $nombreZip = $c->montarZipCrud($dni, $nombreZip, $habilitado);
 
-        $nombreZip = $this->montarZipCrud($dni, $zip, $nombreZip, $habilitado);
-
-        return response()->download(public_path($nombreZip));
+        return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
     }
-    /**
-     * Esta funcion sirve para generar el zip de todos los anexos del crud de anexos de Alumnos
-     * Miramos los anexos de la carpeta de anexos del alumno, buscamos ese anexo habilitado
-     * si este existe en el directorio, en tal caso se añade al zip
-     * @author Laura <lauramorenoramos97@gmail.com>
-     * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
-     * @param ZipArchive $zip , el zip donde se almacenaran los archivos
-     * @param String $nombreZip, el nombre que tendrá el zip
-     * @return void
-     */
-    public function montarZipCrud(String $dni_alumno, ZipArchive $zip, String $nombreZip, $habilitado)
-    {
-        $files = File::files(public_path($dni_alumno . DIRECTORY_SEPARATOR . 'AnexoXV'));
-        if ($zip->open(public_path($nombreZip), ZipArchive::CREATE)) {
-            #region Anexo XV
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
 
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-            $zip->close();
-        }
-        return $nombreZip;
-    }
     #endregion
     /***********************************************************************/
 

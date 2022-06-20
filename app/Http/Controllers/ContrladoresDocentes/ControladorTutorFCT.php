@@ -875,9 +875,9 @@ class ControladorTutorFCT extends Controller
             //Buscar alumnos del tutor para asegurar modificar la fila de bbdd correcta
             $alumnos_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
             foreach ($alumnos_tutor as $a) {
-                    Fct::where('id_empresa', '=', $codAux[1])->where('dni_alumno', '=', $a->dni_alumno)->update([
-                        'ruta_anexo' => $ruta_anexo->ruta_anexo,
-                    ]);
+                Fct::where('id_empresa', '=', $codAux[1])->where('dni_alumno', '=', $a->dni_alumno)->update([
+                    'ruta_anexo' => $ruta_anexo->ruta_anexo,
+                ]);
             }
         }
     }
@@ -900,7 +900,7 @@ class ControladorTutorFCT extends Controller
         $rutaZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
         $nombreZip = $this->montarZipCrud($dni, $rutaZip, $habilitado);
 
-        return response()->download(public_path($nombreZip));
+        return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
     }
 
     /**
@@ -908,7 +908,7 @@ class ControladorTutorFCT extends Controller
      * Miramos los anexos de la carpeta de anexos del tutor, buscamos ese anexo habilitado o no habilitado, segun si
      * la consulta se hace desde el crud de anexos o desde el historial  y comprobamos
      * si este existe en el directorio, en tal caso se añade al zip
-     * Comprueba que el directorio en el que se busca el archivo existe y sino, lo crea.
+     * Comprueba que el directorio en el que se busca el archivo existe y sino, lo crea y de la misma forma con los archivos.
      * @author Laura <lauramorenoramos97@gmail.com>
      * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
      * @param ZipArchive $zip , el zip donde se almacenaran los archivos
@@ -918,89 +918,26 @@ class ControladorTutorFCT extends Controller
     public function montarZipCrud(String $dni_tutor, String $rutaZip, $habilitado)
     {
         $zip = new ZipArchive;
+        $tipo_anexos_existentes = Anexo::select('tipo_anexo')->where('habilitado', '=', $habilitado)->distinct()->get();
 
-        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-        $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($rutaZip), ZipArchive::CREATE)) {
+            foreach ($tipo_anexos_existentes as $a) {
 
-            #region Anexo 0
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0'));
-            foreach ($files as $value) {
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+                Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . $a->tipo_anexo));
+                $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR .  $a->tipo_anexo));
+                foreach ($files as $value) {
+                    $ruta_completa = public_path($dni_tutor . DIRECTORY_SEPARATOR . $a->tipo_anexo . DIRECTORY_SEPARATOR . basename($value));
+                    if (file_exists($ruta_completa)) {
+                        $nombreAux = basename($value);
+                        error_log('hola');
+                        $existeAnexo = Anexo::where('tipo_anexo', '=', $a->tipo_anexo)->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->first();
 
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
+                        if ($existeAnexo) {
+                            $zip->addFile($value, $nombreAux);
+                        }
+                    }
                 }
             }
-            #endregion
-            #region Anexo 0A
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
-            foreach ($files as $value) {
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0A')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-
-            #region Anexo I
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-            foreach ($files as $value) {
-
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'));
-            #region Anexo II
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo2')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo4'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo4'));
-            #region Anexo IV
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo4')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-
-            #region Anexo XV
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'AnexoXV'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'AnexoXV'));
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
             $zip->close();
         }
         return $rutaZip;
