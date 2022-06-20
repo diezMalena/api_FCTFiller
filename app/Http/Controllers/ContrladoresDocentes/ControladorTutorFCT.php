@@ -1556,6 +1556,9 @@ class ControladorTutorFCT extends Controller
     /**
      * Calcula la suma de KM realizados por el alumno durante el trayecto (I/V)
      * en vehículo privado
+     * @return float Suma de KM realizados por el alumno en vehículo privado. Si no tiene derecho
+     * a compensación por gastos, devuelve 0.
+     * @author David Sánchez Barragán
      */
     public function calcularSumaKMVehiculoPrivado($gasto)
     {
@@ -1576,6 +1579,14 @@ class ControladorTutorFCT extends Controller
         return 0;
     }
 
+    /**
+     * Obtiene la relación de alumnos tutorizados por un profesor en la tabla Gasto.
+     * Dicha relación contiene a los alumnos con registro en la tabla Gasto (propiedad gasto[]: Gasto[])
+     * y aquellos que no están en la tabla (propiedad alumnosSinGasto[]: string[])
+     * @param string Correo electrónico del tutor de los alumnos.
+     * @return stdClass
+     * @author David Sánchez Barragán
+     */
     public function obtenerGestionGastosPorEmailTutor($email)
     {
         //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
