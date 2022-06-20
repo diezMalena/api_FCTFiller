@@ -1013,20 +1013,35 @@ class ControladorAlumno extends Controller
     {
         $datos = array();
 
+        // De momento solo es necesario para el anexo XV
         $this->elAlumnoTieneSusAnexosObligatorios($dni_alumno);
+
         $Anexos = Anexo::where('ruta_anexo', 'like', "$dni_alumno%")->get();
 
         foreach ($Anexos as $a) {
             //return response($Anexos);
             //Un anexo es habilitado si este esta relleno por completo
-            if (strcmp($a->tipo_anexo, 'Anexo4') != 0 && strcmp($a->tipo_anexo, 'Anexo2') != 0) {
+            if ($a->tipo_anexo == 'Anexo5' || $a->tipo_anexo == 'AnexoXV') {
+
                 $anexoAux = explode('/', $a->ruta_anexo);
-                $datos[] = [
-                    'nombre' => $a->tipo_anexo,
-                    'relleno' => $a->habilitado,
-                    'codigo' => $anexoAux[2],
-                    'fecha' => $a->created_at
-                ];
+
+                if ($a->tipo_anexo == 'Anexo5') {
+                    if (file_exists(public_path($a->ruta_anexo))) {
+                        $datos[] = [
+                            'nombre' => $a->tipo_anexo,
+                            'relleno' => $a->habilitado,
+                            'codigo' => $anexoAux[2],
+                            'fecha' => $a->created_at
+                        ];
+                    }
+                } else {
+                    $datos[] = [
+                        'nombre' => $a->tipo_anexo,
+                        'relleno' => $a->habilitado,
+                        'codigo' => $anexoAux[2],
+                        'fecha' => $a->created_at
+                    ];
+                }
             }
         }
         return response()->json($datos, 200);

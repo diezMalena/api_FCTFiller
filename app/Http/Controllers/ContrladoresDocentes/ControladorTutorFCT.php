@@ -859,6 +859,7 @@ class ControladorTutorFCT extends Controller
     public function habilitarAnexo(Request $val)
     {
 
+        // Request
         $cod_anexo = $val->get('cod_anexo');
         $dni_tutor = $val->get('dni_tutor');
 
@@ -869,19 +870,14 @@ class ControladorTutorFCT extends Controller
         $codAux = explode("_", $cod_anexo);
         //$codAux[0] es el tipo del Anexo
         if ($codAux[0] == 'Anexo1') {
-            FCT::where('id_empresa', '=', $codAux[1])->update([
-                'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
-            ]);
-        } else {
-            if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
+            $ruta_anexo = Anexo::where('ruta_anexo', 'like', "%$cod_anexo%")->first();
 
-                $convenio = explode('_', $cod_anexo);
-                $convenio = explode('.', $convenio[1]);
-                $convenio = str_replace('-', '/', $convenio[0]);
-
-                Convenio::where('cod_convenio', '=', $convenio)->update([
-                    'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
-                ]);
+            //Buscar alumnos del tutor para asegurar modificar la fila de bbdd correcta
+            $alumnos_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
+            foreach ($alumnos_tutor as $a) {
+                    Fct::where('id_empresa', '=', $codAux[1])->where('dni_alumno', '=', $a->dni_alumno)->update([
+                        'ruta_anexo' => $ruta_anexo->ruta_anexo,
+                    ]);
             }
         }
     }
@@ -2057,13 +2053,13 @@ class ControladorTutorFCT extends Controller
                 'mensaje' => 'El/la director/a ya ha firmado el Anexo I referente a la empresa ' . $empresa->nombre . '.',
                 'leido' => 0
             ]);
-        }else{
+        } else {
             /*En el caso de que sea tutor (porque alumno no puede ser porque al menu FCT no tiene acceso),
             la notificación se marcará como leida.*/
             $updateNotificacion = Notificacion::whereNull('semana')
-            ->update([
-                'leido' => 1,
-            ]);
+                ->update([
+                    'leido' => 1,
+                ]);
         }
     }
 
