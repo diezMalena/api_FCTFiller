@@ -1618,7 +1618,15 @@ class ControladorTutorFCT extends Controller
         return $gastos;
     }
 
-
+    /**
+     * Devuelve la información para representar los datos de la tabla de gestión de
+     * gastos de profesor en el lado cliente.
+     * @param Request Petición con la información del usuario que ha iniciado sesión en la aplicación.
+     * @return Response JSON con el siguiente contenido:
+     * - Filas de la tabla Gasto donde el tutor sea el usuario de la petición
+     * - Alumnos que tutoriza el usuario que realiza la petición y no tienen registro en la tabla de gastos.
+     * @author David Sánchez Barragán
+     */
     public function gestionGastosProfesor(Request $r)
     {
         $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
@@ -1626,6 +1634,12 @@ class ControladorTutorFCT extends Controller
     }
 
 
+    /**
+     * Elimina a un alumno de la tabla Gasto.
+     * @param string DNI del alumno a eliminar
+     * @return Response Mensaje de estado, OK o error.
+     * @author David Sánchez Barragán
+     */
     public function eliminarAlumnoDeGastos($dni_alumno)
     {
         Gasto::where([
@@ -1643,6 +1657,12 @@ class ControladorTutorFCT extends Controller
         return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
     }
 
+    /**
+     * Añade a un alumno en la tabla Gasto
+     * @param Request con la información del alumno
+     * @return Response Mensaje de estado, OK o error.
+     * @author David Sánchez Barragán
+     */
     public function nuevoAlumnoGestionGastos(Request $r)
     {
         try {
@@ -1665,6 +1685,12 @@ class ControladorTutorFCT extends Controller
         return response()->json(['mensaje' => 'Creado correctamente'], 201);
     }
 
+    /**
+     * Descarga el Anexo 6 con la relación de gastos del alumno.
+     * @param Request $r Petición con el usuario tutor del centro de estudios.
+     * @return BinaryFileResponse con el anexo del alumno
+     * @author David Sánchez Barragán
+     */
     public function descargarAnexoVI(Request $r)
     {
         $rutaFichero = $this->generarAnexoVI($r->user()->email);
@@ -1675,6 +1701,13 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    /**
+     * Genera el o los libros de Excel de los alumnos con derecho a gasto
+     * @param string $email Correo electrónico del tutor del grupo
+     * @return string Ruta dónde se ha/n generado el/los libro/s de Excel (si solo se genera uno,
+     * se guarda en formato .xlsx; en caso contrario se comprimen en un fichero .zip)
+     * @author David Sánchez Barragán
+     */
     public function generarAnexoVI($email)
     {
         $dniTutor = Profesor::where('email', '=', $email)->get()->first()->dni;

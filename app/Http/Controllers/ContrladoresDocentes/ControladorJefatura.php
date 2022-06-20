@@ -53,10 +53,8 @@ class ControladorJefatura extends Controller
      *   - Añadidos el orden de procesamiento: Profesores, Alumnos, Unidades, Matrículas.
      *   - Si el directorio tmp/csv no existe, se crea
      *   - Añadido el DNI de la persona logueada en el sistema
-     *
      * @param Request $r La request debe incluir como mínimo, el fichero en formato cadena Base64,
      * el nombre del fichero y el nombre de la caja en la que el usuario arrastra el fichero
-     *
      * @return Response Devuelve un error en caso de que el CSV esté mal formado u ocurra algún problema
      * al guardar el fichero
      * @author David Sánchez Barragán
@@ -129,11 +127,9 @@ class ControladorJefatura extends Controller
 
     /**
      * Función intermedia que guarda los ficheros CSV en la base de datos
-     *
      * @param string $nombreCaja Nombre de la caja
      * @return Response Respuesta de la petición formateada en JSON con el
      * parámetro mensaje, que indicará el resultado de la llamada a esta función
-     *
      * @author David Sánchez Barragán
      */
     public function procesarFicheroABBDD($nombreCaja, $DNILogueado)
@@ -164,8 +160,8 @@ class ControladorJefatura extends Controller
 
     /**
      * Obtiene la ruta donde se alojan los ficheros temporales CSV
-     *
      * @return string Ruta de la carpeta donde se alojan los ficheros CSV
+     * @author David Sánchez Barragán
      */
     private function getCSVPath()
     {
@@ -174,9 +170,10 @@ class ControladorJefatura extends Controller
 
     /**
      * Obtiene la ruta junto con el nombre del fichero de los ficheros temporales CSV
-     *
      * @param string Nombre del fichero CSV
      * @return string Ruta de la carpeta donde se alojan los ficheros CSV
+     * @author David Sánchez Barragán
+     *
      */
     private function getCSVPathFile($nombreCaja)
     {
@@ -185,7 +182,6 @@ class ControladorJefatura extends Controller
 
     /**
      * Guarda los ficheros recibidos por la petición en formato base64
-     *
      * @param string $nombreCaja
      * @param string $fichero
      * @return boolean True en caso de éxito, false en caso de error
@@ -223,10 +219,8 @@ class ControladorJefatura extends Controller
 
     /**
      * Método que procesa el fichero de Alumnos.csv e inserta su contenido en BBDD (tabla Alumno)
-     *
      * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
      * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
-     *
      * @author David Sánchez Barragán
      */
     private function procesarFicheroABBDDAlumnos($nombreCaja)
@@ -287,12 +281,10 @@ class ControladorJefatura extends Controller
 
     /**
      * Método que procesa el fichero de Matriculas.csv e inserta su contenido en BBDD (tabla ??)
-     *
      * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
      * @param string $DNILogueado Por defecto, vacío, representa el DNI de la persona que se ha loguedo en el sistema.
      * Se utilizará para obtener el centro de estudios en el cual insertar a los profesores de este CSV
      * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
-     *
      * @author David Sánchez Barragán
      */
     private function procesarFicheroABBDDMatriculas($nombreCaja, $DNILogueado)
@@ -306,11 +298,6 @@ class ControladorJefatura extends Controller
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
                         try {
-                            //Se DEBE sustituir esta variable con una select al centro de estudios
-                            //según el DNI de la persona que se ha logueado.
-                            //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
-                            //hacer solo la búsqueda en la tabla profesores.
-                            //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
                             $dniAlumno = Alumno::where('cod_alumno', trim($vec[array_search('ALUMNO', self::CABECERA_MATRICULAS)], " \t\n\r\0\x0B\""))->get()[0]->dni;
 
@@ -360,12 +347,10 @@ class ControladorJefatura extends Controller
 
     /**
      * Método que procesa el fichero de Profesores.csv e inserta su contenido en BBDD (tabla Profesor)
-     *
      * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
      * @param string $DNILogueado Por defecto, vacío, representa el DNI de la persona que se ha loguedo en el sistema.
      * Se utilizará para obtener el centro de estudios en el cual insertar a los profesores de este CSV
      * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
-     *
      * @author David Sánchez Barragán
      */
     private function procesarFicheroABBDDProfesores($nombreCaja, $DNILogueado)
@@ -381,11 +366,6 @@ class ControladorJefatura extends Controller
                         try {
                             $dni = trim($vec[array_search('DNI', self::CABECERA_PROFESORES)], " \t\n\r\0\x0B\"");
 
-                            //Se DEBE sustituir esta variable con una select al centro de estudios
-                            //según el DNI de la persona que se ha logueado.
-                            //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
-                            //hacer solo la búsqueda en la tabla profesores.
-                            //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
 
                             $profe = Profesor::create([
@@ -428,12 +408,10 @@ class ControladorJefatura extends Controller
 
     /**
      * Método que procesa el fichero de Unidades.csv e inserta su contenido en BBDD (tablas OfertaGrupo y Tutoria)
-     *
      * @param string $nombreCaja Nombre de la caja a la que se ha arrastrado el fichero
      * @param string $DNILogueado Por defecto, vacío, representa el DNI de la persona que se ha loguedo en el sistema.
      * Se utilizará para obtener el centro de estudios en el cual insertar a los grupos de este CSV
      * @return mixed Devuelve un string con el error por cada una de las líneas con errores, 0 en caso contrario
-     *
      * @author David Sánchez Barragán
      */
     private function procesarFicheroABBDDUnidades($nombreCaja, $DNILogueado)
@@ -448,11 +426,6 @@ class ControladorJefatura extends Controller
                 if ($numLinea != 0) {
                     if (count($vec) > 1) {
                         try {
-                            //Se DEBE sustituir esta variable con una select al centro de estudios
-                            //según el DNI de la persona que se ha logueado.
-                            //Como a esta parte solo tendrán acceso los profesores (Jefes de estudios)
-                            //hacer solo la búsqueda en la tabla profesores.
-                            //De momento se elegirá el centro de estudios asociado al primer profesor de la tabla.
                             $codCentroEstudios = CentroEstudios::where('cod', (Profesor::where('dni', $DNILogueado)->get()->first()->cod_centro_estudios))->get()[0]->cod;
 
                             //Se obtiene el nombre del ciclo (columna ESTUDIO), separando la cadena por
@@ -520,10 +493,8 @@ class ControladorJefatura extends Controller
      * Función intermedia que lanza todas las comprobaciones
      * @param string $nombreCaja Nombre de la caja a la que el usuario arrastra el fichero CSV para que se suba
      * @param string $nombreFichero Nombre del fichero que el usuario arrastra a la caja
-     *
      * @return mixed Devuelve 0 en caso de que haya pasado todas las validaciones, en caso contrario
      * devuelve un mensaje con la primera validación que ha fallado
-     *
      * @author David Sánchez Barragán
      */
     private function comprobarFichero($nombreCaja, $nombreFichero)
@@ -541,10 +512,8 @@ class ControladorJefatura extends Controller
      * Comprueba la extensión del fichero
      * @param string $nombreFichero Nombre del fichero a comprobar
      * @param string $extension Extensión que se desea comprobar
-     *
      * @return boolean Devuelve true si la extensión es correcta,
      * false si no lo es
-     *
      * @author David Sánchez Barragán
      */
     private function comprobarExtension($nombreFichero, $extension)
@@ -556,7 +525,6 @@ class ControladorJefatura extends Controller
      * Función que comprueba que el fichero indicado en $nombreCaja
      * tenga las mismas columnas que la cabecera de dicho fichero
      * (para evitar ficheros malformados manualmente)
-     *
      * @return boolean Devuelve true si el fichero está bien formado, false si no lo está
      * @author David Sánchez Barragán
      */
@@ -565,7 +533,6 @@ class ControladorJefatura extends Controller
         $numLinea = 0;
         $columnasEncabezado = 0;
         $filePath = $this->getCSVPathFile($nombreCaja);
-
 
         if ($file = fopen($filePath, "r")) {
             while (!feof($file)) {
@@ -844,7 +811,9 @@ class ControladorJefatura extends Controller
     #region CRUD de alumnos
 
     /**
-     * Devuelve una lista de los alumnos del centro al que pertenecza la persona que se haya logueado
+     * Devuelve una lista con los alumnos según el rol de usuario.
+     * - Si es tutor, se devuelve el listado de los alumnos a los que tutoriza
+     * - Si es director o jefe de estudios, devuelve los alumnos de todo el centro educativo
      * @param String $dni_logueado DNI de la persona que ha iniciado sesión en la aplicación
      * @return Response Respuesta con el array de alumnos
      * @author David Sánchez Barragán
@@ -909,7 +878,7 @@ class ControladorJefatura extends Controller
     }
 
     /**
-     * Obtiene los detalles de un alumno en función de su código de alumno
+     * Obtiene los detalles de un alumno según su DNI
      * @param String $dni_alumno DNI del alumno del que queremos obtener el detalle
      * @return Response Respusta con el objeto Alumno solicitado
      * @author David Sánchez Barragán
@@ -1004,7 +973,7 @@ class ControladorJefatura extends Controller
     }
 
     /**
-     * Modifica los datos del alumno
+     * Modifica los datos de un alumno
      * @param Request $r Petición con los datos del alumno del formulario de edición
      * @return Response OK o mensaje de error
      * @author David Sánchez Barragán
@@ -1086,8 +1055,8 @@ class ControladorJefatura extends Controller
     }
 
     /**
-     * Elimina de la aplicación el alumno
-     * @param String $dni_alumno
+     * Elimina de la aplicación a un alumno
+     * @param String $dni_alumno DNI del alumno
      * @return Response OK o mensaje de error
      * @author David Sánchez Barragán
      */
@@ -1108,7 +1077,8 @@ class ControladorJefatura extends Controller
      * @param string $dni DNI del alumno del que se quiere obtener la foto
      * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
      * el cambio de foto si se actualiza.
-     * @return File Objeto File para que la foto sea accesible desde el lado cliente
+     * @return File Objeto File para que la foto sea accesible desde el atributo src en etiquetas img en lado cliente
+     * @author David Sánchez Barragán
      */
     public function descargarFotoPerfil($dni, $guid)
     {
@@ -1121,9 +1091,10 @@ class ControladorJefatura extends Controller
     }
 
     /**
-     * Devuelve un objeto File para que descarga el curriculum
+     * Devuelve una respuesta de tipo descarga que envía el curriculum al cliente
      * @param string $dni DNI del alumno del que se quiere obtener el curriculum
-     * @return File Objeto File para que la foto sea accesible desde el lado cliente
+     * @return BinaryFileResponse con el curriculum del alumno
+     * @author David Sánchez Barragán
      */
     public function descargarCurriculum($dni)
     {
@@ -1503,6 +1474,12 @@ class ControladorJefatura extends Controller
 
     /***********************************************************************/
     #region Anexo FEM05
+    /**
+     * Genera y devuelve una respuesta de tipo descarga que envía el anexo FEM05 con la información del alumno.
+     * @param string $dni_alumno DNI del alumno
+     * @return BinaryFileResponse con el anexo del alumno
+     * @author David Sánchez Barragán
+     */
     public function generarAnexoFEM05($dni_alumno)
     {
         try {

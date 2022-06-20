@@ -1368,6 +1368,11 @@ class ControladorAlumno extends Controller
 
     /**
      * Descarga la imagen del ticket de transporte
+     * @param string $dni DNI del alumno del que se quiere obtener la la imagen del ticket de transporte
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el atributo src en etiquetas img en lado cliente
+     * @author David Sánchez Barragán
      */
     public function descargarImagenTicketTransporte($id, $guid)
     {
@@ -1381,6 +1386,11 @@ class ControladorAlumno extends Controller
 
     /**
      * Descarga la imagen del ticket de manutención
+     * @param string $dni DNI del alumno del que se quiere obtener la la imagen del ticket de manutención
+     * @param string $guid Universally Unique Identifier, utilizado para que en el cliente se detecte
+     * el cambio de foto si se actualiza.
+     * @return File Objeto File para que la foto sea accesible desde el atributo src en etiquetas img en lado cliente
+     * @author David Sánchez Barragán
      */
     public function descargarImagenTicketManutencion($id, $guid)
     {
