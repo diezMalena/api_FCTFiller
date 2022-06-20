@@ -94,30 +94,17 @@ class ControladorGenerico extends Controller
     /***********************************************************************/
     #region Gestión de Notificaciones
 
-    public function getNotificaciones(Request $req)
-    {
-        $email = $req->get('email');
-        $dni = $req->get('dni');
-
-        //Recogemos las notificaciones de esta persona:
-        $notificaciones = Notificacion::where('email', '=', $email)
-            ->select('*')
-            ->orderBy('created_at', 'DESC')
-            ->get();
-
-        return response()->json($notificaciones, 200);
-    }
-
-
+    /**
+     * Genera la notificación del Anexo III
+     * @author Malena
+     */
     public function generarNotificaciones(Request $req)
     {
         $email = $req->get('email');
         $dni = $req->get('dni');
-
         $esProfesor = Profesor::where('email', '=', $email)
             ->select('email')
             ->first();
-
         //Si el correo recibido lo encontramos entre los profesores
         if ($esProfesor != null) {
             $datos = Semana::join('fct', 'semana.id_fct', '=', 'fct.id')
@@ -128,14 +115,12 @@ class ControladorGenerico extends Controller
                 ->where('semana.firmado_tutor_estudios', '=', 0)
                 ->select('alumno.nombre AS nombre_alumno', 'alumno.apellidos AS apellidos_alumno', 'tutoria.dni_profesor AS dni_profesor', 'semana.id AS id_semana')
                 ->get();
-
             for ($i = 0; $i < count($datos); $i++) {
                 if ($datos[$i]->dni_profesor == $dni) {
                     //Vamos a comprobar que la notificación para esa semana aún no se ha generado:
                     $estaNotifSemana = Notificacion::where('semana', '=', $datos[$i]->id_semana)
                         ->select('*')
                         ->first();
-
                     //Si la semana aún no tiene notificacion, se inserta:
                     if ($estaNotifSemana == null) {
                         $introducirNotificacion = Notificacion::create([
@@ -144,7 +129,6 @@ class ControladorGenerico extends Controller
                             'leido' => 0,
                             'semana' => $datos[$i]->id_semana
                         ]);
-
                         /*En el caso de que el alumno genere un nuevo documento y las firmas se vuelvan a colocar en 0, queremos que también vuelva a aparecer
                         una nueva notificación porque hay que volver a firmar el documento que ha generado nuevo el alumno. */
                     } else {
@@ -161,22 +145,30 @@ class ControladorGenerico extends Controller
         return response()->json(['message' => 'Notificaciones generadas.'], 200);
     }
 
-
+    /**
+     * Función que recoge las notificaciones del user que no esten leídas
+     * @author Malena
+     * @return $notificaciones
+     */
     public function getNotificacionesHeader(Request $req)
     {
         $email = $req->get('email');
-
-        //Recogemos las notificaciones de esta persona:
+        $dni = $req->get('dni');
+        //Recogemos las notificaciones de esta persona que no estén leidas:
         $notificaciones = Notificacion::where('email', '=', $email)
-            ->where('leido', '=', 0)
+            ->where('leido','=', 0)
             ->select('*')
             ->orderBy('created_at', 'DESC')
-            ->take(3)
             ->get();
-
         return response()->json($notificaciones, 200);
     }
 
+    /**
+     * Función que realiza un count del total de las notificaciones
+     * no leídas por el user.
+     * @author Malena
+     * @return $count de notificaciones
+     */
     public function countNotificaciones(Request $req)
     {
         $email = $req->get('email');
@@ -189,6 +181,8 @@ class ControladorGenerico extends Controller
         return response()->json($count, 200);
     }
 
+    #endregion
+    /***********************************************************************/
 
 
 
@@ -282,7 +276,8 @@ class ControladorGenerico extends Controller
      * @return Response señal de descarga o 404, si no se encuentra el archivo
      * @author Dani J. Coello <daniel.jimenezcoello@gmail.com>
      */
-    public function descargarAnexoRuta(Request $req) {
+    public function descargarAnexoRuta(Request $req)
+    {
         $ruta_anexo = $req->get('ruta');
         if (file_exists($ruta_anexo)) {
             return response()->download($ruta_anexo);
