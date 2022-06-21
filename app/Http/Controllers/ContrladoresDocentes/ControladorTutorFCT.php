@@ -172,7 +172,16 @@ class ControladorTutorFCT extends Controller
             //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
 
             foreach ($alumnos_solos as $alumno) {
-                Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                $AlumnoTieneSeguimiento =  FCT::join('seguimiento', 'seguimiento.id_fct', '=', 'fct.id')
+                    ->where([['fct.dni_alumno', $alumno['dni']]])
+                    ->select(['seguimiento.id'])
+                    ->first();
+
+                if (!$AlumnoTieneSeguimiento) {
+                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                } else {
+                    return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: ' . $alumno['nombre']], 406);
+                }
             }
 
             //este for mete el nuevo nombre del responsable, se haya cambiado o no.
@@ -180,8 +189,7 @@ class ControladorTutorFCT extends Controller
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
                 Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
-                // $trabajador = Trabajador::find($empresa['dni_responsable']);
-                // Auxiliar::updateUser($trabajador, $trabajador->email);
+
                 $alumnos = $empresa['alumnos'];
 
                 foreach ($alumnos as $alumno) {
