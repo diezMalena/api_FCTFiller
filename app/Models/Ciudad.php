@@ -16,6 +16,6 @@ class Ciudad extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['pais', 'comunidad', 'provincia', 'ciudad'];
+    protected $fillable = ['id', 'pais', 'comunidad', 'provincia', 'ciudad'];
     protected $table = 'ciudades';
 }
