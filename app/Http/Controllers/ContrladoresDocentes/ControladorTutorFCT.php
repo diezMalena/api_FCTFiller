@@ -1224,7 +1224,9 @@ class ControladorTutorFCT extends Controller
             // Y creamos el registro en la tabla de anexos
             Anexo::create([
                 'tipo_anexo' => $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A',
-                'ruta_anexo' => $ruta
+                'ruta_anexo' => $ruta,
+                'firmado_director' => $req->firmado_director,
+                'firmado_empresa' => $req->firmado_empresa
             ]);
             return response()->json(['ruta_anexo' => $ruta], 201);
         } catch (QueryException $ex) {
@@ -1278,7 +1280,11 @@ class ControladorTutorFCT extends Controller
                 'fecha_fin' => $req->convenio['fecha_fin'],
                 'ruta_anexo' => $ruta
             ]);
-            Anexo::where('ruta_anexo', $rutaAnterior)->update(['ruta_anexo' => $ruta]);
+            Anexo::where('ruta_anexo', $rutaAnterior)->update([
+                'ruta_anexo' => $ruta,
+                'firmado_director' => $req->firmado_director,
+                'firmado_empresa' => $req->firmado_empresa
+            ]);
             #endregion
             return response()->json(['ruta_anexo' => $ruta], 201);
         } catch (QueryException $ex) {
