@@ -565,8 +565,14 @@ class ControladorTutorFCT extends Controller
                 }
 
                 //FECHA
-                $fechaAux = explode(':', $created_at->created_at);
-                $fechaAux = explode(' ', $fechaAux[0]);
+                if ($created_at != null) {
+                    $fechaAux = explode(':', $created_at->created_at);
+                    $fechaAux = explode(' ', $fechaAux[0]);
+                } else {
+                    $fechaAux = array();
+                    $fechaAux[0] = "";
+                }
+
 
                 //meter ese nombre en un array asociativo
                 if (!$empresa_nombre) {
@@ -684,6 +690,42 @@ class ControladorTutorFCT extends Controller
             }
         }
 
+        #region Anexo XVI
+        $AnexosXVI = Anexo::select('tipo_anexo', 'firmado_director', 'firmado_empresa', 'ruta_anexo', 'created_at')->where('habilitado', '=', $habilitado)->where('tipo_anexo', '=', 'Anexo16')->where('ruta_anexo', 'like', "$dni_tutor%")->distinct()->get();
+
+        foreach ($AnexosXVI as $a) {
+            if (file_exists(public_path($a->ruta_anexo))) {
+                //Esto sirve para poner las barras segun el so que se este usando
+                $rutaAux = str_replace('/', DIRECTORY_SEPARATOR, $a->ruta_anexo);
+                $rutaAux = explode(DIRECTORY_SEPARATOR, $rutaAux);
+
+                $empresa = Empresa::join('convenio', 'empresa.id', '=', 'convenio.id_empresa')
+                    ->where('convenio.ruta_anexo', '=', $a->ruta_anexo)
+                    ->select('empresa.nombre AS nombre')
+                    ->first();
+
+                $nombreArchivo = $rutaAux[2];
+
+                //FECHA
+                $fechaAux = explode(':', $a->created_at);
+                $fechaAux = explode(' ', $fechaAux[0]);
+
+
+                //meter ese nombre en un array asociativo
+                $datos[] = [
+                    'nombre' => 'Anexo16',
+                    'codigo' => $nombreArchivo,
+                    'empresa' => $empresa->nombre,
+                    'alumno' => '',
+                    'firma_empresa' => $a->firmado_empresa,
+                    'firma_centro' => $a->firmado_director,
+                    'firma_alumno' => 0,
+                    'created_at' => $fechaAux[0]
+                ];
+            }
+        }
+
+        #endregion
         #endregion
         return response()->json($datos, 200);
     }
@@ -1910,7 +1952,6 @@ class ControladorTutorFCT extends Controller
         //Archivos
         $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipoAnexo;
 
-
         if ($tipoAnexo == 'AnexoXV') {
             //Con el AnexoXV hay que hacer cosas especiales solo para el
             $controlador->subirAnexoXV($dni, $tipoAnexo, $nombreArchivo, $fichero, $rutaCarpeta);
@@ -1949,7 +1990,25 @@ class ControladorTutorFCT extends Controller
                 //Excluyo Anexos2 y 4 por que esto ya lo hacen ellos de manera especifica en su propia función
                 if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx') {
                     if (count($existeAnexo) == 0) {
-                        Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
+                        if ($tipoAnexo == "Anexo16") {
+                            Anexo::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')
+                                ->update([
+                                    'ruta_anexo' => $rutaParaBBDD,
+                                ]);
+
+                            Convenio::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')
+                                ->update([
+                                    'ruta_anexo' => $rutaParaBBDD,
+                                ]);
+                        } else {
+                            Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
+
+                            if($tipoAnexo == "Anexo1"){
+                                FCT::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')->update([
+                                    'ruta_anexo' => $rutaParaBBDD,
+                                ]);
+                            }
+                        }
 
                         //Firma
                         $this->firmarAnexo($dni, $rutaParaBBDD, $extension);
@@ -1958,7 +2017,6 @@ class ControladorTutorFCT extends Controller
                         Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                             'ruta_anexo' => $rutaParaBBDD,
                         ]);
-
                         //Añadidos a BBDD especiales
                         if ($tipoAnexo == 'Anexo1') {
                             FCT::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
@@ -1990,6 +2048,8 @@ class ControladorTutorFCT extends Controller
         $alumno = Alumno::where('dni', '=', $dni)->get();
         $profesor = Profesor::where('dni', '=', $dni)->get();
         $empresa = Trabajador::where('dni', '=', $dni)->get();
+
+        $tipoAnexo = Anexo::where('ruta_anexo', '=', $rutaParaBBDD)->select('tipo_anexo AS tipo_anexo')->first()->tipo_anexo;
 
         if ($extension == 'pdf') {
             if (count($alumno) > 0) {
@@ -2028,42 +2088,43 @@ class ControladorTutorFCT extends Controller
         }
         //---------------------------GENERACIÓN NOTIFICACIÓN-----------------------------------
         //Cogemos la empresa a la que estan asociados los alumnos del AnexoI
-        $empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
-            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
-            ->select('empresa.id AS id', 'empresa.nombre AS nombre')
-            ->first();
-        /*Vamos a sacar el dni del alumno del registro FCT*/
-        $dni_alumno = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
-            ->where('fct.ruta_anexo', '=', '20a\Anexo1\Anexo1_12_VdG-C2-22_2DAW_2022_.docx')
-            ->select('alumno.dni AS dni')
-            ->first();
-        /*Primero tenemos que saber qué tutor ha generado el AnexoI*/
-        $email_tutor = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
-            ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
-            ->where('matricula.dni_alumno', '=', $dni_alumno->dni)
-            ->select('profesor.email AS email')
-            ->first();
-        error_log($email_tutor->email);
-        /*Despues, comprobamos si el dni es del director*/
-        $director = Profesor::join('rol_profesor_asignado', 'profesor.dni', '=', 'rol_profesor_asignado.dni')
-            ->where('profesor.dni', '=', $dni)
-            ->where('rol_profesor_asignado.id_rol', '=', 1)
-            ->select('profesor.email AS email')
-            ->get();
-        //Si existe el director, mandamos la notificación
-        if (count($director) > 0) {
-            $introducirNotificacion = Notificacion::create([
-                'email' => $email_tutor->email,
-                'mensaje' => 'El/la director/a ya ha firmado el Anexo I referente a la empresa ' . $empresa->nombre . '.',
-                'leido' => 0
-            ]);
-        }else{
-            /*En el caso de que sea tutor (porque alumno no puede ser porque al menu FCT no tiene acceso),
+        if ($tipoAnexo == 'Anexo1') {
+            $empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
+                ->where('fct.ruta_anexo', '=', $rutaParaBBDD)
+                ->select('empresa.id AS id', 'empresa.nombre AS nombre')
+                ->first();
+            /*Vamos a sacar el dni del alumno del registro FCT*/
+            $dni_alumno = Alumno::join('fct', 'alumno.dni', '=', 'fct.dni_alumno')
+                ->where('fct.ruta_anexo', '=', $rutaParaBBDD)
+                ->select('alumno.dni AS dni')
+                ->first();
+            /*Primero tenemos que saber qué tutor ha generado el AnexoI*/
+            $email_tutor = Profesor::join('tutoria', 'tutoria.dni_profesor', '=', 'profesor.dni')
+                ->join('matricula', 'matricula.cod_grupo', '=', 'tutoria.cod_grupo')
+                ->where('matricula.dni_alumno', '=', $dni_alumno->dni)
+                ->select('profesor.email AS email')
+                ->first();
+            /*Despues, comprobamos si el dni es del director*/
+            $director = Profesor::join('rol_profesor_asignado', 'profesor.dni', '=', 'rol_profesor_asignado.dni')
+                ->where('profesor.dni', '=', $dni)
+                ->where('rol_profesor_asignado.id_rol', '=', 1)
+                ->select('profesor.email AS email')
+                ->get();
+            //Si existe el director, mandamos la notificación
+            if (count($director) > 0) {
+                $introducirNotificacion = Notificacion::create([
+                    'email' => $email_tutor->email,
+                    'mensaje' => 'El/la director/a ya ha firmado el Anexo I referente a la empresa ' . $empresa->nombre . '.',
+                    'leido' => 0
+                ]);
+            } else {
+                /*En el caso de que sea tutor (porque alumno no puede ser porque al menu FCT no tiene acceso),
             la notificación se marcará como leida.*/
-            $updateNotificacion = Notificacion::whereNull('semana')
-            ->update([
-                'leido' => 1,
-            ]);
+                $updateNotificacion = Notificacion::whereNull('semana')
+                    ->update([
+                        'leido' => 1,
+                    ]);
+            }
         }
     }
 
@@ -2236,6 +2297,140 @@ class ControladorTutorFCT extends Controller
 
     #endregion
     /***********************************************************************/
+    #endregion
+    /***********************************************************************/
+
+
+    /***********************************************************************/
+    #region Funciones para AnexoXVI
+
+    /**
+     * Genera el Anexo 16, convenio para renovar el acuerdo entre una empresa y un centro durante 4 años más
+     * @param string $codConvenio el código del convenio entre la empresa y el centro
+     * @param string $dniTutor el DNI del tutor que está loggeado en el sistema
+     * @return string la ruta en la que se guarda el anexo
+     *
+     * @author Malena
+     */
+    public function generarAnexoXVI(Request $req)
+    {
+        // Primero consigo  todos los datos que hay que rellenar en el convenio
+        $convenio = new Convenio($req->convenio);
+        $centroEstudios = new CentroEstudios($req->centro);
+        $director = new Profesor($req->director);
+        $empresa = new Empresa($req->empresa);
+        $representante = new Trabajador($req->representante);
+
+        // Construyo el array con todos los datos
+        $auxPrefijos = ['director', 'centro', 'representante', 'empresa', 'convenio'];
+        $auxDatos = [$director, $centroEstudios, $representante, $empresa, $convenio];
+        $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
+
+        // Ahora extraigo los datos de fecha_ini
+        $fecha = new Carbon($convenio->fecha_ini);
+        $datos['dia_ini'] = $fecha->day;
+        $datos['mes_ini'] = AuxiliarParametros::MESES[$fecha->month];
+        $datos['anio_ini'] = $fecha->year % 100;
+
+        //Extraigo el cod_convenio
+        $datos['cod_convenio'] = $convenio->cod_convenio;
+
+        // Ahora extraigo los datos de fecha actual
+        $fecha_actual = Carbon::now();
+        $datos['dia_actual'] = $fecha_actual->day;
+        $datos['mes_actual'] = AuxiliarParametros::MESES[$fecha_actual->month];
+        $datos['anio_actual'] = $fecha_actual->year;
+
+        //Fecha fin sumandole 4 años más
+        $fecha_fin_prorroga = date("Y-m-d", strtotime($req->convenio['fecha_fin'] . "+ 4 year"));
+        $fecha_prorroga = new Carbon($fecha_fin_prorroga);
+        $datos['fecha_fin_prorroga'] = $fecha_fin_prorroga;
+        $datos['fecha_fin_prorroga_dia'] = $fecha_prorroga->day;
+        $datos['fecha_fin_prorroga_mes'] = AuxiliarParametros::MESES[$fecha_prorroga->month];
+        $datos['fecha_fin_prorroga_year'] = $fecha_prorroga->year;
+
+        // Esta variable se usa sólo para el nombre del archivo
+        $codConvenioAux = str_replace('/', '-', $convenio->cod_convenio);
+
+        // Voy a necesitar el DNI del tutor, así que lo obtengo
+        $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+
+        // Ahora genero el Word en sí
+        // Establezco las variables que necesito
+        $nombrePlantilla = 'Anexo16';
+        $rutaOrigen = 'anexos' . DIRECTORY_SEPARATOR . 'plantillas' . DIRECTORY_SEPARATOR . $nombrePlantilla . '.docx';
+        Auxiliar::existeCarpeta(public_path($dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla));
+        $rutaDestino =  $dniTutor . DIRECTORY_SEPARATOR . $nombrePlantilla . DIRECTORY_SEPARATOR . $nombrePlantilla . '_' . $codConvenioAux . '.docx';
+        // Creo la plantilla y la relleno
+        $template = new TemplateProcessor($rutaOrigen);
+        $template->setValues($datos);
+        $template->saveAs($rutaDestino);
+
+        Anexo::create(['tipo_anexo' => 'Anexo16', 'ruta_anexo' => $rutaDestino]);
+        return $rutaDestino;
+    }
+
+
+    /**
+     * Renueva un convenio existente
+     *
+     * @param Request $req Contiene todos los datos que llegan desde el cliente
+     * @return Response JSON con el código de respuesta del servidor
+     * @author Malena
+     */
+    public function renovarConvenio(Request $req)
+    {
+        try {
+            // Guardamos el código de convenio original, en caso de que haya cambiado
+            if (array_key_exists('cod_convenio_anterior', $req->convenio)) {
+                $codAnterior = $req->convenio['cod_convenio_anterior'];
+            } else {
+                $codAnterior = $req->convenio['cod_convenio'];
+            }
+            #region Guardado del anexo
+            // Eliminamos el archivo que había antes
+            $rutaAnterior = Convenio::where('cod_convenio', $codAnterior)->first()->ruta_anexo;
+            Auxiliar::borrarFichero(($rutaAnterior));
+            // Y generamos o guardamos (según lo que recibamos del cliente) uno nuevo
+            /*
+            if ($req->subir_anexo) {
+                $dniTutor = Profesor::where('email', $req->user()->email)->first()->dni;
+                $tipoAnexo = 'AnexoXVI';
+                $codConvenioAux = str_replace('/', '-', $req->convenio['cod_convenio']);
+                $carpeta = $dniTutor . DIRECTORY_SEPARATOR . $tipoAnexo;
+                $archivo = $tipoAnexo . '_' . $codConvenioAux;
+                $ruta = Auxiliar::guardarFichero($carpeta, $archivo, $req->anexo);
+            } else {
+                $ruta = $this->generarAnexoXVI($req);
+            }
+            */
+            //A la fecha_fin le vamos a sumar 4 años, para sumarle la prorroga:
+            $fecha_fin_prorroga = date("Y-m-d", strtotime($req->convenio['fecha_fin'] . "+ 4 year"));
+            Anexo::where('ruta_anexo', $rutaAnterior)->update(['habilitado' => 0]);
+            $ruta = $this->generarAnexoXVI($req);
+            #endregion
+            #region Actualización de la base de datos (Convenio y Anexo)
+            Convenio::where('cod_convenio', $codAnterior)->update([
+                'cod_convenio' => $req->convenio['cod_convenio'],
+                'fecha_ini' => $req->convenio['fecha_ini'],
+                'fecha_fin' => $fecha_fin_prorroga,
+                'ruta_anexo' => $ruta
+            ]);
+            //Anexo::where('ruta_anexo', $rutaAnterior)->update(['ruta_anexo' => $ruta]);
+            #endregion
+            return response()->json(['ruta_anexo' => $ruta], 201);
+        } catch (QueryException $ex) {
+            // Duplicado de una clave única
+            if ($ex->errorInfo[1] == 1062) {
+                return response()->json($ex->errorInfo[2], 409);
+            } else {
+                return response()->json($ex->errorInfo[2], 400);
+            }
+        } catch (Exception $ex) {
+            return response()->json($ex->getMessage(), 500);
+        }
+    }
+
     #endregion
     /***********************************************************************/
 }

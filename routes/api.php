@@ -76,6 +76,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     Route::post('add_convenio', [ControladorTutorFCT::class, 'addConvenio']);
     Route::put('editar_convenio', [ControladorTutorFCT::class, 'updateConvenio']);
+    Route::post('renovar_convenio', [ControladorTutorFCT::class, 'renovarConvenio']);
     Route::delete('eliminar_convenio/cod={cod}', [ControladorTutorFCT::class, 'deleteConvenio']);
     /***********************************************************************/
 
