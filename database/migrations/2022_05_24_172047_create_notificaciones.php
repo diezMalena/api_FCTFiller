@@ -22,7 +22,6 @@ class CreateNotificaciones extends Migration
             $table->timestamps();
 
             $table->foreign('email')->references('email')->on('users');
-            $table->foreign('semana')->references('id')->on('semana');
         });
     }
 

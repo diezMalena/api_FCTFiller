@@ -62,4 +62,7 @@ php artisan db:seed --class=EmpresaSeeder
 # Tabla de ciudades
 php artisan db:seed --class=CiudadSeeder
 
+# Tabla de cursos académicos
+php artisan db:seed --class=AuxCursoAcademicoSeeder
+
 php artisan passport:install
