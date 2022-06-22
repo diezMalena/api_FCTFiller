@@ -172,7 +172,16 @@ class ControladorTutorFCT extends Controller
             //elimita de la tabla fct los registros de los alumnos que ya no están en una empresa
 
             foreach ($alumnos_solos as $alumno) {
-                Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                $AlumnoTieneSeguimiento =  FCT::join('seguimiento', 'seguimiento.id_fct', '=', 'fct.id')
+                    ->where([['fct.dni_alumno', $alumno['dni']]])
+                    ->select(['seguimiento.id'])
+                    ->first();
+
+                if (!$AlumnoTieneSeguimiento) {
+                    Fct::where([['dni_alumno', $alumno['dni']], ['curso_academico', $cursoAcademico]])->delete();
+                } else {
+                    return response()->json(['message' => 'No puedes mover un alumno que ya está en prácticas: ' . $alumno['nombre']], 406);
+                }
             }
 
             //este for mete el nuevo nombre del responsable, se haya cambiado o no.
@@ -180,8 +189,7 @@ class ControladorTutorFCT extends Controller
             //los inserta de nuevo con los cambios que se han hecho.
             foreach ($empresas as $empresa) {
                 Trabajador::find($empresa['dni_responsable'])->update(['nombre' => $empresa['nombre_responsable']]);
-                // $trabajador = Trabajador::find($empresa['dni_responsable']);
-                // Auxiliar::updateUser($trabajador, $trabajador->email);
+
                 $alumnos = $empresa['alumnos'];
 
                 foreach ($alumnos as $alumno) {
@@ -901,6 +909,7 @@ class ControladorTutorFCT extends Controller
     public function habilitarAnexo(Request $val)
     {
 
+        // Request
         $cod_anexo = $val->get('cod_anexo');
         $dni_tutor = $val->get('dni_tutor');
 
@@ -911,18 +920,13 @@ class ControladorTutorFCT extends Controller
         $codAux = explode("_", $cod_anexo);
         //$codAux[0] es el tipo del Anexo
         if ($codAux[0] == 'Anexo1') {
-            FCT::where('id_empresa', '=', $codAux[1])->update([
-                'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
-            ]);
-        } else {
-            if ($codAux[0] == 'Anexo0' || $codAux[0] == 'Anexo0A') {
+            $ruta_anexo = Anexo::where('ruta_anexo', 'like', "%$cod_anexo%")->first();
 
-                $convenio = explode('_', $cod_anexo);
-                $convenio = explode('.', $convenio[1]);
-                $convenio = str_replace('-', '/', $convenio[0]);
-
-                Convenio::where('cod_convenio', '=', $convenio)->update([
-                    'ruta_anexo' => $dni_tutor . DIRECTORY_SEPARATOR . $codAux[0] . DIRECTORY_SEPARATOR . $cod_anexo,
+            //Buscar alumnos del tutor para asegurar modificar la fila de bbdd correcta
+            $alumnos_tutor = $this->getAlumnosQueVanAFct($dni_tutor);
+            foreach ($alumnos_tutor as $a) {
+                Fct::where('id_empresa', '=', $codAux[1])->where('dni_alumno', '=', $a->dni_alumno)->update([
+                    'ruta_anexo' => $ruta_anexo->ruta_anexo,
                 ]);
             }
         }
@@ -946,7 +950,7 @@ class ControladorTutorFCT extends Controller
         $rutaZip = 'tmp' . DIRECTORY_SEPARATOR . 'anexos' . DIRECTORY_SEPARATOR . 'myzip_' . $AuxNombre . '.zip';
         $nombreZip = $this->montarZipCrud($dni, $rutaZip, $habilitado);
 
-        return response()->download(public_path($nombreZip));
+        return response()->download(public_path($nombreZip))->deleteFileAfterSend(true);
     }
 
     /**
@@ -954,7 +958,7 @@ class ControladorTutorFCT extends Controller
      * Miramos los anexos de la carpeta de anexos del tutor, buscamos ese anexo habilitado o no habilitado, segun si
      * la consulta se hace desde el crud de anexos o desde el historial  y comprobamos
      * si este existe en el directorio, en tal caso se añade al zip
-     * Comprueba que el directorio en el que se busca el archivo existe y sino, lo crea.
+     * Comprueba que el directorio en el que se busca el archivo existe y sino, lo crea y de la misma forma con los archivos.
      * @author Laura <lauramorenoramos97@gmail.com>
      * @param String $dni_tutor, el dni del tutor, sirve para ubicar su directorio
      * @param ZipArchive $zip , el zip donde se almacenaran los archivos
@@ -964,89 +968,25 @@ class ControladorTutorFCT extends Controller
     public function montarZipCrud(String $dni_tutor, String $rutaZip, $habilitado)
     {
         $zip = new ZipArchive;
+        $tipo_anexos_existentes = Anexo::select('tipo_anexo')->where('habilitado', '=', $habilitado)->distinct()->get();
 
-        Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-        $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
         if ($zip->open(public_path($rutaZip), ZipArchive::CREATE)) {
+            foreach ($tipo_anexos_existentes as $a) {
 
-            #region Anexo 0
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0'));
-            foreach ($files as $value) {
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
+                Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . $a->tipo_anexo));
+                $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR .  $a->tipo_anexo));
+                foreach ($files as $value) {
+                    $ruta_completa = public_path($dni_tutor . DIRECTORY_SEPARATOR . $a->tipo_anexo . DIRECTORY_SEPARATOR . basename($value));
+                    if (file_exists($ruta_completa)) {
+                        $nombreAux = basename($value);
+                        $existeAnexo = Anexo::where('tipo_anexo', '=', $a->tipo_anexo)->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->first();
 
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
+                        if ($existeAnexo) {
+                            $zip->addFile($value, $nombreAux);
+                        }
+                    }
                 }
             }
-            #endregion
-            #region Anexo 0A
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo0A'));
-            foreach ($files as $value) {
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo0A')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-
-            #region Anexo I
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo1'));
-            foreach ($files as $value) {
-
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo1')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo2'));
-            #region Anexo II
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo2')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo4'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'Anexo4'));
-            #region Anexo IV
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'Anexo4')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
-
-            #region Anexo XV
-            Auxiliar::existeCarpeta(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'AnexoXV'));
-            $files = File::files(public_path($dni_tutor . DIRECTORY_SEPARATOR . 'AnexoXV'));
-            foreach ($files as $value) {
-                //El nombreAux es el nombre del anexo completo
-                $nombreAux = basename($value);
-                $existeAnexo = Anexo::where('tipo_anexo', '=', 'AnexoXV')->where('habilitado', '=', $habilitado)->where('ruta_anexo', 'like', "%$nombreAux%")->get();
-
-                if (count($existeAnexo) > 0) {
-                    $zip->addFile($value, $nombreAux);
-                }
-            }
-            #endregion
             $zip->close();
         }
         return $rutaZip;
@@ -1326,7 +1266,9 @@ class ControladorTutorFCT extends Controller
             // Y creamos el registro en la tabla de anexos
             Anexo::create([
                 'tipo_anexo' => $req->empresa['es_privada'] == 1 ? 'Anexo0' : 'Anexo0A',
-                'ruta_anexo' => $ruta
+                'ruta_anexo' => $ruta,
+                'firmado_director' => $req->firmado_director,
+                'firmado_empresa' => $req->firmado_empresa
             ]);
             return response()->json(['ruta_anexo' => $ruta], 201);
         } catch (QueryException $ex) {
@@ -1380,7 +1322,11 @@ class ControladorTutorFCT extends Controller
                 'fecha_fin' => $req->convenio['fecha_fin'],
                 'ruta_anexo' => $ruta
             ]);
-            Anexo::where('ruta_anexo', $rutaAnterior)->update(['ruta_anexo' => $ruta]);
+            Anexo::where('ruta_anexo', $rutaAnterior)->update([
+                'ruta_anexo' => $ruta,
+                'firmado_director' => $req->firmado_director,
+                'firmado_empresa' => $req->firmado_empresa
+            ]);
             #endregion
             return response()->json(['ruta_anexo' => $ruta], 201);
         } catch (QueryException $ex) {
@@ -1602,6 +1548,9 @@ class ControladorTutorFCT extends Controller
     /**
      * Calcula la suma de KM realizados por el alumno durante el trayecto (I/V)
      * en vehículo privado
+     * @return float Suma de KM realizados por el alumno en vehículo privado. Si no tiene derecho
+     * a compensación por gastos, devuelve 0.
+     * @author David Sánchez Barragán
      */
     public function calcularSumaKMVehiculoPrivado($gasto)
     {
@@ -1622,6 +1571,14 @@ class ControladorTutorFCT extends Controller
         return 0;
     }
 
+    /**
+     * Obtiene la relación de alumnos tutorizados por un profesor en la tabla Gasto.
+     * Dicha relación contiene a los alumnos con registro en la tabla Gasto (propiedad gasto[]: Gasto[])
+     * y aquellos que no están en la tabla (propiedad alumnosSinGasto[]: string[])
+     * @param string Correo electrónico del tutor de los alumnos.
+     * @return stdClass
+     * @author David Sánchez Barragán
+     */
     public function obtenerGestionGastosPorEmailTutor($email)
     {
         //Array de DNIS de alumnos tutorizados por la persona que ha iniciado sesión
@@ -1665,7 +1622,15 @@ class ControladorTutorFCT extends Controller
         return $gastos;
     }
 
-
+    /**
+     * Devuelve la información para representar los datos de la tabla de gestión de
+     * gastos de profesor en el lado cliente.
+     * @param Request Petición con la información del usuario que ha iniciado sesión en la aplicación.
+     * @return Response JSON con el siguiente contenido:
+     * - Filas de la tabla Gasto donde el tutor sea el usuario de la petición
+     * - Alumnos que tutoriza el usuario que realiza la petición y no tienen registro en la tabla de gastos.
+     * @author David Sánchez Barragán
+     */
     public function gestionGastosProfesor(Request $r)
     {
         $gastos = $this->obtenerGestionGastosPorEmailTutor($r->user()->email);
@@ -1673,6 +1638,12 @@ class ControladorTutorFCT extends Controller
     }
 
 
+    /**
+     * Elimina a un alumno de la tabla Gasto.
+     * @param string DNI del alumno a eliminar
+     * @return Response Mensaje de estado, OK o error.
+     * @author David Sánchez Barragán
+     */
     public function eliminarAlumnoDeGastos($dni_alumno)
     {
         Gasto::where([
@@ -1690,6 +1661,12 @@ class ControladorTutorFCT extends Controller
         return response()->json(['mensaje' => 'Alumno eliminado correctamente'], 200);
     }
 
+    /**
+     * Añade a un alumno en la tabla Gasto
+     * @param Request con la información del alumno
+     * @return Response Mensaje de estado, OK o error.
+     * @author David Sánchez Barragán
+     */
     public function nuevoAlumnoGestionGastos(Request $r)
     {
         try {
@@ -1712,6 +1689,12 @@ class ControladorTutorFCT extends Controller
         return response()->json(['mensaje' => 'Creado correctamente'], 201);
     }
 
+    /**
+     * Descarga el Anexo 6 con la relación de gastos del alumno.
+     * @param Request $r Petición con el usuario tutor del centro de estudios.
+     * @return BinaryFileResponse con el anexo del alumno
+     * @author David Sánchez Barragán
+     */
     public function descargarAnexoVI(Request $r)
     {
         $rutaFichero = $this->generarAnexoVI($r->user()->email);
@@ -1722,6 +1705,13 @@ class ControladorTutorFCT extends Controller
         }
     }
 
+    /**
+     * Genera el o los libros de Excel de los alumnos con derecho a gasto
+     * @param string $email Correo electrónico del tutor del grupo
+     * @return string Ruta dónde se ha/n generado el/los libro/s de Excel (si solo se genera uno,
+     * se guarda en formato .xlsx; en caso contrario se comprimen en un fichero .zip)
+     * @author David Sánchez Barragán
+     */
     public function generarAnexoVI($email)
     {
         $dniTutor = Profesor::where('email', '=', $email)->get()->first()->dni;
