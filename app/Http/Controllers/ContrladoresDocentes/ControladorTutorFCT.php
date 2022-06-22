@@ -1942,6 +1942,7 @@ class ControladorTutorFCT extends Controller
         //Archivos
         $rutaCarpeta = $dni . DIRECTORY_SEPARATOR . $tipoAnexo;
 
+
         if ($tipoAnexo == 'AnexoXV') {
             //Con el AnexoXV hay que hacer cosas especiales solo para el
             $controlador->subirAnexoXV($dni, $tipoAnexo, $nombreArchivo, $fichero, $rutaCarpeta);
@@ -1980,25 +1981,7 @@ class ControladorTutorFCT extends Controller
                 //Excluyo Anexos2 y 4 por que esto ya lo hacen ellos de manera especifica en su propia función
                 if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx') {
                     if (count($existeAnexo) == 0) {
-                        if ($tipoAnexo == "Anexo16") {
-                            Anexo::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')
-                                ->update([
-                                    'ruta_anexo' => $rutaParaBBDD,
-                                ]);
-
-                            Convenio::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')
-                                ->update([
-                                    'ruta_anexo' => $rutaParaBBDD,
-                                ]);
-                        } else {
-                            Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
-
-                            if($tipoAnexo == "Anexo1"){
-                                FCT::where('ruta_anexo', 'like', '%' . $archivoNombreSinExtension[0] . '%')->update([
-                                    'ruta_anexo' => $rutaParaBBDD,
-                                ]);
-                            }
-                        }
+                        Anexo::create(['tipo_anexo' => $tipoAnexo, 'ruta_anexo' => $rutaParaBBDD]);
 
                         //Firma
                         $this->firmarAnexo($dni, $rutaParaBBDD, $extension);
@@ -2007,13 +1990,14 @@ class ControladorTutorFCT extends Controller
                         Anexo::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                             'ruta_anexo' => $rutaParaBBDD,
                         ]);
+
                         //Añadidos a BBDD especiales
                         if ($tipoAnexo == 'Anexo1') {
                             FCT::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                                 'ruta_anexo' => $rutaParaBBDD,
                             ]);
                         } else {
-                            if ($tipoAnexo == 'Anexo0' || $tipoAnexo == 'Anexo0A') {
+                            if ($tipoAnexo == 'Anexo0' || $tipoAnexo == 'Anexo0A' || $tipoAnexo == 'Anexo16') {
                                 Convenio::where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->update([
                                     'ruta_anexo' => $rutaParaBBDD,
                                 ]);
