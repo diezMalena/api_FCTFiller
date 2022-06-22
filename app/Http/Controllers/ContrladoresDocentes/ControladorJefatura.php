@@ -1236,10 +1236,13 @@ class ControladorJefatura extends Controller
      * @return Response JSON con cuestionario o error.
      * @author Pablo García Galán
      */
-    public function verificarCuestionarioRespondido($id_usuario)
+    public function verificarCuestionarioRespondido($id_usuario, $destinatario)
     {
         try {
-            $cuestionarios = CuestionarioRespondido::where('id_usuario', '=', $id_usuario)->get();
+            $cuestionarios = CuestionarioRespondido::where([
+                ['id_usuario', $id_usuario],
+                ['destinatario', $destinatario]
+            ])->get();
             return response()->json($cuestionarios, 200);
         } catch (Exception $ex) {
             return response()->json(['mensaje' => 'Se ha producido un error en el servidor. Detalle del error: ' . $ex->getMessage()], 500);
@@ -1451,8 +1454,6 @@ class ControladorJefatura extends Controller
         foreach (PreguntasRespondidas::where('id_cuestionario_respondido', '=', $cuestionario[0]->id)->get() as $p) {
             $datos[] = $p;
         }
-
-        $result = array("id"=>$cuestionario[0]->id , "titulo"=>$cuestionario[0]->titulo  , "destinatario"=>$cuestionario[0]->destinatario  , "preguntas"=>$datos );
 
 
         $pdf = PDF::loadView('cuestionario', [
