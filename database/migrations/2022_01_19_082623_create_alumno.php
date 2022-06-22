@@ -29,6 +29,14 @@ class CreateAlumno extends Migration
             $table->string('provincia');
             $table->string('localidad');
             $table->boolean('va_a_fct');
+            $table->string('foto')->default('./assets/images/defaultProfilePicture.png')->nullable(true);
+            $table->string('curriculum')->nullable(true);
+            $table->string('cuenta_bancaria')->nullable(true);
+            $table->string('matricula_coche')->nullable(true);
+            $table->date('fecha_nacimiento')->nullable(true);
+            $table->string('domicilio')->nullable(true);
+            $table->string('telefono')->nullable(true);
+            $table->string('movil')->nullable(true);
             $table->timestamps();
         });
     }
@@ -41,5 +49,6 @@ class CreateAlumno extends Migration
     public function down()
     {
         //
+        Schema::dropIfExists('alumno');
     }
 }

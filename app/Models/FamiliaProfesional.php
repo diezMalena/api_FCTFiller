@@ -21,5 +21,6 @@ class FamiliaProfesional extends Model
     protected $fillable = ['descripcion'];
     protected $primaryKey = 'id';
     protected $table = 'familia_profesional';
+    protected $hidden = ['created_at', 'updated_at'];
 
 }

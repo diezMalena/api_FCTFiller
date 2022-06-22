@@ -28,6 +28,5 @@ class Trabajador extends Model
     protected $primaryKey = 'dni';
     public $incrementing = false;
     protected $keyType = 'string';
-
-
+    protected $hidden = ['created_at', 'updated_at'];
 }
