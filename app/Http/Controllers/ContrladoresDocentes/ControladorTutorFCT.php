@@ -1989,6 +1989,12 @@ class ControladorTutorFCT extends Controller
                 $existeAnexo = Anexo::where('tipo_anexo', '=', $tipoAnexo)->where('ruta_anexo', 'like', "$rutaParaBBDDSinExtension%")->get();
 
 
+                if($tipoAnexo == "Anexo1"){
+                    FCT::where('ruta_anexo', 'like', '%'.$archivoNombreSinExtension[0].'%')->update([
+                        'ruta_anexo' => $rutaParaBBDD,
+                    ]);
+                }
+
                 //Excluyo Anexos2 y 4 por que esto ya lo hacen ellos de manera especifica en su propia función
                 if ($nombreArchivo != 'Anexo2.docx' && $nombreArchivo != 'Anexo4.docx') {
                     if (count($existeAnexo) == 0) {
@@ -2074,6 +2080,7 @@ class ControladorTutorFCT extends Controller
         //---------------------------GENERACIÓN NOTIFICACIÓN-----------------------------------
         //Cogemos la empresa a la que estan asociados los alumnos del AnexoI
         if ($tipoAnexo == 'Anexo1') {
+
             $empresa = Empresa::join('fct', 'empresa.id', '=', 'fct.id_empresa')
                 ->where('fct.ruta_anexo', '=', $rutaParaBBDD)
                 ->select('empresa.id AS id', 'empresa.nombre AS nombre')
