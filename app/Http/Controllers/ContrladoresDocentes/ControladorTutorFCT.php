@@ -718,18 +718,30 @@ class ControladorTutorFCT extends Controller
                 $fechaAux = explode(':', $a->created_at);
                 $fechaAux = explode(' ', $fechaAux[0]);
 
-
-                //meter ese nombre en un array asociativo
-                $datos[] = [
-                    'nombre' => 'Anexo16',
-                    'codigo' => $nombreArchivo,
-                    'empresa' => $empresa->nombre,
-                    'alumno' => '',
-                    'firma_empresa' => $a->firmado_empresa,
-                    'firma_centro' => $a->firmado_director,
-                    'firma_alumno' => 0,
-                    'created_at' => $fechaAux[0]
-                ];
+                if (!$empresa) {
+                    $datos[] = [
+                        'nombre' => 'Anexo16',
+                        'codigo' => $nombreArchivo,
+                        'empresa' => ' ',
+                        'alumno' => '',
+                        'firma_empresa' => $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                } else {
+                    //meter ese nombre en un array asociativo
+                    $datos[] = [
+                        'nombre' => 'Anexo16',
+                        'codigo' => $nombreArchivo,
+                        'empresa' => $empresa->nombre,
+                        'alumno' => '',
+                        'firma_empresa' => $a->firmado_empresa,
+                        'firma_centro' => $a->firmado_director,
+                        'firma_alumno' => 0,
+                        'created_at' => $fechaAux[0]
+                    ];
+                }
             }
         }
 
