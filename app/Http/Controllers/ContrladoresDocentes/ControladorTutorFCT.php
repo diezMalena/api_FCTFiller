@@ -1824,7 +1824,6 @@ class ControladorTutorFCT extends Controller
                 'tipo_anexo' => 'Anexo7',
                 'ruta_anexo' => $rutaDestino
             ]);
-            #endregion
             return response()->json(['message' => 'Gastos confirmados', 'ruta_anexo' => $rutaDestino], 200);
         } catch (QueryException $ex) {
             return response()->json($ex->getMessage(), 400);
@@ -2059,7 +2058,6 @@ class ControladorTutorFCT extends Controller
 
     #endregion
     /***********************************************************************/
-
 
     /***********************************************************************/
     #region Anexo II Y IV - Programa formativo
