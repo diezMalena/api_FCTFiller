@@ -90,6 +90,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'profesor']], function () {
     Route::post('descargarAnexo0', [ControladorTutorFCT::class, 'descargarAnexo0']);
     Route::post('add_convenio', [ControladorTutorFCT::class, 'addConvenio']);
     Route::put('editar_convenio', [ControladorTutorFCT::class, 'updateConvenio']);
+    Route::post('renovar_convenio', [ControladorTutorFCT::class, 'renovarConvenio']);
     Route::delete('eliminar_convenio/cod={cod}', [ControladorTutorFCT::class, 'deleteConvenio']);
     /***********************************************************************/
 
@@ -149,25 +150,12 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     Route::post('/modificarProfesor', [ControladorJefatura::class, 'modificarProfesor']);
     Route::post('/addProfesor', [ControladorJefatura::class, 'addProfesor']);
     /***********************************************************************/
-
-
-});
-
-Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     /*******************************SUBIDA CSV*******************************/
     Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
     /************************************************************************/
+});
 
-    /******************************CRUD ALUMNOS******************************/
-    Route::get('/listarAlumnos/{dni_logueado}', [ControladorJefatura::class, 'listarAlumnos']);
-    Route::get('/verAlumno/{dni_alumno}', [ControladorJefatura::class, 'verAlumno']);
-    Route::post('/addAlumno', [ControladorJefatura::class, 'addAlumno']);
-    Route::put('/modificarAlumno', [ControladorJefatura::class, 'modificarAlumno']);
-    Route::delete('/eliminarAlumno/{dni_alumno}', [ControladorJefatura::class, 'eliminarAlumno']);
-    Route::get('/listarGrupos', [ControladorJefatura::class, 'listarGrupos']);
-    Route::get('/descargarCurriculum/{dni}', [ControladorJefatura::class, 'descargarCurriculum']);
-    /************************************************************************/
-
+Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefatura']], function () {
     /*************************CRUD CUESTIONARIOS***************************/
     Route::post('/crearCuestionario', [ControladorJefatura::class, 'crearCuestionario']);
     Route::post('/editarCuestionario', [ControladorJefatura::class, 'editarCuestionario']);
@@ -185,9 +173,6 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
     Route::get('/listarCuestionariosRespondidos', [ControladorJefatura::class, 'listarCuestionariosRespondidos']);
     Route::get('/descargarCuestionario/{id_cuestionario}', [ControladorJefatura::class, 'descargarCuestionario']);
     /**********************************************************************/
-    /*******************************SUBIDA CSV*******************************/
-    Route::post('recibirCSV', [ControladorJefatura::class, 'recibirCSV']);
-    /************************************************************************/
 });
 
 
