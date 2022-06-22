@@ -58,7 +58,7 @@ Route::group(['middleware' => ['Cors']], function () {
     /***********************************************************************/
     /*********************Cuestionarios Tutores Empresa*********************/
     Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
-    Route::get('/verificarCuestionarioRespondidoFCT/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
+    Route::get('/verificarCuestionarioRespondidoFCT/{id_usuario}/{destinatario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
     Route::get('/obtenerCuestionarioFCT/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
     Route::post('/crearCuestionarioRespondidoFCT', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
     Route::get('/obtenerCursosAcademicos', [ControladorJefatura::class, 'obtenerCursosAcademicos']);
@@ -175,7 +175,7 @@ Route::group(['prefix' => 'jefatura', 'middleware' => ['Cors', 'auth:api', 'jefa
     Route::get('/obtenerCuestionario/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
     Route::post('/crearCuestionarioRespondido', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
     Route::get('/listarCuestionarios/{codigo_centro}', [ControladorJefatura::class, 'listarCuestionarios']);
-    Route::get('/verificarCuestionarioRespondido/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
+    Route::get('/verificarCuestionarioRespondido/{id_usuario}/{destinatario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
     Route::delete('/eliminarCuestionario/{id}', [ControladorJefatura::class, 'eliminarCuestionario']);
     Route::get('/obtenerCuestionariosFCT/{dni_tutor}', [ControladorJefatura::class, 'obtenerCuestionariosTutorEmpresaAlumnos']);
     Route::post('/activarCuestionario/{id_cuestionario}/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'activarCuestionario']);
@@ -261,7 +261,7 @@ Route::group(['middleware' => ['Cors', 'auth:api', 'alumno_profesor']], function
     /**********************************************************************/
 
      /******************************CUESTIONARIOS**************************/
-    Route::get('/verificarCuestionarioRespondido/{id_usuario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
+    Route::get('/verificarCuestionarioRespondido/{id_usuario}/{destinatario}', [ControladorJefatura::class, 'verificarCuestionarioRespondido']);
     Route::get('/obtenerCuestionario/{destinatario}/{codigo_centro}', [ControladorJefatura::class, 'obtenerCuestionario']);
     Route::post('/crearCuestionarioRespondido', [ControladorJefatura::class, 'crearCuestionarioRespondido']);
     /**********************************************************************/
