@@ -1768,7 +1768,7 @@ class ControladorTutorFCT extends Controller
             foreach ($gastoAlumnos as $gasto) {
                 $tabla->setCellValue('A' . $fila, $gasto->nombre_alumno);
                 $tabla->setCellValue(($gasto->tipo_desplazamiento == 'Domicilio' ? 'D' : 'C') . $fila, '   x   ');
-                $tabla->setCellValue('E' . $fila, $gasto->sumatorio_gasto_transporte_publico / count($gasto->facturasTransporte));
+                $tabla->setCellValue('E' . $fila, count($gasto->facturasTransporte) > 0 ? ($gasto->sumatorio_gasto_transporte_publico / count($gasto->facturasTransporte)) : 0);
                 $tabla->setCellValue('F' . $fila, count($gasto->facturasTransporte));
                 $tabla->setCellValue('G' . $fila, $this->calcularSumaKMVehiculoPrivado($gasto));
                 $tabla->setCellValue('H' . $fila, $gasto->dias_transporte_privado);

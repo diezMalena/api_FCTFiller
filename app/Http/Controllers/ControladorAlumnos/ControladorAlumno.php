@@ -1191,7 +1191,7 @@ class ControladorAlumno extends Controller
             ['dni_alumno', '=', $r->dni_alumno],
             ['curso_academico', '=', $r->curso_academico]
         ])->update([
-            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo),
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo, $r->distancia_centroEd_centroTra, $r->distancia_centroEd_residencia , $r->distancia_centroTra_residencia),
             'residencia_alumno' => $r->residencia_alumno,
             'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
             'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
@@ -1483,7 +1483,7 @@ class ControladorAlumno extends Controller
      * No aplica-> no se tiene derecho a gastos de manutencion.
      * @author David Sánchez Barragán
      */
-    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo)
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo, $distancia_centroEd_centroTra, $distancia_centroEd_residencia , $distancia_centroTra_residencia)
     {
         if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
             if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
@@ -1492,7 +1492,11 @@ class ControladorAlumno extends Controller
                 return "Centro educativo";
             }
         } else {
-            return "Domicilio";
+            if($distancia_centroTra_residencia < $distancia_centroEd_residencia) {
+                return "No aplica";
+            } else {
+                return "Domicilio";
+            }
         }
     }
     #endregion
