@@ -122,6 +122,53 @@ class ControladorAlumno extends Controller
             $jornada['orden_jornada'] = $ultimoOrden + 1;
         }
         $seguimiento = Seguimiento::create($jornada);
+        $jornadas = $this->ultimaJornada($dni_alumno);
+        //Si ultimo orden es 4 + 1, es decir, si es el quinto día
+        if (($ultimoOrden + 1) % 5 == 0) {
+            //Es el último día de la semana:
+            error_log($ultimoOrden);
+            /*$semana = Semana::create([
+                'id_fct' => $id_fct,
+                'id_quinto_dia' => $jornadas[0]->id,
+            ]);*/
+
+            //Cuando se ha completado la semana se actualiza el id_quinto_dia
+            Semana::where('id_fct', '=', $id_fct)
+                ->whereNull('id_quinto_dia')
+                ->update([
+                    'id_quinto_dia' => $jornadas[0]->id,
+            ]);
+        }
+        //Si ultimo orden es múltiplo de 5, es el primer día de una semana
+        if ($ultimoOrden % 5 == 0) {
+            error_log($ultimoOrden);
+            //Cuando se inserta el primer dia de una semana, se crea la semana con el id_quinto_dia a null
+            $semana = Semana::create([
+                'id_fct' => $id_fct,
+                'id_quinto_dia' => null,
+            ]);
+        }
+    }
+
+
+
+    /*
+
+    public function addJornada(Request $req)
+    {
+        $jornada = $req->get('jornada');
+        $dni_alumno = $req->get('dni_alumno');
+        $fct = $this->buscarId_fct($dni_alumno);
+        $id_fct = $fct[0]->id;
+        $jornada['id_fct'] = $id_fct;
+
+        $ultimoOrden = $this->encontrarUltimoOrden($id_fct)[0]->orden_jornada;
+        if ($ultimoOrden == null) {
+            $jornada['orden_jornada'] = 1;
+        } else {
+            $jornada['orden_jornada'] = $ultimoOrden + 1;
+        }
+        $seguimiento = Seguimiento::create($jornada);
 
         if (($ultimoOrden + 1) % 5 == 0) {
             //Es el último día de la semana:
@@ -132,6 +179,8 @@ class ControladorAlumno extends Controller
             ]);
         }
     }
+
+    */
 
     /**
      * Metodo que se encarga de seleccionar las jornadas que le corresponden al alumno
@@ -438,10 +487,16 @@ class ControladorAlumno extends Controller
         $auxDatos = [$centro, $alumno, $tutor, $familia_profesional, $ciclo, $empresa, $tutor_empresa, $fct];
         $datos = Auxiliar::modelsToArray($auxDatos, $auxPrefijos);
         //Recorro las 5 jornadas, y les establezco su valor correspondiente en el documento.
-        for ($i = 0; $i < count($jornadas); $i++) {
-            $datos['jornada' . $i . '.actividades'] = $jornadas[$i]->actividades;
-            $datos['jornada' . $i . '.tiempo_empleado'] = $jornadas[$i]->tiempo_empleado;
-            $datos['jornada' . $i . '.observaciones'] = $jornadas[$i]->observaciones;
+        for ($i = 0; $i < 5; $i++) {
+            if (isset($jornadas[$i])) {
+                $datos['jornada' . $i . '.actividades'] = $jornadas[$i]->actividades;
+                $datos['jornada' . $i . '.tiempo_empleado'] = $jornadas[$i]->tiempo_empleado;
+                $datos['jornada' . $i . '.observaciones'] = $jornadas[$i]->observaciones;
+            } else {
+                $datos['jornada' . $i . '.actividades'] = "";
+                $datos['jornada' . $i . '.tiempo_empleado'] = "";
+                $datos['jornada' . $i . '.observaciones'] = "";
+            }
         }
         //Nombre de la plantilla:
         $nombrePlantilla = 'Anexo3';
@@ -697,16 +752,30 @@ class ControladorAlumno extends Controller
         $quinto_dia = Seguimiento::where('id', '=', $id_quinto_dia)
             ->first();
 
-        $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
-            ->where('fct.dni_alumno', '=', $dni_alumno)
-            ->where('fct.id_empresa', '=', $id_empresa)
-            ->where('seguimiento.orden_jornada', '<=', $quinto_dia->orden_jornada)
-            ->orderBy('seguimiento.orden_jornada', 'DESC')
-            ->take(5)
-            ->get();
+        if ($quinto_dia != null) {
+            $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
+                ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+                ->where('fct.dni_alumno', '=', $dni_alumno)
+                ->where('fct.id_empresa', '=', $id_empresa)
+                ->where('seguimiento.orden_jornada', '<=', $quinto_dia->orden_jornada)
+                ->orderBy('seguimiento.orden_jornada', 'DESC')
+                ->take(5)
+                ->get();
+        } else {
+            $ultimaJornada = $this->ultimaJornada($dni_alumno)[0];
+            if ($ultimaJornada != null) {
+                //Se comprueba a que día de la semana pertenece la ultima jornada, para saber cuantas jornadas tenemos que recuperar
+                $numero_dia_semana = date("w", strtotime($ultimaJornada->fecha_jornada));
 
-
+                $jornadas = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
+                    ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+                    ->where('fct.dni_alumno', '=', $dni_alumno)
+                    ->where('fct.id_empresa', '=', $id_empresa)
+                    ->orderBy('seguimiento.orden_jornada', 'DESC')
+                    ->take($numero_dia_semana)
+                    ->get();
+            }
+        }
         return $jornadas;
     }
 
@@ -721,7 +790,7 @@ class ControladorAlumno extends Controller
         $id_empresa = $fct[0]->id_empresa;
 
         $jornada = Seguimiento::join('fct', 'fct.id', '=', 'seguimiento.id_fct')
-            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado')
+            ->select('seguimiento.id AS id', 'seguimiento.actividades AS actividades', 'seguimiento.observaciones AS observaciones', 'seguimiento.tiempo_empleado AS tiempo_empleado', 'seguimiento.fecha_jornada AS fecha_jornada')
             ->where('fct.dni_alumno', '=', $dni_alumno)
             ->where('fct.id_empresa', '=', $id_empresa)
             ->orderBy('seguimiento.orden_jornada', 'DESC')
@@ -1191,7 +1260,7 @@ class ControladorAlumno extends Controller
             ['dni_alumno', '=', $r->dni_alumno],
             ['curso_academico', '=', $r->curso_academico]
         ])->update([
-            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo, $r->distancia_centroEd_centroTra, $r->distancia_centroEd_residencia , $r->distancia_centroTra_residencia),
+            'tipo_desplazamiento' => $this->obtenerTipoDesplazamiento($r->residencia_alumno, $r->ubicacion_centro_trabajo, $r->distancia_centroEd_centroTra, $r->distancia_centroEd_residencia, $r->distancia_centroTra_residencia),
             'residencia_alumno' => $r->residencia_alumno,
             'ubicacion_centro_trabajo' => $r->ubicacion_centro_trabajo == null ? ' ' : $r->ubicacion_centro_trabajo,
             'distancia_centroEd_centroTra' => $r->distancia_centroEd_centroTra,
@@ -1483,7 +1552,7 @@ class ControladorAlumno extends Controller
      * No aplica-> no se tiene derecho a gastos de manutencion.
      * @author David Sánchez Barragán
      */
-    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo, $distancia_centroEd_centroTra, $distancia_centroEd_residencia , $distancia_centroTra_residencia)
+    public function obtenerTipoDesplazamiento($residencia_alumno, $ubicacion_centro_trabajo, $distancia_centroEd_centroTra, $distancia_centroEd_residencia, $distancia_centroTra_residencia)
     {
         if (str_contains($residencia_alumno, 'Localidad del centro educativo')) {
             if (str_contains($ubicacion_centro_trabajo, 'Dentro')) {
@@ -1492,7 +1561,7 @@ class ControladorAlumno extends Controller
                 return "Centro educativo";
             }
         } else {
-            if($distancia_centroTra_residencia < $distancia_centroEd_residencia) {
+            if ($distancia_centroTra_residencia < $distancia_centroEd_residencia) {
                 return "No aplica";
             } else {
                 return "Domicilio";
